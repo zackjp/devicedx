@@ -13,6 +13,7 @@ lifecycleRuntimeKtx = "2.10.0"
 activityCompose = "1.12.3"
 composeBom = "2026.01.01"
 ksp = "2.3.5"
+mockk = "1.14.9"
 
 [libraries]
 androidx-core-ktx = { group = "androidx.core", name = "core-ktx", version.ref = "coreKtx" }
@@ -35,6 +36,7 @@ junit-jupiter-api = { module = "org.junit.jupiter:junit-jupiter-api", version.re
 junit-jupiter-engine = { module = "org.junit.jupiter:junit-jupiter-engine", version.ref = "junitJupiter" }
 kotest-assertions-core-jvm = { module = "io.kotest:kotest-assertions-core-jvm", version.ref = "kotestAssertionsCoreJvm" }
 kotest-runner-junit5-jvm = { module = "io.kotest:kotest-runner-junit5-jvm", version.ref = "kotestRunnerJunit5Jvm" }
+mockk = { module = "io.mockk:mockk", version.ref = "mockk" }
 
 [plugins]
 android-application = { id = "com.android.application", version.ref = "agp" }
