@@ -2,7 +2,7 @@ package com.zackjp.devicedx.feature.dashboard
 
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
-import com.zackjp.devicedx.data.NetworkRepository
+import com.zackjp.devicedx.data.WifiDataSource
 import com.zackjp.devicedx.permissions.AppPermission
 import dagger.hilt.android.lifecycle.HiltViewModel
 import kotlinx.coroutines.Job
@@ -20,7 +20,7 @@ import javax.inject.Inject
 
 @HiltViewModel
 class DashboardViewModel @Inject constructor(
-    private val networkRepository: NetworkRepository,
+    private val wifiDataSource: WifiDataSource,
     private val appPermission: AppPermission,
 ) : ViewModel() {
 
@@ -49,7 +49,7 @@ class DashboardViewModel @Inject constructor(
 
     private fun initiateScan() {
         scanJob?.cancel()
-        scanJob = networkRepository.getWifiScanFlow()
+        scanJob = wifiDataSource.getWifiScanFlow()
             .map { scanResults ->
                 scanResults.mapNotNull { it.SSID.ifEmpty { null } }
             }

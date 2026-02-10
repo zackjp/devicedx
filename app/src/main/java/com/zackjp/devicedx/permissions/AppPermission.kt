@@ -1,6 +1,7 @@
 package com.zackjp.devicedx.permissions
 
 import android.Manifest.permission.ACCESS_FINE_LOCATION
+import android.Manifest.permission.ACCESS_WIFI_STATE
 import android.content.Context
 import android.content.pm.PackageManager.PERMISSION_GRANTED
 import androidx.core.content.ContextCompat
@@ -15,6 +16,11 @@ class AppPermission @Inject constructor(
 
     fun hasFineLocation(): Boolean {
         val access = ContextCompat.checkSelfPermission(appContext, ACCESS_FINE_LOCATION)
+        return access == PERMISSION_GRANTED
+    }
+
+    fun hasWifiState(): Boolean {
+        val access = ContextCompat.checkSelfPermission(appContext, ACCESS_WIFI_STATE)
         return access == PERMISSION_GRANTED
     }
 

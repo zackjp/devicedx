@@ -2,7 +2,7 @@ package com.zackjp.devicedx.feature.dashboard
 
 import android.net.wifi.ScanResult
 import app.cash.turbine.test
-import com.zackjp.devicedx.data.NetworkRepository
+import com.zackjp.devicedx.data.WifiDataSource
 import com.zackjp.devicedx.permissions.AppPermission
 import io.kotest.matchers.shouldBe
 import io.mockk.every
@@ -25,7 +25,7 @@ class DashboardViewModelTest {
 
     private val testDispatcher = StandardTestDispatcher()
 
-    private val networkRepository = mockk<NetworkRepository>()
+    private val wifiDataSource = mockk<WifiDataSource>()
     private val appPermission = mockk<AppPermission>()
 
     private lateinit var viewModel: DashboardViewModel
@@ -41,9 +41,9 @@ class DashboardViewModelTest {
         Dispatchers.setMain(testDispatcher)
 
         every { appPermission.hasFineLocation() } returns false
-        every { networkRepository.getWifiScanFlow() } returns flowOf(scanResults)
+        every { wifiDataSource.getWifiScanFlow() } returns flowOf(scanResults)
         viewModel = DashboardViewModel(
-            networkRepository = networkRepository,
+            wifiDataSource = wifiDataSource,
             appPermission = appPermission
         )
     }
