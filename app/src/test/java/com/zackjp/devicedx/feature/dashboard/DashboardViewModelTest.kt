@@ -1,9 +1,9 @@
 package com.zackjp.devicedx.feature.dashboard
 
 import android.net.wifi.ScanResult
+import app.cash.turbine.test
 import com.zackjp.devicedx.data.NetworkRepository
 import com.zackjp.devicedx.permissions.AppPermission
-import io.kotest.matchers.collections.shouldContainExactly
 import io.kotest.matchers.shouldBe
 import io.mockk.every
 import io.mockk.mockk
@@ -11,7 +11,6 @@ import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.ExperimentalCoroutinesApi
 import kotlinx.coroutines.flow.flowOf
 import kotlinx.coroutines.flow.launchIn
-import kotlinx.coroutines.launch
 import kotlinx.coroutines.test.StandardTestDispatcher
 import kotlinx.coroutines.test.advanceUntilIdle
 import kotlinx.coroutines.test.resetMain
@@ -31,11 +30,18 @@ class DashboardViewModelTest {
 
     private lateinit var viewModel: DashboardViewModel
 
+    private companion object {
+        val result1 = ScanResult().apply { SSID = "ssid-name-1" }
+        val result2 = ScanResult().apply { SSID = "ssid-name-2" }
+        val scanResults = listOf(result1, result2)
+    }
+
     @BeforeEach
     fun setUp() {
         Dispatchers.setMain(testDispatcher)
 
         every { appPermission.hasFineLocation() } returns false
+        every { networkRepository.getWifiScanFlow() } returns flowOf(scanResults)
         viewModel = DashboardViewModel(
             networkRepository = networkRepository,
             appPermission = appPermission
@@ -48,12 +54,8 @@ class DashboardViewModelTest {
     }
 
     @Test
-    fun onGetWifiClicked_WithFineLocationAccess_TransformsScanResultsToWifiNames() = runTest(testDispatcher) {
+    fun onGetWifiClicked_WithFineLocationAccess_TransformsScanResultsToWifiNames() = runTest {
         viewModel.screenState.launchIn(backgroundScope)
-        val result1 = ScanResult().apply { SSID = "ssid-name-1" }
-        val result2 = ScanResult().apply { SSID = "ssid-name-2" }
-        val scanResults = listOf(result1, result2)
-        every { networkRepository.getWifiScanFlow() } returns flowOf(scanResults)
         every { appPermission.hasFineLocation() } returns true
 
         viewModel.onGetWifiClicked()
@@ -64,22 +66,25 @@ class DashboardViewModelTest {
 
     @Test
     fun onGetWifiClicked_WithFineLocationAccess_DoesNotEmitRequestPermissionEvent() = runTest {
-        val actualEvents = mutableListOf<DashboardEvent>()
-        backgroundScope.launch { viewModel.events.collect { actualEvents.add(it) } }
-        viewModel.onGetWifiClicked()
-        advanceUntilIdle()
+        every { appPermission.hasFineLocation() } returns true
 
-        actualEvents shouldBe emptyList()
+        viewModel.events.test {
+            viewModel.onGetWifiClicked()
+            advanceUntilIdle()
+
+            expectNoEvents()
+        }
     }
 
     @Test
     fun onGetWifiClicked_WithoutFineLocationAccess_EmitsRequestPermissionEvent() = runTest {
-        val actualEvents = mutableListOf<DashboardEvent>()
-        backgroundScope.launch { viewModel.events.collect { actualEvents.add(it) } }
-        viewModel.onGetWifiClicked()
-        advanceUntilIdle()
+        every { appPermission.hasFineLocation() } returns false
 
-        actualEvents shouldContainExactly listOf(DashboardEvent.LaunchFineLocation)
+        viewModel.events.test {
+            viewModel.onGetWifiClicked()
+
+            awaitItem() shouldBe DashboardEvent.LaunchFineLocation
+        }
     }
 
 }
