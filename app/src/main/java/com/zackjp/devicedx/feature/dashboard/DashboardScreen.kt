@@ -51,10 +51,6 @@ fun DashboardScreen(
         modifier = modifier,
     ) {
         item {
-            Text(stringResource(R.string.device_diagnostics))
-        }
-
-        item {
             Spacer(Modifier.height(16.dp))
             DiagnosticButtonRow(
                 modifier = Modifier.fillMaxWidth(),
