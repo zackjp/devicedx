@@ -27,7 +27,12 @@ class DashboardViewModel @Inject constructor(
     private val _events = Channel<DashboardEvent>()
     val events = _events.receiveAsFlow()
 
-    private val _screenState = MutableStateFlow(DashboardScreenState(emptyList()))
+    private val _screenState = MutableStateFlow(
+        DashboardScreenState(
+            permissionStatus = PermissionStatus.Unknown,
+            wifiNames = emptyList(),
+        )
+    )
     val screenState = _screenState
         .stateIn(
             viewModelScope,
@@ -37,14 +42,20 @@ class DashboardViewModel @Inject constructor(
 
     private var scanJob: Job? = null
 
-    fun onGetWifiClicked() {
+    fun onStartScan() {
         viewModelScope.launch {
             if (appPermission.hasFineLocation()) {
+                _screenState.update { it.copy(permissionStatus = PermissionStatus.Granted) }
                 initiateScan()
-            } else {
+            } else if (_screenState.value.permissionStatus == PermissionStatus.Unknown) {
+                _screenState.update { it.copy(permissionStatus = PermissionStatus.Pending) }
                 _events.send(DashboardEvent.LaunchFineLocation)
             }
         }
+    }
+
+    fun onFineLocationPermissionDenied() {
+        _screenState.update { it.copy(permissionStatus = PermissionStatus.Denied) }
     }
 
     private fun initiateScan() {

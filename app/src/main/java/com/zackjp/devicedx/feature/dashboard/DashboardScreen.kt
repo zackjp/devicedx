@@ -25,7 +25,11 @@ fun DashboardScreen(
     val state by viewModel.screenState.collectAsStateWithLifecycle()
     val launcher =
         rememberLauncherForActivityResult(ActivityResultContracts.RequestPermission()) { isGranted ->
-            viewModel.onGetWifiClicked()
+            if (isGranted) {
+                viewModel.onStartScan()
+            } else {
+                viewModel.onFineLocationPermissionDenied()
+            }
         }
 
     LaunchedEffect(viewModel) {
@@ -46,7 +50,7 @@ fun DashboardScreen(
         item {
             Spacer(Modifier.height(16.dp))
             Button(
-                onClick = { viewModel.onGetWifiClicked() },
+                onClick = { viewModel.onStartScan() },
             ) {
                 Text("Get Wifi SSIDs")
             }

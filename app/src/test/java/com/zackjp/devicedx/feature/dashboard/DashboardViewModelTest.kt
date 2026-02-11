@@ -12,6 +12,7 @@ import kotlinx.coroutines.ExperimentalCoroutinesApi
 import kotlinx.coroutines.flow.flowOf
 import kotlinx.coroutines.flow.launchIn
 import kotlinx.coroutines.test.StandardTestDispatcher
+import kotlinx.coroutines.test.TestScope
 import kotlinx.coroutines.test.advanceUntilIdle
 import kotlinx.coroutines.test.resetMain
 import kotlinx.coroutines.test.runTest
@@ -55,21 +56,35 @@ class DashboardViewModelTest {
 
     @Test
     fun onGetWifiClicked_WithFineLocationAccess_TransformsScanResultsToWifiNames() = runTest {
-        viewModel.screenState.launchIn(backgroundScope)
+        initViewModel()
         every { appPermission.hasFineLocation() } returns true
 
-        viewModel.onGetWifiClicked()
+        viewModel.onStartScan()
         testDispatcher.scheduler.advanceUntilIdle()
 
-        viewModel.screenState.value.wifiNames shouldBe listOf("ssid-name-1", "ssid-name-2")
+        val state = viewModel.screenState.value
+        state.wifiNames shouldBe listOf("ssid-name-1", "ssid-name-2")
     }
 
     @Test
-    fun onGetWifiClicked_WithFineLocationAccess_DoesNotEmitRequestPermissionEvent() = runTest {
+    fun onStartScan_WithFineLocationAccess_SetsPermissionStatusToGranted() = runTest {
+        initViewModel()
+        every { appPermission.hasFineLocation() } returns true
+
+        viewModel.onStartScan()
+        testDispatcher.scheduler.advanceUntilIdle()
+
+        val state = viewModel.screenState.value
+        state.permissionStatus shouldBe PermissionStatus.Granted
+    }
+
+    @Test
+    fun onStartScan_WithFineLocationAccess_DoesNotEmitRequestPermissionEvent() = runTest {
+        initViewModel()
         every { appPermission.hasFineLocation() } returns true
 
         viewModel.events.test {
-            viewModel.onGetWifiClicked()
+            viewModel.onStartScan()
             advanceUntilIdle()
 
             expectNoEvents()
@@ -77,14 +92,47 @@ class DashboardViewModelTest {
     }
 
     @Test
-    fun onGetWifiClicked_WithoutFineLocationAccess_EmitsRequestPermissionEvent() = runTest {
+    fun onStartScan_WithoutFineLocationAccess_EmitsRequestPermissionEventOnlyOnce() = runTest {
+        initViewModel()
         every { appPermission.hasFineLocation() } returns false
 
         viewModel.events.test {
-            viewModel.onGetWifiClicked()
-
+            viewModel.onStartScan()
+            advanceUntilIdle()
             awaitItem() shouldBe DashboardEvent.LaunchFineLocation
+
+            viewModel.onStartScan()
+            advanceUntilIdle()
+            expectNoEvents()
         }
+    }
+
+    @Test
+    fun onStartScan_WithoutFineLocationAccess_SetsPermissionStatusToPending() = runTest {
+        initViewModel()
+        every { appPermission.hasFineLocation() } returns false
+
+        viewModel.onStartScan()
+        testDispatcher.scheduler.advanceUntilIdle()
+
+        val state = viewModel.screenState.value
+        state.permissionStatus shouldBe PermissionStatus.Pending
+    }
+
+    @Test
+    fun onFineLocationPermissionDenied_SetsPermissionStatusToDenied() = runTest {
+        initViewModel()
+
+        viewModel.screenState.test {
+            viewModel.onFineLocationPermissionDenied()
+            testDispatcher.scheduler.advanceUntilIdle()
+
+            expectMostRecentItem().permissionStatus shouldBe PermissionStatus.Denied
+        }
+    }
+
+    private fun TestScope.initViewModel() {
+        viewModel.screenState.launchIn(backgroundScope)
     }
 
 }
