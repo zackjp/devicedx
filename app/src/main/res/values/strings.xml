@@ -1,3 +1,8 @@
 <resources>
     <string name="app_name">DeviceDx</string>
+    <string name="select_your_diagnostic">Select your diagnostic</string>
+    <string name="latency_ms">Latency: %1$dms</string>
+    <string name="get_network_speeds">Get Network Speeds</string>
+    <string name="get_wifi_ssids">Get Wifi SSIDs</string>
+    <string name="device_diagnostics">Device Diagnostics</string>
 </resources>
