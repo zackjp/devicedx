@@ -1,9 +1,17 @@
 package com.zackjp.devicedx.feature.dashboard
 
 data class DashboardScreenState(
+    val activeView: DashboardView,
+    val latencyMillis: Long,
     val permissionStatus: PermissionStatus,
     val wifiNames: List<String>,
 )
+
+enum class DashboardView {
+    Unselected,
+    Wifi,
+    Latency
+}
 
 enum class PermissionStatus {
     Denied,

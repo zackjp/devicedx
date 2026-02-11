@@ -3,8 +3,12 @@ package com.zackjp.devicedx.feature.dashboard
 import android.Manifest.permission.ACCESS_FINE_LOCATION
 import androidx.activity.compose.rememberLauncherForActivityResult
 import androidx.activity.result.contract.ActivityResultContracts
+import androidx.compose.foundation.layout.Column
+import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
+import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
+import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
 import androidx.compose.material3.Button
@@ -49,16 +53,43 @@ fun DashboardScreen(
 
         item {
             Spacer(Modifier.height(16.dp))
-            Button(
-                onClick = { viewModel.onStartScan() },
-            ) {
-                Text("Get Wifi SSIDs")
+            Row {
+                Button(
+                    onClick = { viewModel.onStartScan() },
+                ) {
+                    Text("Get Wifi SSIDs")
+                }
+
+                Spacer(Modifier.width(16.dp))
+
+                Button(
+                    onClick = { viewModel.onMonitorLatency() },
+                ) {
+                    Text("Get Network Speeds")
+                }
             }
         }
 
-        items(state.wifiNames) { wifiName ->
-            Spacer(Modifier.height(16.dp))
-            Text(wifiName)
+        when (state.activeView) {
+            DashboardView.Unselected -> {
+                item {
+                    Text("Select your diagnostic")
+                }
+            }
+            DashboardView.Wifi -> {
+                items(state.wifiNames) { wifiName ->
+                    Spacer(Modifier.height(16.dp))
+                    Text(wifiName)
+                }
+            }
+            DashboardView.Latency -> {
+                item {
+                    Column(Modifier.fillMaxWidth()) {
+                        val latency = state.latencyMillis
+                        Text("Latency: ${latency}ms")
+                    }
+                }
+            }
         }
     }
 }

@@ -2,6 +2,7 @@ package com.zackjp.devicedx.feature.dashboard
 
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
+import com.zackjp.devicedx.data.RealTimeNetworkDataSource
 import com.zackjp.devicedx.data.WifiDataSource
 import com.zackjp.devicedx.permissions.AppPermission
 import dagger.hilt.android.lifecycle.HiltViewModel
@@ -20,8 +21,9 @@ import javax.inject.Inject
 
 @HiltViewModel
 class DashboardViewModel @Inject constructor(
-    private val wifiDataSource: WifiDataSource,
     private val appPermission: AppPermission,
+    private val wifiDataSource: WifiDataSource,
+    private val realTimeNetworkDataSource: RealTimeNetworkDataSource,
 ) : ViewModel() {
 
     private val _events = Channel<DashboardEvent>()
@@ -29,6 +31,8 @@ class DashboardViewModel @Inject constructor(
 
     private val _screenState = MutableStateFlow(
         DashboardScreenState(
+            activeView = DashboardView.Unselected,
+            latencyMillis = 0L,
             permissionStatus = PermissionStatus.Unknown,
             wifiNames = emptyList(),
         )
@@ -40,9 +44,11 @@ class DashboardViewModel @Inject constructor(
             _screenState.value,
         )
 
-    private var scanJob: Job? = null
+    private var monitorJob: Job? = null
 
     fun onStartScan() {
+        _screenState.update { it.copy(activeView = DashboardView.Wifi) }
+
         viewModelScope.launch {
             if (appPermission.hasFineLocation()) {
                 _screenState.update { it.copy(permissionStatus = PermissionStatus.Granted) }
@@ -58,14 +64,31 @@ class DashboardViewModel @Inject constructor(
         _screenState.update { it.copy(permissionStatus = PermissionStatus.Denied) }
     }
 
+    fun onMonitorLatency() {
+        _screenState.update { it.copy(activeView = DashboardView.Latency) }
+
+        viewModelScope.launch {
+            initiateLatencyMonitor()
+        }
+    }
+
     private fun initiateScan() {
-        scanJob?.cancel()
-        scanJob = wifiDataSource.getWifiScanFlow()
+        monitorJob?.cancel()
+        monitorJob = wifiDataSource.getWifiScanFlow()
             .map { scanResults ->
                 scanResults.mapNotNull { it.SSID.ifEmpty { null } }
             }
             .onEach { wifiNames ->
                 _screenState.update { it.copy(wifiNames = wifiNames) }
+            }
+            .launchIn(viewModelScope)
+    }
+
+    private fun initiateLatencyMonitor() {
+        monitorJob?.cancel()
+        monitorJob = realTimeNetworkDataSource.getLatencyMillisFlow()
+            .onEach { latencyMillis ->
+                _screenState.update { it.copy(latencyMillis = latencyMillis) }
             }
             .launchIn(viewModelScope)
     }
