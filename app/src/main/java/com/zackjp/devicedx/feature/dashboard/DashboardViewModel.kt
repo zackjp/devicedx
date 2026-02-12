@@ -1,15 +1,21 @@
 package com.zackjp.devicedx.feature.dashboard
 
+import android.net.wifi.ScanResult
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import com.zackjp.devicedx.data.RealTimeNetworkDataSource
 import com.zackjp.devicedx.data.WifiDataSource
 import com.zackjp.devicedx.system.permissions.PermissionChecker
 import dagger.hilt.android.lifecycle.HiltViewModel
+import kotlinx.coroutines.ExperimentalCoroutinesApi
 import kotlinx.coroutines.Job
 import kotlinx.coroutines.channels.Channel
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.SharingStarted
+import kotlinx.coroutines.flow.combine
+import kotlinx.coroutines.flow.distinctUntilChanged
+import kotlinx.coroutines.flow.emptyFlow
+import kotlinx.coroutines.flow.flatMapLatest
 import kotlinx.coroutines.flow.launchIn
 import kotlinx.coroutines.flow.map
 import kotlinx.coroutines.flow.onEach
@@ -44,7 +50,33 @@ class DashboardViewModel @Inject constructor(
             _screenState.value,
         )
 
-    private var monitorJob: Job? = null
+    private val uiActiveFlow = _screenState.subscriptionCount.map { it > 0 }.distinctUntilChanged()
+    private val latencyMonitorActive = MutableStateFlow(false)
+    private val wifiScanActive = MutableStateFlow(false)
+
+    @OptIn(ExperimentalCoroutinesApi::class)
+    private val activatableLatencyMonitor: Job = combine(
+        uiActiveFlow,
+        latencyMonitorActive,
+    ) { uiActive, latencyMonitorActive ->
+        uiActive && latencyMonitorActive
+    }.flatMapLatest { activateLatencyMonitor ->
+        if (activateLatencyMonitor) realTimeNetworkDataSource.getLatencyMillisFlow() else emptyFlow()
+    }.onEach { latencyMillis ->
+        handleNewLatencyMetric(latencyMillis)
+    }.launchIn(viewModelScope)
+
+    @OptIn(ExperimentalCoroutinesApi::class)
+    private val activatableWifiScanMonitor: Job = combine(
+        uiActiveFlow,
+        wifiScanActive,
+    ) { uiActive, wifiScanActive ->
+        uiActive && wifiScanActive
+    }.flatMapLatest { activateWifiScan ->
+        if (activateWifiScan) wifiDataSource.getWifiScanFlow() else emptyFlow()
+    }.onEach { scanResults ->
+        handleWifiScanResults(scanResults)
+    }.launchIn(viewModelScope)
 
     fun onStartScan() {
         _screenState.update { it.copy(activeView = DashboardView.Wifi) }
@@ -52,7 +84,7 @@ class DashboardViewModel @Inject constructor(
         viewModelScope.launch {
             if (permissionChecker.hasFineLocation()) {
                 _screenState.update { it.copy(permissionStatus = PermissionStatus.Granted) }
-                initiateScan()
+                initiateWifiScan()
             } else if (_screenState.value.permissionStatus == PermissionStatus.Unknown) {
                 _screenState.update { it.copy(permissionStatus = PermissionStatus.Pending) }
                 _events.send(DashboardEvent.LaunchFineLocation)
@@ -66,40 +98,38 @@ class DashboardViewModel @Inject constructor(
 
     fun onMonitorLatency() {
         _screenState.update { it.copy(activeView = DashboardView.Latency) }
-
-        viewModelScope.launch {
-            initiateLatencyMonitor()
-        }
+        initiateLatencyMonitor()
     }
 
-    private fun initiateScan() {
-        monitorJob?.cancel()
-        monitorJob = wifiDataSource.getWifiScanFlow()
-            .map { scanResults ->
-                scanResults.mapNotNull { it.SSID.ifEmpty { null } }
-            }
-            .onEach { wifiNames ->
-                _screenState.update { it.copy(wifiNames = wifiNames) }
-            }
-            .launchIn(viewModelScope)
+    private fun initiateWifiScan() {
+        wifiScanActive.value = true
+        latencyMonitorActive.value = false
     }
 
     private fun initiateLatencyMonitor() {
-        monitorJob?.cancel()
-        monitorJob = realTimeNetworkDataSource.getLatencyMillisFlow()
-            .onEach { latencyMillis ->
-                _screenState.update {
-                    it.copy(
-                        latencyHistory =
-                            (it.latencyHistory + latencyMillis).takeLast(MAX_LATENCY_DATA_POINTS)
-                    )
-                }
-            }
-            .launchIn(viewModelScope)
+        latencyMonitorActive.value = true
+        wifiScanActive.value = false
+    }
+
+    private fun handleWifiScanResults(scanResults: List<ScanResult>) {
+        _screenState.update { currentState ->
+            val wifiNames = scanResults.mapNotNull { it.SSID.ifEmpty { null } }
+            currentState.copy(wifiNames = wifiNames)
+        }
+    }
+
+    private fun handleNewLatencyMetric(latencyMillis: Long) {
+        _screenState.update {
+            it.copy(
+                latencyHistory =
+                    (it.latencyHistory + latencyMillis).takeLast(MAX_LATENCY_DATA_POINTS)
+            )
+        }
     }
 
     fun stopActiveMonitor() {
-        monitorJob?.cancel()
+        wifiScanActive.value = false
+        latencyMonitorActive.value = false
         _screenState.update { it.copy(activeView = DashboardView.Unselected) }
     }
 

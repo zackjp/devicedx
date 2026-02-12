@@ -19,12 +19,11 @@ class RealTimeNetworkDataSource @Inject constructor(
 ) {
 
     private val latencyMillisFlow = flow {
-        repeat(20) {
+        while(true) {
             emit(networkUtility.calculateLatency())
             delay(2000)
         }
-    }
-        .shareIn(appScope, SharingStarted.WhileSubscribed(5000), replay = 1)
+    }.shareIn(appScope, SharingStarted.WhileSubscribed(5000), replay = 0)
 
     fun getLatencyMillisFlow(): Flow<Long> = latencyMillisFlow
 

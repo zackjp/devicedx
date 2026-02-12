@@ -83,7 +83,7 @@ class DashboardViewModelTest {
         every { permissionChecker.hasFineLocation() } returns true
 
         viewModel.onStartScan()
-        testDispatcher.scheduler.advanceUntilIdle()
+        advanceUntilIdle()
 
         val state = viewModel.screenState.value
         state.wifiNames shouldBe listOf("ssid-name-1", "ssid-name-2")
@@ -95,7 +95,7 @@ class DashboardViewModelTest {
         every { permissionChecker.hasFineLocation() } returns true
 
         viewModel.onStartScan()
-        testDispatcher.scheduler.advanceUntilIdle()
+        advanceUntilIdle()
 
         val state = viewModel.screenState.value
         state.permissionStatus shouldBe PermissionStatus.Granted
@@ -136,7 +136,7 @@ class DashboardViewModelTest {
         every { permissionChecker.hasFineLocation() } returns false
 
         viewModel.onStartScan()
-        testDispatcher.scheduler.advanceUntilIdle()
+        advanceUntilIdle()
 
         val state = viewModel.screenState.value
         state.permissionStatus shouldBe PermissionStatus.Pending
@@ -148,7 +148,7 @@ class DashboardViewModelTest {
 
         viewModel.screenState.test {
             viewModel.onFineLocationPermissionDenied()
-            testDispatcher.scheduler.advanceUntilIdle()
+            advanceUntilIdle()
 
             expectMostRecentItem().permissionStatus shouldBe PermissionStatus.Denied
         }
