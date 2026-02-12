@@ -4,6 +4,7 @@ import android.net.wifi.ScanResult
 import app.cash.turbine.test
 import com.zackjp.devicedx.data.RealTimeNetworkDataSource
 import com.zackjp.devicedx.data.WifiDataSource
+import com.zackjp.devicedx.feature.dashboard.DashboardViewModel.Companion.MAX_LATENCY_DATA_POINTS
 import com.zackjp.devicedx.permissions.AppPermission
 import io.kotest.matchers.shouldBe
 import io.kotest.matchers.shouldNotBe
@@ -199,7 +200,7 @@ class DashboardViewModelTest {
     }
 
     @Test
-    fun onMonitorLatency_WhenLatencyValueEmitted_UpdatesState() = runTest {
+    fun onMonitorLatency_WhenLatencyValueEmitted_UpdatesLatencyHistory() = runTest {
         initViewModel()
 
         viewModel.screenState.test {
@@ -210,12 +211,33 @@ class DashboardViewModelTest {
             latencyMillisFlow.emit(11L)
             advanceUntilIdle()
 
-            expectMostRecentItem().latencyMillis shouldBe 11L
+            expectMostRecentItem().latencyMillis shouldBe listOf(11L)
 
             latencyMillisFlow.emit(13L)
             advanceUntilIdle()
 
-            expectMostRecentItem().latencyMillis shouldBe 13L
+            expectMostRecentItem().latencyMillis shouldBe listOf(11L, 13L)
+        }
+    }
+
+    @Test
+    fun onMonitorLatency_WhenLatencyValueEmitted_OnlyKeepsMaxHistory() = runTest {
+        initViewModel()
+
+        viewModel.screenState.test {
+            skipItems(1) // initial state
+            viewModel.onMonitorLatency()
+            advanceUntilIdle()
+
+            repeat(MAX_LATENCY_DATA_POINTS + 3) {
+                latencyMillisFlow.emit(it.toLong())
+                advanceUntilIdle()
+            }
+
+            val expectedHistory = (3..<3 + MAX_LATENCY_DATA_POINTS)
+                .map { it.toLong() }
+                .toList()
+            expectMostRecentItem().latencyMillis shouldBe expectedHistory
         }
     }
 

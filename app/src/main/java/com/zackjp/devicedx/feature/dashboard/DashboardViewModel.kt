@@ -32,7 +32,7 @@ class DashboardViewModel @Inject constructor(
     private val _screenState = MutableStateFlow(
         DashboardScreenState(
             activeView = DashboardView.Unselected,
-            latencyMillis = 0L,
+            latencyMillis = emptyList(),
             permissionStatus = PermissionStatus.Unknown,
             wifiNames = emptyList(),
         )
@@ -88,9 +88,17 @@ class DashboardViewModel @Inject constructor(
         monitorJob?.cancel()
         monitorJob = realTimeNetworkDataSource.getLatencyMillisFlow()
             .onEach { latencyMillis ->
-                _screenState.update { it.copy(latencyMillis = latencyMillis) }
+                _screenState.update {
+                    it.copy(
+                        latencyMillis =
+                            (it.latencyMillis + latencyMillis).takeLast(MAX_LATENCY_DATA_POINTS)
+                    )
+                }
             }
             .launchIn(viewModelScope)
     }
 
+    companion object {
+        const val MAX_LATENCY_DATA_POINTS = 10
+    }
 }
