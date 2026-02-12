@@ -62,9 +62,11 @@ fun DashboardScreen(
         item {
             Spacer(Modifier.height(16.dp))
             DiagnosticButtonRow(
+                currentDashboardView = state.activeView,
                 modifier = Modifier.fillMaxWidth(),
                 onStartLatencyMonitor = { viewModel.onMonitorLatency() },
                 onStartWifiScan = { viewModel.onStartScan() },
+                onStopCurrentMonitor = { viewModel.stopActiveMonitor() }
             )
         }
 
@@ -78,23 +80,33 @@ fun DashboardScreen(
 
 @Composable
 private fun DiagnosticButtonRow(
+    currentDashboardView: DashboardView,
     modifier: Modifier = Modifier,
     onStartLatencyMonitor: () -> Unit = {},
     onStartWifiScan: () -> Unit = {},
+    onStopCurrentMonitor: () -> Unit = {},
 ) {
     Row(modifier) {
-        Button(
-            onClick = onStartWifiScan,
-        ) {
-            Text(stringResource(R.string.get_wifi_ssids))
+        if (currentDashboardView == DashboardView.Wifi) {
+            Button(onClick = onStopCurrentMonitor) {
+                Text(stringResource(R.string.stop_wifi_monitor))
+            }
+        } else {
+            Button(onClick = onStartWifiScan) {
+                Text(stringResource(R.string.get_wifi_ssids))
+            }
         }
 
         Spacer(Modifier.width(16.dp))
 
-        Button(
-            onClick = onStartLatencyMonitor,
-        ) {
-            Text(stringResource(R.string.get_network_speeds))
+        if (currentDashboardView == DashboardView.Latency) {
+            Button(onClick = onStopCurrentMonitor) {
+                Text(stringResource(R.string.stop_latency_monitor))
+            }
+        } else {
+            Button(onClick = onStartLatencyMonitor) {
+                Text(stringResource(R.string.get_network_speeds))
+            }
         }
     }
 }

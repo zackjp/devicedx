@@ -98,6 +98,11 @@ class DashboardViewModel @Inject constructor(
             .launchIn(viewModelScope)
     }
 
+    fun stopActiveMonitor() {
+        monitorJob?.cancel()
+        _screenState.update { it.copy(activeView = DashboardView.Unselected) }
+    }
+
     companion object {
         const val MAX_LATENCY_DATA_POINTS = 10
     }

@@ -241,6 +241,27 @@ class DashboardViewModelTest {
         }
     }
 
+    @Test
+    fun stopActiveMonitor_WhenLatencyMonitorActive_StopsNewEmissions() = runTest {
+        initViewModel()
+
+        viewModel.screenState.test {
+            viewModel.onMonitorLatency()
+            advanceUntilIdle()
+            expectMostRecentItem().latencyHistory shouldBe emptyList()
+
+            latencyMillisFlow.emit(11L)
+            advanceUntilIdle()
+            expectMostRecentItem().latencyHistory shouldBe listOf(11L)
+
+            viewModel.stopActiveMonitor()
+            advanceUntilIdle()
+            latencyMillisFlow.emit(13L)
+            advanceUntilIdle()
+            expectMostRecentItem().latencyHistory shouldBe listOf(11L)
+        }
+    }
+
     private fun TestScope.initViewModel() {
         viewModel.screenState.launchIn(backgroundScope)
     }
