@@ -132,7 +132,7 @@ private fun LazyListScope.latencyGraph(
 ) {
     item {
         Column(modifier) {
-            Text(stringResource(R.string.latency_ms, latencyHistory.lastOrNull() ?: -1))
+            Text(stringResource(R.string.latency_ms, latencyHistory.lastOrNull() ?: "-"))
             Box(
                 modifier = Modifier
                     .background(Color.Black)
