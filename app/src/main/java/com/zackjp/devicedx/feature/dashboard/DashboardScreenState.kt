@@ -2,7 +2,7 @@ package com.zackjp.devicedx.feature.dashboard
 
 data class DashboardScreenState(
     val activeView: DashboardView,
-    val latencyMillis: List<Long>,
+    val latencyHistory: List<Long>,
     val permissionStatus: PermissionStatus,
     val wifiNames: List<String>,
 )

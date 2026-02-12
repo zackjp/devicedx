@@ -211,12 +211,12 @@ class DashboardViewModelTest {
             latencyMillisFlow.emit(11L)
             advanceUntilIdle()
 
-            expectMostRecentItem().latencyMillis shouldBe listOf(11L)
+            expectMostRecentItem().latencyHistory shouldBe listOf(11L)
 
             latencyMillisFlow.emit(13L)
             advanceUntilIdle()
 
-            expectMostRecentItem().latencyMillis shouldBe listOf(11L, 13L)
+            expectMostRecentItem().latencyHistory shouldBe listOf(11L, 13L)
         }
     }
 
@@ -237,7 +237,7 @@ class DashboardViewModelTest {
             val expectedHistory = (3..<3 + MAX_LATENCY_DATA_POINTS)
                 .map { it.toLong() }
                 .toList()
-            expectMostRecentItem().latencyMillis shouldBe expectedHistory
+            expectMostRecentItem().latencyHistory shouldBe expectedHistory
         }
     }
 

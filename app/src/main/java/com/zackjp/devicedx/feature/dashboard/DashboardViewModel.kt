@@ -32,7 +32,7 @@ class DashboardViewModel @Inject constructor(
     private val _screenState = MutableStateFlow(
         DashboardScreenState(
             activeView = DashboardView.Unselected,
-            latencyMillis = emptyList(),
+            latencyHistory = emptyList(),
             permissionStatus = PermissionStatus.Unknown,
             wifiNames = emptyList(),
         )
@@ -90,8 +90,8 @@ class DashboardViewModel @Inject constructor(
             .onEach { latencyMillis ->
                 _screenState.update {
                     it.copy(
-                        latencyMillis =
-                            (it.latencyMillis + latencyMillis).takeLast(MAX_LATENCY_DATA_POINTS)
+                        latencyHistory =
+                            (it.latencyHistory + latencyMillis).takeLast(MAX_LATENCY_DATA_POINTS)
                     )
                 }
             }
