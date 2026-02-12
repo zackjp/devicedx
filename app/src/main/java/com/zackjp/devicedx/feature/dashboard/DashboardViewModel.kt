@@ -4,7 +4,7 @@ import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import com.zackjp.devicedx.data.RealTimeNetworkDataSource
 import com.zackjp.devicedx.data.WifiDataSource
-import com.zackjp.devicedx.permissions.AppPermission
+import com.zackjp.devicedx.system.permissions.PermissionChecker
 import dagger.hilt.android.lifecycle.HiltViewModel
 import kotlinx.coroutines.Job
 import kotlinx.coroutines.channels.Channel
@@ -21,7 +21,7 @@ import javax.inject.Inject
 
 @HiltViewModel
 class DashboardViewModel @Inject constructor(
-    private val appPermission: AppPermission,
+    private val permissionChecker: PermissionChecker,
     private val wifiDataSource: WifiDataSource,
     private val realTimeNetworkDataSource: RealTimeNetworkDataSource,
 ) : ViewModel() {
@@ -50,7 +50,7 @@ class DashboardViewModel @Inject constructor(
         _screenState.update { it.copy(activeView = DashboardView.Wifi) }
 
         viewModelScope.launch {
-            if (appPermission.hasFineLocation()) {
+            if (permissionChecker.hasFineLocation()) {
                 _screenState.update { it.copy(permissionStatus = PermissionStatus.Granted) }
                 initiateScan()
             } else if (_screenState.value.permissionStatus == PermissionStatus.Unknown) {

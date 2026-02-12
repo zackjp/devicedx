@@ -6,7 +6,7 @@ import android.content.Intent
 import android.net.wifi.ScanResult
 import android.net.wifi.WifiManager
 import app.cash.turbine.test
-import com.zackjp.devicedx.permissions.AppPermission
+import com.zackjp.devicedx.system.permissions.PermissionChecker
 import com.zackjp.devicedx.system.ReceiverManager
 import com.zackjp.devicedx.system.WifiManagerWrapper
 import io.kotest.matchers.shouldBe
@@ -33,7 +33,7 @@ class WifiDataSourceTest {
 
     private val testDispatcher = StandardTestDispatcher()
 
-    private val appPermission = mockk<AppPermission>()
+    private val permissionChecker = mockk<PermissionChecker>()
     private val receiverManager = mockk<ReceiverManager>()
     private val wifiManagerWrapper = mockk<WifiManagerWrapper>()
 
@@ -47,7 +47,7 @@ class WifiDataSourceTest {
         every { receiverManager.unregisterReceiver(any()) } just runs
 
         dataSource = WifiDataSource(
-            appPermission = appPermission,
+            permissionChecker = permissionChecker,
             appScope = TestScope(testDispatcher),
             receiverManager = receiverManager,
             wifiManagerWrapper = wifiManagerWrapper,
@@ -68,8 +68,8 @@ class WifiDataSourceTest {
 
         every { wifiManagerWrapper.getCachedScanResults() } returns Result.success(expectedScanResults)
         every { receiverManager.registerReceiver(any(), capture(receiverLambda)) } returns broadcastReceiver
-        every { appPermission.hasFineLocation() } returns true
-        every { appPermission.hasWifiState() } returns true
+        every { permissionChecker.hasFineLocation() } returns true
+        every { permissionChecker.hasWifiState() } returns true
 
         dataSource.getWifiScanFlow().test {
             awaitItem() shouldBe emptyList()

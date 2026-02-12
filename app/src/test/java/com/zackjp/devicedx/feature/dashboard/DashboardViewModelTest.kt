@@ -5,7 +5,7 @@ import app.cash.turbine.test
 import com.zackjp.devicedx.data.RealTimeNetworkDataSource
 import com.zackjp.devicedx.data.WifiDataSource
 import com.zackjp.devicedx.feature.dashboard.DashboardViewModel.Companion.MAX_LATENCY_DATA_POINTS
-import com.zackjp.devicedx.permissions.AppPermission
+import com.zackjp.devicedx.system.permissions.PermissionChecker
 import io.kotest.matchers.shouldBe
 import io.kotest.matchers.shouldNotBe
 import io.mockk.every
@@ -31,7 +31,7 @@ class DashboardViewModelTest {
     private val testDispatcher = StandardTestDispatcher()
 
     private val wifiDataSource = mockk<WifiDataSource>()
-    private val appPermission = mockk<AppPermission>()
+    private val permissionChecker = mockk<PermissionChecker>()
     private val realTimeNetworkDataSource = mockk<RealTimeNetworkDataSource>()
 
     private lateinit var viewModel: DashboardViewModel
@@ -48,11 +48,11 @@ class DashboardViewModelTest {
     fun setUp() {
         Dispatchers.setMain(testDispatcher)
 
-        every { appPermission.hasFineLocation() } returns false
+        every { permissionChecker.hasFineLocation() } returns false
         every { wifiDataSource.getWifiScanFlow() } returns flowOf(scanResults)
         every { realTimeNetworkDataSource.getLatencyMillisFlow() } returns latencyMillisFlow
         viewModel = DashboardViewModel(
-            appPermission = appPermission,
+            permissionChecker = permissionChecker,
             realTimeNetworkDataSource = realTimeNetworkDataSource,
             wifiDataSource = wifiDataSource,
         )
@@ -80,7 +80,7 @@ class DashboardViewModelTest {
     @Test
     fun onStartScan_WithFineLocationAccess_TransformsScanResultsToWifiNames() = runTest {
         initViewModel()
-        every { appPermission.hasFineLocation() } returns true
+        every { permissionChecker.hasFineLocation() } returns true
 
         viewModel.onStartScan()
         testDispatcher.scheduler.advanceUntilIdle()
@@ -92,7 +92,7 @@ class DashboardViewModelTest {
     @Test
     fun onStartScan_WithFineLocationAccess_SetsPermissionStatusToGranted() = runTest {
         initViewModel()
-        every { appPermission.hasFineLocation() } returns true
+        every { permissionChecker.hasFineLocation() } returns true
 
         viewModel.onStartScan()
         testDispatcher.scheduler.advanceUntilIdle()
@@ -104,7 +104,7 @@ class DashboardViewModelTest {
     @Test
     fun onStartScan_WithFineLocationAccess_DoesNotEmitRequestPermissionEvent() = runTest {
         initViewModel()
-        every { appPermission.hasFineLocation() } returns true
+        every { permissionChecker.hasFineLocation() } returns true
 
         viewModel.events.test {
             viewModel.onStartScan()
@@ -117,7 +117,7 @@ class DashboardViewModelTest {
     @Test
     fun onStartScan_WithoutFineLocationAccess_EmitsRequestPermissionEventOnlyOnce() = runTest {
         initViewModel()
-        every { appPermission.hasFineLocation() } returns false
+        every { permissionChecker.hasFineLocation() } returns false
 
         viewModel.events.test {
             viewModel.onStartScan()
@@ -133,7 +133,7 @@ class DashboardViewModelTest {
     @Test
     fun onStartScan_WithoutFineLocationAccess_SetsPermissionStatusToPending() = runTest {
         initViewModel()
-        every { appPermission.hasFineLocation() } returns false
+        every { permissionChecker.hasFineLocation() } returns false
 
         viewModel.onStartScan()
         testDispatcher.scheduler.advanceUntilIdle()
@@ -161,7 +161,7 @@ class DashboardViewModelTest {
         val scanResultsFlow = MutableSharedFlow<List<ScanResult>>()
         val scanResult1 = ScanResult().apply { SSID = "ssid-name-1" }
         val scanResult2 = ScanResult().apply { SSID = "ssid-name-2" }
-        every { appPermission.hasFineLocation() } returns true // for onStartScan() permission check
+        every { permissionChecker.hasFineLocation() } returns true // for onStartScan() permission check
         every { wifiDataSource.getWifiScanFlow() } returns scanResultsFlow
 
         viewModel.screenState.test {

@@ -1,4 +1,4 @@
-package com.zackjp.devicedx.permissions
+package com.zackjp.devicedx.system.permissions
 
 import android.Manifest.permission.ACCESS_FINE_LOCATION
 import android.Manifest.permission.ACCESS_WIFI_STATE
@@ -10,7 +10,7 @@ import javax.inject.Inject
 import javax.inject.Singleton
 
 @Singleton
-class AppPermission @Inject constructor(
+class PermissionChecker @Inject constructor(
     @param:ApplicationContext private val appContext: Context,
 ) {
 

@@ -6,7 +6,7 @@ import android.content.IntentFilter
 import android.net.wifi.ScanResult
 import android.net.wifi.WifiManager
 import com.zackjp.devicedx.di.ApplicationScope
-import com.zackjp.devicedx.permissions.AppPermission
+import com.zackjp.devicedx.system.permissions.PermissionChecker
 import com.zackjp.devicedx.system.ReceiverManager
 import com.zackjp.devicedx.system.WifiManagerWrapper
 import kotlinx.coroutines.CoroutineScope
@@ -21,7 +21,7 @@ import javax.inject.Singleton
 
 @Singleton
 class WifiDataSource @Inject constructor(
-    private val appPermission: AppPermission,
+    private val permissionChecker: PermissionChecker,
     @ApplicationScope appScope: CoroutineScope,
     private val receiverManager: ReceiverManager,
     private val wifiManagerWrapper: WifiManagerWrapper,
@@ -48,7 +48,7 @@ class WifiDataSource @Inject constructor(
 
     private fun ProducerScope<List<ScanResult>>.createScanResultsIntentHandler(): (Context?, Intent?) -> Unit =
         handler@{ _, _ ->
-            if (!appPermission.hasWifiState() || !appPermission.hasFineLocation()) {
+            if (!permissionChecker.hasWifiState() || !permissionChecker.hasFineLocation()) {
                 return@handler
             }
 
