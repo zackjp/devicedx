@@ -11,6 +11,7 @@ import dagger.hilt.android.lifecycle.HiltViewModel
 import kotlinx.coroutines.ExperimentalCoroutinesApi
 import kotlinx.coroutines.Job
 import kotlinx.coroutines.channels.Channel
+import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.SharingStarted
 import kotlinx.coroutines.flow.combine
@@ -53,43 +54,26 @@ class DashboardViewModel @Inject constructor(
         )
 
     private val uiActiveFlow = _screenState.subscriptionCount.map { it > 0 }.distinctUntilChanged()
-    private val latencyMonitorActive = MutableStateFlow(false)
-    private val wifiScanActive = MutableStateFlow(false)
-    private val trafficMonitorActive = MutableStateFlow(false)
+    private val currentActiveMonitor: MutableStateFlow<DashboardView?> = MutableStateFlow(null)
 
-    @OptIn(ExperimentalCoroutinesApi::class)
-    private val activatableLatencyMonitor: Job = combine(
-        uiActiveFlow,
-        latencyMonitorActive,
-    ) { uiActive, latencyMonitorActive ->
-        uiActive && latencyMonitorActive
-    }.flatMapLatest { activateLatencyMonitor ->
-        if (activateLatencyMonitor) realTimeNetworkDataSource.getLatencyMillisFlow() else emptyFlow()
-    }.onEach { latencyMillis ->
+    private val activatableLatencyMonitor: Job = viewEnabledFlow(
+        activeView = DashboardView.Latency,
+        dataSourceProvider = { realTimeNetworkDataSource.getLatencyMillisFlow() },
+    ).onEach { latencyMillis ->
         handleNewLatencyMetric(latencyMillis)
     }.launchIn(viewModelScope)
 
-    @OptIn(ExperimentalCoroutinesApi::class)
-    private val activatableWifiScanMonitor: Job = combine(
-        uiActiveFlow,
-        wifiScanActive,
-    ) { uiActive, wifiScanActive ->
-        uiActive && wifiScanActive
-    }.flatMapLatest { activateWifiScan ->
-        if (activateWifiScan) wifiDataSource.getWifiScanFlow() else emptyFlow()
-    }.onEach { scanResults ->
+    private val activatableWifiScanMonitor: Job = viewEnabledFlow(
+        activeView = DashboardView.Wifi,
+        dataSourceProvider = { wifiDataSource.getWifiScanFlow() },
+    ).onEach { scanResults ->
         handleWifiScanResults(scanResults)
     }.launchIn(viewModelScope)
 
-    @OptIn(ExperimentalCoroutinesApi::class)
-    private val activatableTrafficMonitor: Job = combine(
-        uiActiveFlow,
-        trafficMonitorActive,
-    ) { uiActive, trafficMonitorActive ->
-        uiActive && trafficMonitorActive
-    }.flatMapLatest { activateTrafficMonitor ->
-        if (activateTrafficMonitor) realTimeNetworkDataSource.getTrafficStats() else emptyFlow()
-    }.onEach { trafficStats ->
+    private val activatableTrafficMonitor: Job = viewEnabledFlow(
+        activeView = DashboardView.Traffic,
+        dataSourceProvider = { realTimeNetworkDataSource.getTrafficStats() },
+    ).onEach { trafficStats ->
         handleTrafficStats(trafficStats)
     }.launchIn(viewModelScope)
 
@@ -99,7 +83,7 @@ class DashboardViewModel @Inject constructor(
         viewModelScope.launch {
             if (permissionChecker.hasFineLocation()) {
                 _screenState.update { it.copy(permissionStatus = PermissionStatus.Granted) }
-                initiateWifiScan()
+                currentActiveMonitor.value = DashboardView.Wifi
             } else if (_screenState.value.permissionStatus == PermissionStatus.Unknown) {
                 _screenState.update { it.copy(permissionStatus = PermissionStatus.Pending) }
                 _events.send(DashboardEvent.LaunchFineLocation)
@@ -113,26 +97,12 @@ class DashboardViewModel @Inject constructor(
 
     fun onMonitorLatency() {
         _screenState.update { it.copy(activeView = DashboardView.Latency) }
-        initiateLatencyMonitor()
+        currentActiveMonitor.value = DashboardView.Latency
     }
 
     fun onMonitorTraffic() {
         _screenState.update { it.copy(activeView = DashboardView.Traffic) }
-        trafficMonitorActive.value = true
-        wifiScanActive.value = false
-        latencyMonitorActive.value = false
-    }
-
-    private fun initiateWifiScan() {
-        wifiScanActive.value = true
-        latencyMonitorActive.value = false
-        trafficMonitorActive.value = false
-    }
-
-    private fun initiateLatencyMonitor() {
-        latencyMonitorActive.value = true
-        wifiScanActive.value = false
-        trafficMonitorActive.value = false
+        currentActiveMonitor.value = DashboardView.Traffic
     }
 
     private fun handleWifiScanResults(scanResults: List<ScanResult>) {
@@ -160,10 +130,21 @@ class DashboardViewModel @Inject constructor(
     }
 
     fun stopActiveMonitor() {
-        wifiScanActive.value = false
-        latencyMonitorActive.value = false
-        trafficMonitorActive.value = false
+        currentActiveMonitor.value = DashboardView.Unselected
         _screenState.update { it.copy(activeView = DashboardView.Unselected) }
+    }
+
+    @OptIn(ExperimentalCoroutinesApi::class)
+    private fun <T> viewEnabledFlow(
+        activeView: DashboardView,
+        dataSourceProvider: () -> Flow<T>,
+    ): Flow<T> = combine(
+        uiActiveFlow,
+        currentActiveMonitor,
+    ) { uiActive, currentActiveMonitor ->
+        uiActive && currentActiveMonitor == activeView
+    }.flatMapLatest { isMonitorActive ->
+        if (isMonitorActive) dataSourceProvider() else emptyFlow()
     }
 
     companion object {
