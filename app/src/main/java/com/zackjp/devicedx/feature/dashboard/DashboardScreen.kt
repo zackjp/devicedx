@@ -3,8 +3,8 @@ package com.zackjp.devicedx.feature.dashboard
 import android.Manifest.permission.ACCESS_FINE_LOCATION
 import androidx.activity.compose.rememberLauncherForActivityResult
 import androidx.activity.result.contract.ActivityResultContracts
+import androidx.compose.foundation.Canvas
 import androidx.compose.foundation.background
-import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
@@ -21,7 +21,6 @@ import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
 import androidx.compose.ui.Modifier
-import androidx.compose.ui.draw.drawWithContent
 import androidx.compose.ui.geometry.Offset
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.res.stringResource
@@ -133,39 +132,38 @@ private fun LazyListScope.latencyGraph(
     item {
         Column(modifier) {
             Text(stringResource(R.string.latency_ms, latencyHistory.lastOrNull() ?: "-"))
-            Box(
+            Canvas(
                 modifier = Modifier
                     .background(Color.Black)
                     .fillMaxWidth()
                     .aspectRatio(1.5f)
-                    .drawWithContent {
-                        if (latencyHistory.isEmpty()) return@drawWithContent
+            ) {
+                if (latencyHistory.isEmpty()) return@Canvas
 
-                        val maxYAxisPoint = latencyHistory.max() / 1000 * 1000 + 1000
-                        val maxDataPoints = MAX_LATENCY_DATA_POINTS
-                        val spacing = size.width / maxDataPoints
-                        val halfSpacing = spacing / 2
-                        repeat(maxDataPoints) { counter ->
-                            val index = if (layoutDirection == LayoutDirection.Ltr) {
-                                latencyHistory.size - maxDataPoints + counter
-                            } else {
-                                latencyHistory.lastIndex - counter
-                            }
-                            if (index < 0) return@repeat
-
-                            val latency = latencyHistory[index]
-                            // normalize height and render starting from bottom
-                            val y = size.height - (latency.toFloat() / maxYAxisPoint) * size.height
-                            val x = counter * spacing + halfSpacing
-
-                            drawCircle(
-                                color = Color.White,
-                                radius = 4.dp.toPx(),
-                                center = Offset(x, y)
-                            )
-                        }
+                val maxYAxisPoint = latencyHistory.max() / 1000 * 1000 + 1000
+                val maxDataPoints = MAX_LATENCY_DATA_POINTS
+                val spacing = size.width / maxDataPoints
+                val halfSpacing = spacing / 2
+                repeat(maxDataPoints) { counter ->
+                    val index = if (layoutDirection == LayoutDirection.Ltr) {
+                        latencyHistory.size - maxDataPoints + counter
+                    } else {
+                        latencyHistory.lastIndex - counter
                     }
-            )
+                    if (index < 0) return@repeat
+
+                    val latency = latencyHistory[index]
+                    // normalize height and render starting from bottom
+                    val y = size.height - (latency.toFloat() / maxYAxisPoint) * size.height
+                    val x = counter * spacing + halfSpacing
+
+                    drawCircle(
+                        color = Color.White,
+                        radius = 4.dp.toPx(),
+                        center = Offset(x, y)
+                    )
+                }
+            }
         }
     }
 }
