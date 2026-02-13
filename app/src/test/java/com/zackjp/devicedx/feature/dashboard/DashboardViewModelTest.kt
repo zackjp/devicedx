@@ -5,6 +5,8 @@ import app.cash.turbine.test
 import com.zackjp.devicedx.data.RealTimeNetworkDataSource
 import com.zackjp.devicedx.data.WifiDataSource
 import com.zackjp.devicedx.feature.dashboard.DashboardViewModel.Companion.MAX_LATENCY_DATA_POINTS
+import com.zackjp.devicedx.model.TrafficData
+import com.zackjp.devicedx.model.fake
 import com.zackjp.devicedx.system.permissions.PermissionChecker
 import io.kotest.matchers.shouldBe
 import io.kotest.matchers.shouldNotBe
@@ -37,6 +39,7 @@ class DashboardViewModelTest {
     private lateinit var viewModel: DashboardViewModel
 
     private val latencyMillisFlow = MutableSharedFlow<Long>()
+    private val trafficStatsFlow = MutableSharedFlow<TrafficData>()
 
     private companion object {
         val result1 = ScanResult().apply { SSID = "ssid-name-1" }
@@ -51,6 +54,7 @@ class DashboardViewModelTest {
         every { permissionChecker.hasFineLocation() } returns false
         every { wifiDataSource.getWifiScanFlow() } returns flowOf(scanResults)
         every { realTimeNetworkDataSource.getLatencyMillisFlow() } returns latencyMillisFlow
+        every { realTimeNetworkDataSource.getTrafficStats() } returns trafficStatsFlow
         viewModel = DashboardViewModel(
             permissionChecker = permissionChecker,
             realTimeNetworkDataSource = realTimeNetworkDataSource,
@@ -259,6 +263,65 @@ class DashboardViewModelTest {
             latencyMillisFlow.emit(13L)
             advanceUntilIdle()
             expectMostRecentItem().latencyHistory shouldBe listOf(11L)
+        }
+    }
+
+    @Test
+    fun stopActiveMonitor_WhenTrafficMonitorActive_StopsNewEmissions() = runTest {
+        initViewModel()
+
+        viewModel.screenState.test {
+            viewModel.onMonitorTraffic()
+            advanceUntilIdle()
+            expectMostRecentItem().trafficHistory shouldBe emptyList()
+
+            val data1 = TrafficData.fake(11)
+            trafficStatsFlow.emit(data1)
+            advanceUntilIdle()
+            expectMostRecentItem().trafficHistory shouldBe listOf(data1)
+
+            viewModel.stopActiveMonitor()
+            advanceUntilIdle()
+            trafficStatsFlow.emit(TrafficData.fake(13))
+            advanceUntilIdle()
+            expectMostRecentItem().trafficHistory shouldBe listOf(data1)
+        }
+    }
+
+    @Test
+    fun onMonitorTraffic_UpdatesActiveViewToTraffic() = runTest {
+        initViewModel()
+
+        viewModel.screenState.test {
+            awaitItem().activeView shouldNotBe DashboardView.Traffic
+
+            viewModel.onMonitorTraffic()
+
+            awaitItem().activeView shouldBe DashboardView.Traffic
+        }
+    }
+
+    @Test
+    fun onMonitorTraffic_WhenTrafficDataEmitted_UpdatesTrafficHistory() = runTest {
+        initViewModel()
+
+        viewModel.screenState.test {
+            trafficStatsFlow.emit(TrafficData.fake(10))
+            advanceUntilIdle()
+
+            expectMostRecentItem().trafficHistory shouldBe emptyList()
+
+            viewModel.onMonitorTraffic()
+            advanceUntilIdle()
+
+            val data1 = TrafficData.fake(13)
+            val data2 = TrafficData.fake(17)
+            trafficStatsFlow.emit(data1)
+            advanceUntilIdle()
+            trafficStatsFlow.emit(data2)
+            advanceUntilIdle()
+
+            expectMostRecentItem().trafficHistory shouldBe listOf(data1,data2)
         }
     }
 

@@ -6,7 +6,7 @@ import androidx.activity.result.contract.ActivityResultContracts
 import androidx.compose.foundation.Canvas
 import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.Column
-import androidx.compose.foundation.layout.Row
+import androidx.compose.foundation.layout.FlowRow
 import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.aspectRatio
 import androidx.compose.foundation.layout.fillMaxWidth
@@ -30,6 +30,9 @@ import androidx.hilt.lifecycle.viewmodel.compose.hiltViewModel
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import com.zackjp.devicedx.R
 import com.zackjp.devicedx.feature.dashboard.DashboardViewModel.Companion.MAX_LATENCY_DATA_POINTS
+import com.zackjp.devicedx.model.TrafficData
+import java.math.MathContext
+import java.math.RoundingMode
 
 
 @Composable
@@ -65,6 +68,7 @@ fun DashboardScreen(
                 modifier = Modifier.fillMaxWidth(),
                 onStartLatencyMonitor = { viewModel.onMonitorLatency() },
                 onStartWifiScan = { viewModel.onStartScan() },
+                onStartTrafficMonitor = { viewModel.onMonitorTraffic() },
                 onStopCurrentMonitor = { viewModel.stopActiveMonitor() }
             )
         }
@@ -73,6 +77,7 @@ fun DashboardScreen(
             DashboardView.Unselected -> unselectedDiagnostics()
             DashboardView.Wifi -> wifiScanResults(state.wifiNames)
             DashboardView.Latency -> latencyGraph(state.latencyHistory)
+            DashboardView.Traffic -> trafficGraph(state.trafficHistory)
         }
     }
 }
@@ -83,9 +88,12 @@ private fun DiagnosticButtonRow(
     modifier: Modifier = Modifier,
     onStartLatencyMonitor: () -> Unit = {},
     onStartWifiScan: () -> Unit = {},
+    onStartTrafficMonitor: () -> Unit = {},
     onStopCurrentMonitor: () -> Unit = {},
 ) {
-    Row(modifier) {
+    FlowRow(
+        modifier = modifier,
+    ) {
         if (currentDashboardView == DashboardView.Wifi) {
             Button(onClick = onStopCurrentMonitor) {
                 Text(stringResource(R.string.stop_wifi_monitor))
@@ -105,6 +113,18 @@ private fun DiagnosticButtonRow(
         } else {
             Button(onClick = onStartLatencyMonitor) {
                 Text(stringResource(R.string.get_network_speeds))
+            }
+        }
+
+        Spacer(Modifier.width(16.dp))
+
+        if (currentDashboardView == DashboardView.Traffic) {
+            Button(onClick = onStopCurrentMonitor) {
+                Text(stringResource(R.string.stop_traffic_monitor))
+            }
+        } else {
+            Button(onClick = onStartTrafficMonitor) {
+                Text(stringResource(R.string.start_traffic_monitor))
             }
         }
     }
@@ -167,3 +187,32 @@ private fun LazyListScope.latencyGraph(
         }
     }
 }
+
+private fun LazyListScope.trafficGraph(trafficHistory: List<TrafficData>) {
+    item {
+        val mostRecentStat = trafficHistory.lastOrNull()
+        val txBytes = mostRecentStat?.txBytes ?: 0
+        val txBigDecimal = txBytes.toBigDecimal(MathContext(2, RoundingMode.HALF_UP))
+        val txUnit = when {
+            txBigDecimal >= TB_SIZE -> "tb"
+            txBigDecimal >= GB_SIZE -> "gb"
+            txBigDecimal >= MB_SIZE -> "mb"
+            txBigDecimal >= KB_SIZE -> "kb"
+            else -> "b"
+        }
+        val txValue = when (txUnit) {
+            "b" -> txBigDecimal
+            "kb" -> txBigDecimal.divide(KB_SIZE, 2, RoundingMode.HALF_UP)
+            "mb" -> txBigDecimal.divide(MB_SIZE, 2, RoundingMode.HALF_UP)
+            "gb" -> txBigDecimal.divide(GB_SIZE, 2, RoundingMode.HALF_UP)
+            else -> txBigDecimal.divide(TB_SIZE, 2, RoundingMode.HALF_UP)
+        }
+        Text("Most recent traffic stats: $txValue$txUnit")
+    }
+}
+
+
+private val KB_SIZE = 1024.toBigDecimal()
+private val MB_SIZE = 1_048_576.toBigDecimal()
+private val GB_SIZE = 1_073_741_824.toBigDecimal()
+private val TB_SIZE = 1_099_511_627_776.toBigDecimal()

@@ -5,6 +5,7 @@ import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import com.zackjp.devicedx.data.RealTimeNetworkDataSource
 import com.zackjp.devicedx.data.WifiDataSource
+import com.zackjp.devicedx.model.TrafficData
 import com.zackjp.devicedx.system.permissions.PermissionChecker
 import dagger.hilt.android.lifecycle.HiltViewModel
 import kotlinx.coroutines.ExperimentalCoroutinesApi
@@ -40,6 +41,7 @@ class DashboardViewModel @Inject constructor(
             activeView = DashboardView.Unselected,
             latencyHistory = emptyList(),
             permissionStatus = PermissionStatus.Unknown,
+            trafficHistory = emptyList(),
             wifiNames = emptyList(),
         )
     )
@@ -53,6 +55,7 @@ class DashboardViewModel @Inject constructor(
     private val uiActiveFlow = _screenState.subscriptionCount.map { it > 0 }.distinctUntilChanged()
     private val latencyMonitorActive = MutableStateFlow(false)
     private val wifiScanActive = MutableStateFlow(false)
+    private val trafficMonitorActive = MutableStateFlow(false)
 
     @OptIn(ExperimentalCoroutinesApi::class)
     private val activatableLatencyMonitor: Job = combine(
@@ -78,6 +81,18 @@ class DashboardViewModel @Inject constructor(
         handleWifiScanResults(scanResults)
     }.launchIn(viewModelScope)
 
+    @OptIn(ExperimentalCoroutinesApi::class)
+    private val activatableTrafficMonitor: Job = combine(
+        uiActiveFlow,
+        trafficMonitorActive,
+    ) { uiActive, trafficMonitorActive ->
+        uiActive && trafficMonitorActive
+    }.flatMapLatest { activateTrafficMonitor ->
+        if (activateTrafficMonitor) realTimeNetworkDataSource.getTrafficStats() else emptyFlow()
+    }.onEach { trafficStats ->
+        handleTrafficStats(trafficStats)
+    }.launchIn(viewModelScope)
+
     fun onStartScan() {
         _screenState.update { it.copy(activeView = DashboardView.Wifi) }
 
@@ -101,14 +116,23 @@ class DashboardViewModel @Inject constructor(
         initiateLatencyMonitor()
     }
 
+    fun onMonitorTraffic() {
+        _screenState.update { it.copy(activeView = DashboardView.Traffic) }
+        trafficMonitorActive.value = true
+        wifiScanActive.value = false
+        latencyMonitorActive.value = false
+    }
+
     private fun initiateWifiScan() {
         wifiScanActive.value = true
         latencyMonitorActive.value = false
+        trafficMonitorActive.value = false
     }
 
     private fun initiateLatencyMonitor() {
         latencyMonitorActive.value = true
         wifiScanActive.value = false
+        trafficMonitorActive.value = false
     }
 
     private fun handleWifiScanResults(scanResults: List<ScanResult>) {
@@ -127,13 +151,23 @@ class DashboardViewModel @Inject constructor(
         }
     }
 
+    private fun handleTrafficStats(trafficData: TrafficData) {
+        _screenState.update {
+            it.copy(
+                trafficHistory = (it.trafficHistory + trafficData).takeLast(MAX_TRAFFIC_DATA_POINTS)
+            )
+        }
+    }
+
     fun stopActiveMonitor() {
         wifiScanActive.value = false
         latencyMonitorActive.value = false
+        trafficMonitorActive.value = false
         _screenState.update { it.copy(activeView = DashboardView.Unselected) }
     }
 
     companion object {
         const val MAX_LATENCY_DATA_POINTS = 10
+        const val MAX_TRAFFIC_DATA_POINTS = 20
     }
 }
