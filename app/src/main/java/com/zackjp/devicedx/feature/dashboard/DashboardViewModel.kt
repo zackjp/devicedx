@@ -67,30 +67,28 @@ class DashboardViewModel @Inject constructor(
 
     private val activatableLatencyMonitor: Job = viewEnabledFlow(
         activeView = DashboardView.Latency,
-        dataSourceProvider = { realTimeNetworkDataSource.getLatencyMillisFlow() },
-    ).onEach { latencyMillis ->
-        handleNewLatencyMetric(latencyMillis)
-    }.flowOn(dispatcherProvider.default).launchIn(viewModelScope)
+        dataSourceProvider = realTimeNetworkDataSource::getLatencyMillisFlow,
+    )
+        .onEach(::handleNewLatencyMetric)
+        .flowOn(dispatcherProvider.default)
+        .launchIn(viewModelScope)
 
     private val activatableWifiScanMonitor: Job = viewEnabledFlow(
         activeView = DashboardView.Wifi,
-        dataSourceProvider = { wifiDataSource.getWifiScanFlow() },
-    ).onEach { scanResults ->
-        handleWifiScanResults(scanResults)
-    }.flowOn(dispatcherProvider.default).launchIn(viewModelScope)
+        dataSourceProvider = wifiDataSource::getWifiScanFlow,
+    )
+        .onEach(::handleWifiScanResults)
+        .flowOn(dispatcherProvider.default)
+        .launchIn(viewModelScope)
 
-    @OptIn(ExperimentalCoroutinesApi::class)
     private val activatableTrafficMonitor: Job = viewEnabledFlow(
         activeView = DashboardView.Traffic,
-        dataSourceProvider = { realTimeNetworkDataSource.getTrafficStats() },
-    ).runningFold(emptyList<TrafficData>()) { acc, trafficData ->
-        val startTimeCutoff = clock.now()
-            .minus(TRAFFIC_METRICS_WINDOW_SECS.seconds)
-            .toEpochMilliseconds()
-        acc.filter { it.timestamp >= startTimeCutoff } + trafficData
-    }.onEach { trafficStats ->
-        handleTrafficStats(trafficStats)
-    }.flowOn(dispatcherProvider.default).launchIn(viewModelScope)
+        dataSourceProvider = realTimeNetworkDataSource::getTrafficStats,
+    )
+        .runningFold(emptyList(), ::accumulateTrafficHistory)
+        .onEach(::handleTrafficStats)
+        .flowOn(dispatcherProvider.default)
+        .launchIn(viewModelScope)
 
     fun onStartScan() {
         _screenState.update { it.copy(activeView = DashboardView.Wifi) }
@@ -134,6 +132,16 @@ class DashboardViewModel @Inject constructor(
                     (it.latencyHistory + latencyMillis).takeLast(MAX_LATENCY_DATA_POINTS)
             )
         }
+    }
+
+    private fun accumulateTrafficHistory(
+        accumulator: List<TrafficData>,
+        trafficData: TrafficData,
+    ): List<TrafficData> {
+        val startTimeCutoff = clock.now()
+            .minus(TRAFFIC_METRICS_WINDOW_SECS.seconds)
+            .toEpochMilliseconds()
+        return accumulator.filter { it.timestamp >= startTimeCutoff } + trafficData
     }
 
     private fun handleTrafficStats(trafficHistory: List<TrafficData>) {
