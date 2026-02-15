@@ -3,9 +3,11 @@ package com.zackjp.devicedx.feature.dashboard
 import android.net.wifi.ScanResult
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
+import com.zackjp.devicedx.concurrency.DispatcherProvider
 import com.zackjp.devicedx.data.RealTimeNetworkDataSource
 import com.zackjp.devicedx.data.WifiDataSource
 import com.zackjp.devicedx.model.TrafficData
+import com.zackjp.devicedx.model.TrafficMetric
 import com.zackjp.devicedx.system.permissions.PermissionChecker
 import dagger.hilt.android.lifecycle.HiltViewModel
 import kotlinx.coroutines.ExperimentalCoroutinesApi
@@ -18,20 +20,26 @@ import kotlinx.coroutines.flow.combine
 import kotlinx.coroutines.flow.distinctUntilChanged
 import kotlinx.coroutines.flow.emptyFlow
 import kotlinx.coroutines.flow.flatMapLatest
+import kotlinx.coroutines.flow.flowOn
 import kotlinx.coroutines.flow.launchIn
 import kotlinx.coroutines.flow.map
 import kotlinx.coroutines.flow.onEach
 import kotlinx.coroutines.flow.receiveAsFlow
+import kotlinx.coroutines.flow.runningFold
 import kotlinx.coroutines.flow.stateIn
 import kotlinx.coroutines.flow.update
 import kotlinx.coroutines.launch
 import javax.inject.Inject
+import kotlin.time.Clock
+import kotlin.time.Duration.Companion.seconds
 
 @HiltViewModel
 class DashboardViewModel @Inject constructor(
+    private val clock: Clock,
+    dispatcherProvider: DispatcherProvider,
     private val permissionChecker: PermissionChecker,
-    private val wifiDataSource: WifiDataSource,
     private val realTimeNetworkDataSource: RealTimeNetworkDataSource,
+    private val wifiDataSource: WifiDataSource,
 ) : ViewModel() {
 
     private val _events = Channel<DashboardEvent>()
@@ -42,7 +50,7 @@ class DashboardViewModel @Inject constructor(
             activeView = DashboardView.Unselected,
             latencyHistory = emptyList(),
             permissionStatus = PermissionStatus.Unknown,
-            trafficHistory = emptyList(),
+            trafficMetrics = emptyList(),
             wifiNames = emptyList(),
         )
     )
@@ -61,21 +69,27 @@ class DashboardViewModel @Inject constructor(
         dataSourceProvider = { realTimeNetworkDataSource.getLatencyMillisFlow() },
     ).onEach { latencyMillis ->
         handleNewLatencyMetric(latencyMillis)
-    }.launchIn(viewModelScope)
+    }.flowOn(dispatcherProvider.default).launchIn(viewModelScope)
 
     private val activatableWifiScanMonitor: Job = viewEnabledFlow(
         activeView = DashboardView.Wifi,
         dataSourceProvider = { wifiDataSource.getWifiScanFlow() },
     ).onEach { scanResults ->
         handleWifiScanResults(scanResults)
-    }.launchIn(viewModelScope)
+    }.flowOn(dispatcherProvider.default).launchIn(viewModelScope)
 
+    @OptIn(ExperimentalCoroutinesApi::class)
     private val activatableTrafficMonitor: Job = viewEnabledFlow(
         activeView = DashboardView.Traffic,
         dataSourceProvider = { realTimeNetworkDataSource.getTrafficStats() },
-    ).onEach { trafficStats ->
+    ).runningFold(emptyList<TrafficData>()) { acc, trafficData ->
+        val startTimeCutoff = clock.now()
+            .minus(TRAFFIC_METRICS_WINDOW_SECS.seconds)
+            .toEpochMilliseconds()
+        acc.filter { it.timestamp >= startTimeCutoff } + trafficData
+    }.onEach { trafficStats ->
         handleTrafficStats(trafficStats)
-    }.launchIn(viewModelScope)
+    }.flowOn(dispatcherProvider.default).launchIn(viewModelScope)
 
     fun onStartScan() {
         _screenState.update { it.copy(activeView = DashboardView.Wifi) }
@@ -121,10 +135,44 @@ class DashboardViewModel @Inject constructor(
         }
     }
 
-    private fun handleTrafficStats(trafficData: TrafficData) {
+    private fun handleTrafficStats(trafficHistory: List<TrafficData>) {
+        if (trafficHistory.isEmpty()) {
+            _screenState.update { it.copy(trafficMetrics = emptyList()) }
+            return
+        }
+
+        val now = clock.now()
+        val endBucket = now.toEpochMilliseconds() / 1000 * 1000
+        val startBucket = endBucket - TRAFFIC_METRICS_WINDOW_SECS * 1000
+        val sortedData = trafficHistory.sortedBy { it.timestamp }
+        val bucketedDataBySecond = sortedData.groupBy { data ->
+            /*
+             * +1000 so that partial millis counts towards the next bucket (eg, 1250ms -> 2000ms).
+             * And -1 so an exact second always counts towards its own bucket (eg, 1000ms-1 -> 1000ms)
+             */
+            (data.timestamp - 1) / 1000 * 1000 + 1000
+        }
+
+        val trafficMetrics = (startBucket..endBucket).step(1000).map { currentSec ->
+            val priorSec = currentSec - 1000
+            val currentSecData = bucketedDataBySecond[currentSec]
+            val priorSecData = bucketedDataBySecond[priorSec]
+            if (currentSecData?.isNotEmpty() != true || priorSecData?.isNotEmpty() != true) {
+                TrafficMetric(currentSec, 0f)
+            } else {
+                // We can divide by size. It can't be 0 since we already checked isNotEmpty()
+                val currentSecAvgTotalRx = currentSecData.sumOf { it.rxBytes } / currentSecData.size
+                val priorSecAvgTotalRx = priorSecData.sumOf { it.rxBytes } / priorSecData.size
+                TrafficMetric(
+                    currentSec,
+                    (currentSecAvgTotalRx - priorSecAvgTotalRx).coerceAtLeast(0).toFloat()
+                )
+            }
+        }
+
         _screenState.update {
             it.copy(
-                trafficHistory = (it.trafficHistory + trafficData).takeLast(MAX_TRAFFIC_DATA_POINTS)
+                trafficMetrics = trafficMetrics
             )
         }
     }
@@ -149,6 +197,6 @@ class DashboardViewModel @Inject constructor(
 
     companion object {
         const val MAX_LATENCY_DATA_POINTS = 10
-        const val MAX_TRAFFIC_DATA_POINTS = 20
+        const val TRAFFIC_METRICS_WINDOW_SECS = 30
     }
 }

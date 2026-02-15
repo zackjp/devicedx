@@ -30,7 +30,7 @@ import androidx.hilt.lifecycle.viewmodel.compose.hiltViewModel
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import com.zackjp.devicedx.R
 import com.zackjp.devicedx.feature.dashboard.DashboardViewModel.Companion.MAX_LATENCY_DATA_POINTS
-import com.zackjp.devicedx.model.TrafficData
+import com.zackjp.devicedx.model.TrafficMetric
 import java.math.MathContext
 import java.math.RoundingMode
 
@@ -77,7 +77,7 @@ fun DashboardScreen(
             DashboardView.Unselected -> unselectedDiagnostics()
             DashboardView.Wifi -> wifiScanResults(state.wifiNames)
             DashboardView.Latency -> latencyGraph(state.latencyHistory)
-            DashboardView.Traffic -> trafficGraph(state.trafficHistory)
+            DashboardView.Traffic -> trafficGraph(state.trafficMetrics)
         }
     }
 }
@@ -188,10 +188,10 @@ private fun LazyListScope.latencyGraph(
     }
 }
 
-private fun LazyListScope.trafficGraph(trafficHistory: List<TrafficData>) {
+private fun LazyListScope.trafficGraph(trafficMetrics: List<TrafficMetric>) {
     item {
-        val mostRecentStat = trafficHistory.lastOrNull()
-        val txBytes = mostRecentStat?.txBytes ?: 0
+        val mostRecentStat = trafficMetrics.lastOrNull()
+        val txBytes = mostRecentStat?.rxBytesPerSec ?: 0f
         val txBigDecimal = txBytes.toBigDecimal(MathContext(2, RoundingMode.HALF_UP))
         val txUnit = when {
             txBigDecimal >= TB_SIZE -> "tb"
@@ -207,7 +207,7 @@ private fun LazyListScope.trafficGraph(trafficHistory: List<TrafficData>) {
             "gb" -> txBigDecimal.divide(GB_SIZE, 2, RoundingMode.HALF_UP)
             else -> txBigDecimal.divide(TB_SIZE, 2, RoundingMode.HALF_UP)
         }
-        Text("Most recent traffic stats: $txValue$txUnit")
+        Text("Recent Traffic Received: $txValue$txUnit/sec")
     }
 }
 

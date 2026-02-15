@@ -8,7 +8,6 @@ import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.SharingStarted
-import kotlinx.coroutines.flow.distinctUntilChanged
 import kotlinx.coroutines.flow.flow
 import kotlinx.coroutines.flow.shareIn
 import javax.inject.Inject
@@ -33,12 +32,12 @@ class RealTimeNetworkDataSource @Inject constructor(
         while(true) {
             val dataPoint = TrafficData(
                 timestamp = System.currentTimeMillis(),
-                txBytes = trafficStatsWrapper.getTotalTxBytes(),
+                rxBytes = trafficStatsWrapper.getTotalRxBytes(),
             )
             emit(dataPoint)
             delay(500)
         }
-    }.distinctUntilChanged().shareIn(appScope, SharingStarted.WhileSubscribed(1000), 0)
+    }.shareIn(appScope, SharingStarted.WhileSubscribed(1000), 0)
 
     fun getLatencyMillisFlow(): Flow<Long> = latencyMillisFlow
 

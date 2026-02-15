@@ -1,12 +1,12 @@
 package com.zackjp.devicedx.feature.dashboard
 
-import com.zackjp.devicedx.model.TrafficData
+import com.zackjp.devicedx.model.TrafficMetric
 
 data class DashboardScreenState(
     val activeView: DashboardView,
     val latencyHistory: List<Long>,
     val permissionStatus: PermissionStatus,
-    val trafficHistory: List<TrafficData>,
+    val trafficMetrics: List<TrafficMetric>,
     val wifiNames: List<String>,
 )
 
