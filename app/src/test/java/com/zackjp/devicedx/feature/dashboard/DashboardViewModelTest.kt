@@ -6,10 +6,12 @@ import com.zackjp.devicedx.concurrency.TestDispatcherProvider
 import com.zackjp.devicedx.data.RealTimeNetworkDataSource
 import com.zackjp.devicedx.data.WifiDataSource
 import com.zackjp.devicedx.feature.dashboard.DashboardViewModel.Companion.MAX_LATENCY_DATA_POINTS
+import com.zackjp.devicedx.feature.dashboard.DashboardViewModel.Companion.TRAFFIC_METRICS_WINDOW_SECS
+import com.zackjp.devicedx.feature.dashboard.util.TrafficGraphUtil
 import com.zackjp.devicedx.model.TrafficData
 import com.zackjp.devicedx.model.TrafficMetric
+import com.zackjp.devicedx.model.fake
 import com.zackjp.devicedx.system.permissions.PermissionChecker
-import io.kotest.matchers.collections.shouldContainInOrder
 import io.kotest.matchers.shouldBe
 import io.kotest.matchers.shouldNotBe
 import io.mockk.every
@@ -28,6 +30,7 @@ import org.junit.jupiter.api.AfterEach
 import org.junit.jupiter.api.BeforeEach
 import org.junit.jupiter.api.Test
 import kotlin.time.Clock
+import kotlin.time.Duration.Companion.seconds
 import kotlin.time.Instant
 
 @OptIn(ExperimentalCoroutinesApi::class) // Dispatchers.setMain()/resetMain(), advanceUntilIdle()
@@ -39,6 +42,7 @@ class DashboardViewModelTest {
     private val wifiDataSource = mockk<WifiDataSource>()
     private val permissionChecker = mockk<PermissionChecker>()
     private val realTimeNetworkDataSource = mockk<RealTimeNetworkDataSource>()
+    private val trafficGraphUtil = mockk<TrafficGraphUtil>()
 
     private lateinit var viewModel: DashboardViewModel
 
@@ -60,11 +64,13 @@ class DashboardViewModelTest {
         every { wifiDataSource.getWifiScanFlow() } returns flowOf(scanResults)
         every { realTimeNetworkDataSource.getLatencyMillisFlow() } returns latencyMillisFlow
         every { realTimeNetworkDataSource.getTrafficStats() } returns trafficStatsFlow
+        every { trafficGraphUtil.calculateMetrics(any(), any(), any()) } returns emptyList()
         viewModel = DashboardViewModel(
             clock = clock,
             dispatcherProvider = testDispatcherProvider,
             permissionChecker = permissionChecker,
             realTimeNetworkDataSource = realTimeNetworkDataSource,
+            trafficGraphUtil = trafficGraphUtil,
             wifiDataSource = wifiDataSource,
         )
     }
@@ -277,27 +283,30 @@ class DashboardViewModelTest {
     fun stopActiveMonitor_WhenTrafficMonitorActive_StopsNewEmissions() = runTest {
         initViewModel()
 
-        val trafficMetricsTester = TrafficMetricsTester(this@runTest, trafficStatsFlow) { newTime ->
-            every { clock.now() } returns Instant.fromEpochMilliseconds(newTime)
-        }
-        viewModel.screenState.test {
+        val expectedMetrics = listOf(TrafficMetric(11, 22f), TrafficMetric(33, 44f))
+        val unexpectedMetrics = listOf(TrafficMetric(55, 66f), TrafficMetric(77, 88f))
 
+        every { trafficGraphUtil.calculateMetrics(any(), any(), any()) } returns emptyList()
+        every { clock.now() } returns Instant.fromEpochMilliseconds(1234)
+
+        viewModel.screenState.test {
             viewModel.onMonitorTraffic()
             advanceUntilIdle()
             expectMostRecentItem().trafficMetrics shouldBe emptyList()
 
-            trafficMetricsTester.emitNextTrafficWithMsDelay(deltaTime = 1000, rxBytesTotal = 7)
-            trafficMetricsTester.emitNextTrafficWithMsDelay(deltaTime = 1000, rxBytesTotal = 11)
-            val expectedMetrics = listOf(
-                TrafficMetric(1000, 0f),
-                TrafficMetric(2000, 4f),
-            )
-            expectMostRecentItem().trafficMetrics shouldContainInOrder expectedMetrics
+            every { trafficGraphUtil.calculateMetrics(any(), any(), any()) } returns expectedMetrics
+            trafficStatsFlow.emit(TrafficData.fake(1))
+            advanceUntilIdle()
+            expectMostRecentItem().trafficMetrics shouldBe expectedMetrics
 
+            every {
+                trafficGraphUtil.calculateMetrics(any(), any(), any())
+            } returns unexpectedMetrics
             viewModel.stopActiveMonitor()
             advanceUntilIdle()
-            trafficMetricsTester.emitNextTrafficWithMsDelay(deltaTime = 1000, rxBytesTotal = 13)
-            expectMostRecentItem().trafficMetrics shouldContainInOrder expectedMetrics
+            trafficStatsFlow.emit(TrafficData.fake(1))
+            advanceUntilIdle()
+            expectMostRecentItem().trafficMetrics shouldBe expectedMetrics
         }
     }
 
@@ -318,24 +327,36 @@ class DashboardViewModelTest {
     fun onMonitorTraffic_WhenTrafficDataEmitted_UpdatesTrafficHistory() = runTest {
         initViewModel()
 
-        val trafficMetricsTester = TrafficMetricsTester(this@runTest, trafficStatsFlow) { newTime ->
-            every { clock.now() } returns Instant.fromEpochMilliseconds(newTime)
-        }
+        val dataA = TrafficData.fake(1)
+        val dataB = TrafficData.fake(3)
+        val dataC = TrafficData.fake(5)
+        val expectedMetrics = listOf(TrafficMetric(111, 222f), TrafficMetric(333, 444f))
+        val expectedClockTime = 12345L
+        every { clock.now() } returns Instant.fromEpochMilliseconds(expectedClockTime)
+        // define the more general mock first
+        every { trafficGraphUtil.calculateMetrics(any(), any(), any()) } returns emptyList()
+        every {
+            trafficGraphUtil.calculateMetrics(
+                listOf(dataA, dataB, dataC), // this will trigger on the last data emission
+                expectedClockTime,
+                TRAFFIC_METRICS_WINDOW_SECS.seconds
+            )
+        } returns expectedMetrics
+
         viewModel.screenState.test {
-            trafficMetricsTester.emitNextTrafficWithMsDelay(1000, 7) // ignored, not monitored
             expectMostRecentItem().trafficMetrics shouldBe emptyList()
 
             viewModel.onMonitorTraffic()
             advanceUntilIdle()
 
-            trafficMetricsTester.emitNextTrafficWithMsDelay(1000, 11) // ignored, no prev datapoint
-            trafficMetricsTester.emitNextTrafficWithMsDelay(1000, 13) // delta = 2 bytes
-            trafficMetricsTester.emitNextTrafficWithMsDelay(1000, 17) // delta = 4 bytes
+            trafficStatsFlow.emit(dataA)
+            advanceUntilIdle()
+            trafficStatsFlow.emit(dataB)
+            advanceUntilIdle()
+            trafficStatsFlow.emit(dataC)
+            advanceUntilIdle()
 
-            expectMostRecentItem().trafficMetrics shouldContainInOrder listOf(
-                TrafficMetric(3000, 2f),
-                TrafficMetric(4000, 4f),
-            )
+            expectMostRecentItem().trafficMetrics shouldBe expectedMetrics
         }
     }
 
@@ -343,28 +364,4 @@ class DashboardViewModelTest {
         viewModel.screenState.launchIn(backgroundScope)
     }
 
-    private class TrafficMetricsTester(
-        private val testScope: TestScope,
-        private val trafficStatsFlow: MutableSharedFlow<TrafficData>,
-        private val clockSetter: (Long) -> Unit,
-    ) {
-
-        private var currentTime: Long = 0
-        private var totalRxBytes: Long = 0
-
-        suspend fun emitNextTrafficWithMsDelay(deltaTime: Long, rxBytesTotal: Long) {
-            currentTime += deltaTime
-            totalRxBytes = rxBytesTotal
-            clockSetter(currentTime)
-
-            trafficStatsFlow.emit(
-                TrafficData(
-                    timestamp = currentTime,
-                    rxBytes = totalRxBytes,
-                )
-            )
-            testScope.advanceUntilIdle()
-        }
-
-    }
 }

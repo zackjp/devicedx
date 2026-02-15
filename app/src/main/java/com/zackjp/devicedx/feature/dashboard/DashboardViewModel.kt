@@ -6,8 +6,8 @@ import androidx.lifecycle.viewModelScope
 import com.zackjp.devicedx.concurrency.DispatcherProvider
 import com.zackjp.devicedx.data.RealTimeNetworkDataSource
 import com.zackjp.devicedx.data.WifiDataSource
+import com.zackjp.devicedx.feature.dashboard.util.TrafficGraphUtil
 import com.zackjp.devicedx.model.TrafficData
-import com.zackjp.devicedx.model.TrafficMetric
 import com.zackjp.devicedx.system.permissions.PermissionChecker
 import dagger.hilt.android.lifecycle.HiltViewModel
 import kotlinx.coroutines.ExperimentalCoroutinesApi
@@ -39,6 +39,7 @@ class DashboardViewModel @Inject constructor(
     dispatcherProvider: DispatcherProvider,
     private val permissionChecker: PermissionChecker,
     private val realTimeNetworkDataSource: RealTimeNetworkDataSource,
+    private val trafficGraphUtil: TrafficGraphUtil,
     private val wifiDataSource: WifiDataSource,
 ) : ViewModel() {
 
@@ -136,45 +137,15 @@ class DashboardViewModel @Inject constructor(
     }
 
     private fun handleTrafficStats(trafficHistory: List<TrafficData>) {
-        if (trafficHistory.isEmpty()) {
-            _screenState.update { it.copy(trafficMetrics = emptyList()) }
-            return
-        }
-
         val now = clock.now()
-        val endBucket = now.toEpochMilliseconds() / 1000 * 1000
-        val startBucket = endBucket - TRAFFIC_METRICS_WINDOW_SECS * 1000
-        val sortedData = trafficHistory.sortedBy { it.timestamp }
-        val bucketedDataBySecond = sortedData.groupBy { data ->
-            /*
-             * +1000 so that partial millis counts towards the next bucket (eg, 1250ms -> 2000ms).
-             * And -1 so an exact second always counts towards its own bucket (eg, 1000ms-1 -> 1000ms)
-             */
-            (data.timestamp - 1) / 1000 * 1000 + 1000
-        }
 
-        val trafficMetrics = (startBucket..endBucket).step(1000).map { currentSec ->
-            val priorSec = currentSec - 1000
-            val currentSecData = bucketedDataBySecond[currentSec]
-            val priorSecData = bucketedDataBySecond[priorSec]
-            if (currentSecData?.isNotEmpty() != true || priorSecData?.isNotEmpty() != true) {
-                TrafficMetric(currentSec, 0f)
-            } else {
-                // We can divide by size. It can't be 0 since we already checked isNotEmpty()
-                val currentSecAvgTotalRx = currentSecData.sumOf { it.rxBytes } / currentSecData.size
-                val priorSecAvgTotalRx = priorSecData.sumOf { it.rxBytes } / priorSecData.size
-                TrafficMetric(
-                    currentSec,
-                    (currentSecAvgTotalRx - priorSecAvgTotalRx).coerceAtLeast(0).toFloat()
-                )
-            }
-        }
+        val trafficMetrics = trafficGraphUtil.calculateMetrics(
+            data = trafficHistory,
+            endTime = now.toEpochMilliseconds(),
+            TRAFFIC_METRICS_WINDOW_SECS.seconds
+        )
 
-        _screenState.update {
-            it.copy(
-                trafficMetrics = trafficMetrics
-            )
-        }
+        _screenState.update { it.copy(trafficMetrics = trafficMetrics) }
     }
 
     fun stopActiveMonitor() {
