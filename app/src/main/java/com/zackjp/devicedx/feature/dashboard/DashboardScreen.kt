@@ -187,7 +187,7 @@ private fun LazyListScope.trafficGraph(trafficMetrics: List<TrafficMetric>) {
             "gb" -> txBigDecimal.divide(GB_SIZE, 2, RoundingMode.HALF_UP)
             else -> txBigDecimal.divide(TB_SIZE, 2, RoundingMode.HALF_UP)
         }
-        Text("Recent Traffic Received: $txValue$txUnit/sec")
+        Text("Recent Traffic Received: ${txValue.toPlainString()}$txUnit/sec")
         Graph(
             data = trafficMetrics,
             maxDataPoints = TRAFFIC_METRICS_WINDOW_SECS,
