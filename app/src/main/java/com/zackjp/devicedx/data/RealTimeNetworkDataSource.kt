@@ -35,7 +35,7 @@ class RealTimeNetworkDataSource @Inject constructor(
                 rxBytes = trafficStatsWrapper.getTotalRxBytes(),
             )
             emit(dataPoint)
-            delay(500)
+            delay(1000)
         }
     }.shareIn(appScope, SharingStarted.WhileSubscribed(1000), 0)
 
