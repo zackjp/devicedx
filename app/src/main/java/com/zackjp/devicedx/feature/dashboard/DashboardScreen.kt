@@ -30,9 +30,12 @@ import androidx.hilt.lifecycle.viewmodel.compose.hiltViewModel
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import com.zackjp.devicedx.R
 import com.zackjp.devicedx.feature.dashboard.DashboardViewModel.Companion.MAX_LATENCY_DATA_POINTS
+import com.zackjp.devicedx.feature.dashboard.DashboardViewModel.Companion.TRAFFIC_METRICS_WINDOW_SECS
 import com.zackjp.devicedx.model.TrafficMetric
 import java.math.MathContext
 import java.math.RoundingMode
+import kotlin.math.abs
+import kotlin.math.pow
 
 
 @Composable
@@ -152,38 +155,15 @@ private fun LazyListScope.latencyGraph(
     item {
         Column(modifier) {
             Text(stringResource(R.string.latency_ms, latencyHistory.lastOrNull() ?: "-"))
-            Canvas(
+            Graph(
+                data = latencyHistory,
+                maxDataPoints = MAX_LATENCY_DATA_POINTS,
+                getY = { if (it > latencyHistory.lastIndex) 0f else latencyHistory[it].toFloat() },
                 modifier = Modifier
                     .background(Color.Black)
                     .fillMaxWidth()
-                    .aspectRatio(1.5f)
-            ) {
-                if (latencyHistory.isEmpty()) return@Canvas
-
-                val maxYAxisPoint = latencyHistory.max() / 1000 * 1000 + 1000
-                val maxDataPoints = MAX_LATENCY_DATA_POINTS
-                val spacing = size.width / maxDataPoints
-                val halfSpacing = spacing / 2
-                repeat(maxDataPoints) { counter ->
-                    val index = if (layoutDirection == LayoutDirection.Ltr) {
-                        latencyHistory.size - maxDataPoints + counter
-                    } else {
-                        latencyHistory.lastIndex - counter
-                    }
-                    if (index < 0) return@repeat
-
-                    val latency = latencyHistory[index]
-                    // normalize height and render starting from bottom
-                    val y = size.height - (latency.toFloat() / maxYAxisPoint) * size.height
-                    val x = counter * spacing + halfSpacing
-
-                    drawCircle(
-                        color = Color.White,
-                        radius = 4.dp.toPx(),
-                        center = Offset(x, y)
-                    )
-                }
-            }
+                    .aspectRatio(1.5f),
+            )
         }
     }
 }
@@ -208,7 +188,66 @@ private fun LazyListScope.trafficGraph(trafficMetrics: List<TrafficMetric>) {
             else -> txBigDecimal.divide(TB_SIZE, 2, RoundingMode.HALF_UP)
         }
         Text("Recent Traffic Received: $txValue$txUnit/sec")
+        Graph(
+            data = trafficMetrics,
+            maxDataPoints = TRAFFIC_METRICS_WINDOW_SECS,
+            getY = { if (it > trafficMetrics.lastIndex) 0f else trafficMetrics[it].rxBytesPerSec },
+            modifier = Modifier
+                .background(Color.Black)
+                .fillMaxWidth()
+                .aspectRatio(1.5f),
+        )
     }
+}
+
+@Composable
+private fun <T> Graph(
+    data: List<T>,
+    maxDataPoints: Int,
+    getY: (x: Int) -> Float?,
+    modifier: Modifier = Modifier,
+) {
+    Canvas(modifier) {
+        if (data.isEmpty()) return@Canvas
+
+        val maxYValue = (0..<maxDataPoints).maxOfOrNull { getY(it) ?: 0f } ?: 0f
+        val maxYAxisPoint = 10.0.pow(maxYValue.getDigitsCount())
+        val spacing = size.width / maxDataPoints
+        val halfSpacing = spacing / 2
+        repeat(maxDataPoints) { counter ->
+            val index = if (layoutDirection == LayoutDirection.Ltr) {
+                data.size - maxDataPoints + counter
+            } else {
+                data.lastIndex - counter
+            }
+            if (index < 0) return@repeat
+
+            val rawY = getY(index)
+            rawY?.let {
+                // normalize height and render starting from bottom
+                val actualY = (size.height - (rawY / maxYAxisPoint) * size.height).toFloat()
+                val actualX = counter * spacing + halfSpacing
+
+                drawCircle(
+                    color = Color.White,
+                    radius = 4.dp.toPx(),
+                    center = Offset(actualX, actualY)
+                )
+            }
+        }
+    }
+}
+
+private fun Number.getDigitsCount(): Int {
+    var tmp = abs(toInt())
+    if (tmp == 0) return 1
+
+    var count = 0
+    while (tmp != 0) {
+        tmp /= 10
+        count++
+    }
+    return count
 }
 
 
