@@ -23,6 +23,8 @@ import androidx.compose.runtime.getValue
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.geometry.Offset
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.graphics.Path
+import androidx.compose.ui.graphics.drawscope.Stroke
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.unit.LayoutDirection
 import androidx.compose.ui.unit.dp
@@ -158,7 +160,7 @@ private fun LazyListScope.latencyGraph(
             Graph(
                 data = latencyHistory,
                 maxDataPoints = MAX_LATENCY_DATA_POINTS,
-                getY = { if (it > latencyHistory.lastIndex) 0f else latencyHistory[it].toFloat() },
+                getY = { if (it !in 0..latencyHistory.lastIndex) 0f else latencyHistory[it].toFloat() },
                 modifier = Modifier
                     .background(Color.Black)
                     .fillMaxWidth()
@@ -214,27 +216,62 @@ private fun <T> Graph(
         val maxYAxisPoint = 10.0.pow(maxYValue.getDigitsCount())
         val spacing = size.width / maxDataPoints
         val halfSpacing = spacing / 2
-        repeat(maxDataPoints) { counter ->
-            val index = if (layoutDirection == LayoutDirection.Ltr) {
-                data.size - maxDataPoints + counter
-            } else {
-                data.lastIndex - counter
-            }
-            if (index < 0) return@repeat
 
-            val rawY = getY(index)
-            rawY?.let {
+        val path = Path()
+
+        // Map data to xy canvas coordinates
+        val plotPoints = (0 until maxDataPoints).map { counter ->
+            val dataIndex = when (layoutDirection) {
+                LayoutDirection.Ltr -> data.size - maxDataPoints + counter
+                LayoutDirection.Rtl -> data.lastIndex - counter
+            }
+
+            val rawY = getY(dataIndex)
+            val actualX = counter * spacing + halfSpacing
+            val actualY = rawY?.let {
                 // normalize height and render starting from bottom
-                val actualY = (size.height - (rawY / maxYAxisPoint) * size.height).toFloat()
-                val actualX = counter * spacing + halfSpacing
+                (size.height - (it / maxYAxisPoint) * size.height).toFloat()
+            } ?: 0f
 
-                drawCircle(
-                    color = Color.White,
-                    radius = 4.dp.toPx(),
-                    center = Offset(actualX, actualY)
-                )
-            }
+            Offset(actualX, actualY)
         }
+
+        val firstPoint = plotPoints[0]
+        path.moveTo(firstPoint.x, firstPoint.y)
+
+        for (i in 0 until plotPoints.lastIndex) {
+            val current = plotPoints[i]
+            val next = plotPoints[i+1]
+
+            val distanceX = next.x - current.x
+            val controlDistance = distanceX * CUBIC_SMOOTHING_FACTOR
+            path.cubicTo(
+                x1 = current.x + controlDistance,
+                y1 = current.y,
+                x2 = next.x - controlDistance,
+                y2 = next.y,
+                x3 = next.x,
+                y3 = next.y
+            )
+
+            drawCircle(
+                color = Color.White,
+                radius = 3.dp.toPx(),
+                center = current
+            )
+        }
+
+        drawCircle(
+            color = Color.White,
+            radius = 3.dp.toPx(),
+            center = plotPoints.last()
+        )
+
+        drawPath(
+            path = path,
+            color = Color.White,
+            style = Stroke(2.dp.toPx())
+        )
     }
 }
 
@@ -255,3 +292,5 @@ private val KB_SIZE = 1024.toBigDecimal()
 private val MB_SIZE = 1_048_576.toBigDecimal()
 private val GB_SIZE = 1_073_741_824.toBigDecimal()
 private val TB_SIZE = 1_099_511_627_776.toBigDecimal()
+
+private const val CUBIC_SMOOTHING_FACTOR = 0.5f
