@@ -16,10 +16,6 @@ class TrafficGraphUtil @Inject constructor() {
             return emptyList()
         }
 
-        val endBucket = endTime / 1000 * 1000
-        val startBucket = endBucket - (window.inWholeMilliseconds / 1000 * 1000)
-        val range = startBucket..endBucket
-
         val bucketedDataBySecond = mutableMapOf<Long, TrafficData>()
         data.forEach { trafficData ->
             /*
@@ -36,6 +32,11 @@ class TrafficGraphUtil @Inject constructor() {
                 }
             }
         }
+
+        val endBucket = endTime / 1000 * 1000
+        // +1000 to exclude start bucket, which doesn't have a prior data point to measure
+        val startBucket = endBucket - (window.inWholeMilliseconds / 1000 * 1000) + 1000
+        val range = startBucket..endBucket
 
         return range.step(1000).map { currentSec ->
             val priorSec = currentSec - 1000

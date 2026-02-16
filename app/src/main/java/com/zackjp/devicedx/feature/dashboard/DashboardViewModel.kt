@@ -140,8 +140,10 @@ class DashboardViewModel @Inject constructor(
     ): List<TrafficData> {
         val startTimeCutoff = clock.now()
             .minus(TRAFFIC_METRICS_WINDOW_SECS.seconds)
+            .minus(1.seconds) // accounts for partial data in the starting bucket
+            .minus(1.seconds) // accounts for starting metric requiring a prior data point
             .toEpochMilliseconds()
-        return accumulator.filter { it.timestamp >= startTimeCutoff } + trafficData
+        return accumulator.filter { it.timestamp > startTimeCutoff } + trafficData
     }
 
     private fun handleTrafficStats(trafficHistory: List<TrafficData>) {
