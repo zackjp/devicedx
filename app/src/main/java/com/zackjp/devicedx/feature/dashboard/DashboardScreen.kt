@@ -210,12 +210,11 @@ private fun <T> Graph(
     modifier: Modifier = Modifier,
 ) {
     Canvas(modifier) {
-        if (data.isEmpty()) return@Canvas
+        if (data.isEmpty() || maxDataPoints <= 0) return@Canvas
 
         val maxYValue = (0..<maxDataPoints).maxOfOrNull { getY(it) ?: 0f } ?: 0f
         val maxYAxisPoint = 10.0.pow(maxYValue.getDigitsCount())
-        val spacing = size.width / maxDataPoints
-        val halfSpacing = spacing / 2
+        val spacing = size.width / (maxDataPoints - 1)
 
         val path = Path()
 
@@ -227,7 +226,7 @@ private fun <T> Graph(
             }
 
             val rawY = getY(dataIndex)
-            val actualX = counter * spacing + halfSpacing
+            val actualX = counter * spacing
             val actualY = rawY?.let {
                 // normalize height and render starting from bottom
                 (size.height - (it / maxYAxisPoint) * size.height).toFloat()
