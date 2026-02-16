@@ -252,19 +252,7 @@ private fun <T> Graph(
                 x3 = next.x,
                 y3 = next.y
             )
-
-            drawCircle(
-                color = Color.White,
-                radius = 3.dp.toPx(),
-                center = current
-            )
         }
-
-        drawCircle(
-            color = Color.White,
-            radius = 3.dp.toPx(),
-            center = plotPoints.last()
-        )
 
         drawPath(
             path = path,
