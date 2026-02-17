@@ -6,8 +6,6 @@ import androidx.lifecycle.viewModelScope
 import com.zackjp.devicedx.concurrency.DispatcherProvider
 import com.zackjp.devicedx.data.RealTimeNetworkDataSource
 import com.zackjp.devicedx.data.WifiDataSource
-import com.zackjp.devicedx.feature.dashboard.util.TrafficGraphUtil
-import com.zackjp.devicedx.model.TrafficData
 import com.zackjp.devicedx.system.permissions.PermissionChecker
 import dagger.hilt.android.lifecycle.HiltViewModel
 import kotlinx.coroutines.ExperimentalCoroutinesApi
@@ -25,21 +23,16 @@ import kotlinx.coroutines.flow.launchIn
 import kotlinx.coroutines.flow.map
 import kotlinx.coroutines.flow.onEach
 import kotlinx.coroutines.flow.receiveAsFlow
-import kotlinx.coroutines.flow.runningFold
 import kotlinx.coroutines.flow.stateIn
 import kotlinx.coroutines.flow.update
 import kotlinx.coroutines.launch
 import javax.inject.Inject
-import kotlin.time.Clock
-import kotlin.time.Duration.Companion.seconds
 
 @HiltViewModel
 class DashboardViewModel @Inject constructor(
-    private val clock: Clock,
     dispatcherProvider: DispatcherProvider,
     private val permissionChecker: PermissionChecker,
     private val realTimeNetworkDataSource: RealTimeNetworkDataSource,
-    private val trafficGraphUtil: TrafficGraphUtil,
     private val wifiDataSource: WifiDataSource,
 ) : ViewModel() {
 
@@ -51,7 +44,6 @@ class DashboardViewModel @Inject constructor(
             activeView = DashboardView.Unselected,
             latencyHistory = emptyList(),
             permissionStatus = PermissionStatus.Unknown,
-            trafficMetrics = emptyList(),
             wifiNames = emptyList(),
         )
     )
@@ -81,15 +73,6 @@ class DashboardViewModel @Inject constructor(
         .flowOn(dispatcherProvider.default)
         .launchIn(viewModelScope)
 
-    private val activatableTrafficMonitor: Job = viewEnabledFlow(
-        activeView = DashboardView.Traffic,
-        dataSourceProvider = realTimeNetworkDataSource::getTrafficStats,
-    )
-        .runningFold(emptyList(), ::accumulateTrafficHistory)
-        .onEach(::handleTrafficStats)
-        .flowOn(dispatcherProvider.default)
-        .launchIn(viewModelScope)
-
     fun onStartScan() {
         _screenState.update { it.copy(activeView = DashboardView.Wifi) }
 
@@ -113,11 +96,6 @@ class DashboardViewModel @Inject constructor(
         currentActiveMonitor.value = DashboardView.Latency
     }
 
-    fun onMonitorTraffic() {
-        _screenState.update { it.copy(activeView = DashboardView.Traffic) }
-        currentActiveMonitor.value = DashboardView.Traffic
-    }
-
     private fun handleWifiScanResults(scanResults: List<ScanResult>) {
         _screenState.update { currentState ->
             val wifiNames = scanResults.mapNotNull { it.SSID.ifEmpty { null } }
@@ -134,29 +112,6 @@ class DashboardViewModel @Inject constructor(
         }
     }
 
-    private fun accumulateTrafficHistory(
-        accumulator: List<TrafficData>,
-        trafficData: TrafficData,
-    ): List<TrafficData> {
-        val startTimeCutoff = clock.now()
-            .minus(TRAFFIC_METRICS_WINDOW_SECS.seconds)
-            .minus(1.seconds) // accounts for partial data in the starting bucket
-            .minus(1.seconds) // accounts for starting metric requiring a prior data point
-            .toEpochMilliseconds()
-        return accumulator.filter { it.timestamp > startTimeCutoff } + trafficData
-    }
-
-    private fun handleTrafficStats(trafficHistory: List<TrafficData>) {
-        val now = clock.now()
-
-        val trafficMetrics = trafficGraphUtil.calculateMetrics(
-            data = trafficHistory,
-            endTime = now.toEpochMilliseconds(),
-            TRAFFIC_METRICS_WINDOW_SECS.seconds
-        )
-
-        _screenState.update { it.copy(trafficMetrics = trafficMetrics) }
-    }
 
     fun stopActiveMonitor() {
         currentActiveMonitor.value = DashboardView.Unselected
@@ -178,6 +133,5 @@ class DashboardViewModel @Inject constructor(
 
     companion object {
         const val MAX_LATENCY_DATA_POINTS = 10
-        const val TRAFFIC_METRICS_WINDOW_SECS = 30
     }
 }

@@ -11,7 +11,7 @@ import androidx.navigation3.runtime.NavKey
 import androidx.navigation3.runtime.entryProvider
 import androidx.navigation3.ui.NavDisplay
 import com.zackjp.devicedx.feature.dashboard.DashboardScreen
-import com.zackjp.devicedx.feature.traffic.TrafficMonitorScreen
+import com.zackjp.devicedx.feature.traffic.TrafficMonitorScreenRoot
 
 @Composable
 fun DeviceDxNav3Graph(
@@ -39,7 +39,7 @@ fun DeviceDxNav3Graph(
             }
 
             entry<Route.TrafficMonitor> {
-                TrafficMonitorScreen(
+                TrafficMonitorScreenRoot(
                     modifier = Modifier
                         .padding(horizontal = 12.dp)
                         .padding(innerPadding)
