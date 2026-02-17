@@ -4,8 +4,8 @@ import android.os.Bundle
 import androidx.activity.ComponentActivity
 import androidx.activity.compose.setContent
 import androidx.activity.enableEdgeToEdge
+import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
-import androidx.compose.foundation.layout.padding
 import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Scaffold
@@ -13,8 +13,7 @@ import androidx.compose.material3.Text
 import androidx.compose.material3.TopAppBar
 import androidx.compose.material3.TopAppBarDefaults
 import androidx.compose.ui.Modifier
-import androidx.compose.ui.unit.dp
-import com.zackjp.devicedx.feature.dashboard.DashboardScreen
+import com.zackjp.devicedx.navigation.DeviceDxNav3Graph
 import com.zackjp.devicedx.ui.theme.DeviceDxTheme
 import dagger.hilt.android.AndroidEntryPoint
 
@@ -39,11 +38,9 @@ class MainActivity : ComponentActivity() {
                         )
                     }
                 ) { innerPadding ->
-                    DashboardScreen(
-                        modifier = Modifier
-                            .padding(horizontal = 12.dp)
-                            .padding(innerPadding)
-                            .fillMaxWidth()
+                    DeviceDxNav3Graph(
+                        innerPadding = innerPadding,
+                        modifier = Modifier.fillMaxSize(),
                     )
                 }
             }

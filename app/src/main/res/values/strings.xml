@@ -8,4 +8,6 @@
     <string name="stop_wifi_monitor">Stop Wifi Monitor</string>
     <string name="stop_latency_monitor">Stop Latency Monitor</string>
     <string name="stop_traffic_monitor">Stop Traffic Monitor</string>
+    <string name="open_traffic_monitor">Open Traffic Monitor</string>
+    <string name="coming_soon_here">Coming soon here.</string>
 </resources>

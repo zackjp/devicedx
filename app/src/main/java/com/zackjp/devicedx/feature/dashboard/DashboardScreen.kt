@@ -5,13 +5,13 @@ import androidx.activity.compose.rememberLauncherForActivityResult
 import androidx.activity.result.contract.ActivityResultContracts
 import androidx.compose.foundation.Canvas
 import androidx.compose.foundation.background
+import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.FlowRow
 import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.aspectRatio
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
-import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.LazyListScope
 import androidx.compose.foundation.lazy.items
@@ -34,6 +34,7 @@ import com.zackjp.devicedx.R
 import com.zackjp.devicedx.feature.dashboard.DashboardViewModel.Companion.MAX_LATENCY_DATA_POINTS
 import com.zackjp.devicedx.feature.dashboard.DashboardViewModel.Companion.TRAFFIC_METRICS_WINDOW_SECS
 import com.zackjp.devicedx.model.TrafficMetric
+import com.zackjp.devicedx.navigation.NavActions
 import java.math.MathContext
 import java.math.RoundingMode
 import kotlin.math.abs
@@ -43,6 +44,7 @@ import kotlin.math.pow
 @Composable
 fun DashboardScreen(
     modifier: Modifier = Modifier,
+    navActions: NavActions,
     viewModel: DashboardViewModel = hiltViewModel(),
 ) {
     val state by viewModel.screenState.collectAsStateWithLifecycle()
@@ -71,6 +73,7 @@ fun DashboardScreen(
             DiagnosticButtonRow(
                 currentDashboardView = state.activeView,
                 modifier = Modifier.fillMaxWidth(),
+                navActions = navActions,
                 onStartLatencyMonitor = { viewModel.onMonitorLatency() },
                 onStartWifiScan = { viewModel.onStartScan() },
                 onStartTrafficMonitor = { viewModel.onMonitorTraffic() },
@@ -91,6 +94,7 @@ fun DashboardScreen(
 private fun DiagnosticButtonRow(
     currentDashboardView: DashboardView,
     modifier: Modifier = Modifier,
+    navActions: NavActions,
     onStartLatencyMonitor: () -> Unit = {},
     onStartWifiScan: () -> Unit = {},
     onStartTrafficMonitor: () -> Unit = {},
@@ -98,6 +102,7 @@ private fun DiagnosticButtonRow(
 ) {
     FlowRow(
         modifier = modifier,
+        horizontalArrangement = Arrangement.spacedBy(16.dp),
     ) {
         if (currentDashboardView == DashboardView.Wifi) {
             Button(onClick = onStopCurrentMonitor) {
@@ -109,8 +114,6 @@ private fun DiagnosticButtonRow(
             }
         }
 
-        Spacer(Modifier.width(16.dp))
-
         if (currentDashboardView == DashboardView.Latency) {
             Button(onClick = onStopCurrentMonitor) {
                 Text(stringResource(R.string.stop_latency_monitor))
@@ -121,8 +124,6 @@ private fun DiagnosticButtonRow(
             }
         }
 
-        Spacer(Modifier.width(16.dp))
-
         if (currentDashboardView == DashboardView.Traffic) {
             Button(onClick = onStopCurrentMonitor) {
                 Text(stringResource(R.string.stop_traffic_monitor))
@@ -131,6 +132,10 @@ private fun DiagnosticButtonRow(
             Button(onClick = onStartTrafficMonitor) {
                 Text(stringResource(R.string.start_traffic_monitor))
             }
+        }
+
+        Button(onClick = navActions.toTrafficMonitor) {
+            Text(stringResource(R.string.open_traffic_monitor))
         }
     }
 }
