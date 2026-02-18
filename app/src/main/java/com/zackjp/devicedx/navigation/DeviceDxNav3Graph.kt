@@ -41,7 +41,6 @@ fun DeviceDxNav3Graph(
             entry<Route.Dashboard> {
                 DashboardScreen(
                     modifier = Modifier
-                        .padding(horizontal = 12.dp)
                         .padding(innerPadding)
                         .fillMaxWidth(),
                     navActions = navActions,
