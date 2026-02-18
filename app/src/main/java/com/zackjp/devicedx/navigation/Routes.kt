@@ -6,4 +6,5 @@ interface Route {
     data object Dashboard : Route, NavKey
     data object TrafficMonitor : Route, NavKey
     data object LatencyMonitor : NavKey
+    data object WifiMonitor : NavKey
 }

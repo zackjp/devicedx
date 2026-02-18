@@ -4,4 +4,5 @@ data class NavActions(
     val toDashboard: () -> Unit,
     val toLatencyMonitor: () -> Unit,
     val toTrafficMonitor: () -> Unit,
+    val toWifiMonitor: () -> Unit,
 )
