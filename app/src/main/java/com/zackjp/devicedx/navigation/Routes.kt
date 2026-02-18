@@ -5,4 +5,5 @@ import androidx.navigation3.runtime.NavKey
 interface Route {
     data object Dashboard : Route, NavKey
     data object TrafficMonitor : Route, NavKey
+    data object LatencyMonitor : NavKey
 }

@@ -3,12 +3,9 @@ package com.zackjp.devicedx.feature.dashboard
 import android.Manifest.permission.ACCESS_FINE_LOCATION
 import androidx.activity.compose.rememberLauncherForActivityResult
 import androidx.activity.result.contract.ActivityResultContracts
-import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.Arrangement
-import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.FlowRow
 import androidx.compose.foundation.layout.Spacer
-import androidx.compose.foundation.layout.aspectRatio
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.lazy.LazyColumn
@@ -20,15 +17,12 @@ import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
 import androidx.compose.ui.Modifier
-import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.unit.dp
 import androidx.hilt.lifecycle.viewmodel.compose.hiltViewModel
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import com.zackjp.devicedx.R
-import com.zackjp.devicedx.feature.dashboard.DashboardViewModel.Companion.MAX_LATENCY_DATA_POINTS
 import com.zackjp.devicedx.navigation.NavActions
-import com.zackjp.devicedx.shared.ui.Graph
 
 
 @Composable
@@ -64,7 +58,6 @@ fun DashboardScreen(
                 currentDashboardView = state.activeView,
                 modifier = Modifier.fillMaxWidth(),
                 navActions = navActions,
-                onStartLatencyMonitor = { viewModel.onMonitorLatency() },
                 onStartWifiScan = { viewModel.onStartScan() },
                 onStopCurrentMonitor = { viewModel.stopActiveMonitor() }
             )
@@ -73,7 +66,6 @@ fun DashboardScreen(
         when (state.activeView) {
             DashboardView.Unselected -> unselectedDiagnostics()
             DashboardView.Wifi -> wifiScanResults(state.wifiNames)
-            DashboardView.Latency -> latencyGraph(state.latencyHistory)
         }
     }
 }
@@ -83,9 +75,7 @@ private fun DiagnosticButtonRow(
     currentDashboardView: DashboardView,
     modifier: Modifier = Modifier,
     navActions: NavActions,
-    onStartLatencyMonitor: () -> Unit = {},
     onStartWifiScan: () -> Unit = {},
-    onStartTrafficMonitor: () -> Unit = {},
     onStopCurrentMonitor: () -> Unit = {},
 ) {
     FlowRow(
@@ -102,14 +92,8 @@ private fun DiagnosticButtonRow(
             }
         }
 
-        if (currentDashboardView == DashboardView.Latency) {
-            Button(onClick = onStopCurrentMonitor) {
-                Text(stringResource(R.string.stop_latency_monitor))
-            }
-        } else {
-            Button(onClick = onStartLatencyMonitor) {
-                Text(stringResource(R.string.get_network_speeds))
-            }
+        Button(onClick = navActions.toLatencyMonitor) {
+            Text(stringResource(R.string.latency_monitor_open))
         }
 
         Button(onClick = navActions.toTrafficMonitor) {
@@ -130,25 +114,5 @@ private fun LazyListScope.wifiScanResults(
     items(wifiNames) { wifiName ->
         Spacer(Modifier.height(16.dp))
         Text(wifiName)
-    }
-}
-
-private fun LazyListScope.latencyGraph(
-    latencyHistory: List<Long>,
-    modifier: Modifier = Modifier,
-) {
-    item {
-        Column(modifier) {
-            Text(stringResource(R.string.latency_ms, latencyHistory.lastOrNull() ?: "-"))
-            Graph(
-                data = latencyHistory,
-                maxDataPoints = MAX_LATENCY_DATA_POINTS,
-                getY = { if (it !in 0..latencyHistory.lastIndex) 0f else latencyHistory[it].toFloat() },
-                modifier = Modifier
-                    .background(Color.Black)
-                    .fillMaxWidth()
-                    .aspectRatio(1.5f),
-            )
-        }
     }
 }

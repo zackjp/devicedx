@@ -1,0 +1,68 @@
+package com.zackjp.devicedx.feature.latency
+
+import androidx.compose.foundation.background
+import androidx.compose.foundation.layout.Column
+import androidx.compose.foundation.layout.aspectRatio
+import androidx.compose.foundation.layout.fillMaxWidth
+import androidx.compose.foundation.lazy.LazyColumn
+import androidx.compose.foundation.lazy.LazyListScope
+import androidx.compose.material3.Button
+import androidx.compose.material3.Surface
+import androidx.compose.material3.Text
+import androidx.compose.runtime.Composable
+import androidx.compose.runtime.getValue
+import androidx.compose.ui.Modifier
+import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.res.stringResource
+import androidx.hilt.lifecycle.viewmodel.compose.hiltViewModel
+import androidx.lifecycle.compose.collectAsStateWithLifecycle
+import com.zackjp.devicedx.R
+import com.zackjp.devicedx.feature.latency.LatencyViewModel.Companion.MAX_LATENCY_DATA_POINTS
+import com.zackjp.devicedx.shared.ui.Graph
+
+@Composable
+fun LatencyScreenRoot(
+    modifier: Modifier = Modifier,
+    viewModel: LatencyViewModel = hiltViewModel(),
+) {
+    val state by viewModel.screenState.collectAsStateWithLifecycle()
+
+    Surface(modifier) {
+        LazyColumn {
+            item {
+                val (stringRes, onClick) = if (state.isMonitorActive)
+                    R.string.latency_monitor_stop to { viewModel.stopMonitor() }
+                else
+                    R.string.latency_monitor_start to { viewModel.startMonitor() }
+                Button(onClick = onClick) {
+                    Text(stringResource(stringRes))
+                }
+            }
+
+            latencyGraph(
+                latencyHistory = state.latencyHistory,
+                modifier = Modifier.fillMaxWidth(),
+            )
+        }
+    }
+}
+
+private fun LazyListScope.latencyGraph(
+    latencyHistory: List<Long>,
+    modifier: Modifier = Modifier,
+) {
+    item {
+        Column(modifier) {
+            Text(stringResource(R.string.latency_ms, latencyHistory.lastOrNull() ?: "-"))
+            Graph(
+                data = latencyHistory,
+                maxDataPoints = MAX_LATENCY_DATA_POINTS,
+                getY = { if (it !in 0..latencyHistory.lastIndex) 0f else latencyHistory[it].toFloat() },
+                modifier = Modifier
+                    .background(Color.Black)
+                    .fillMaxWidth()
+                    .aspectRatio(1.5f),
+            )
+        }
+    }
+}

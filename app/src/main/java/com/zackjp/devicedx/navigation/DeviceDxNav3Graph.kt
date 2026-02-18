@@ -13,6 +13,7 @@ import androidx.navigation3.runtime.entryProvider
 import androidx.navigation3.runtime.rememberSaveableStateHolderNavEntryDecorator
 import androidx.navigation3.ui.NavDisplay
 import com.zackjp.devicedx.feature.dashboard.DashboardScreen
+import com.zackjp.devicedx.feature.latency.LatencyScreenRoot
 import com.zackjp.devicedx.feature.traffic.TrafficMonitorScreenRoot
 
 @Composable
@@ -23,6 +24,7 @@ fun DeviceDxNav3Graph(
     val backStack = SnapshotStateList<NavKey>(1) { Route.Dashboard }
     val navActions = NavActions(
         toDashboard = { backStack.add(Route.Dashboard) },
+        toLatencyMonitor = { backStack.add(Route.LatencyMonitor) },
         toTrafficMonitor = { backStack.add(Route.TrafficMonitor) },
     )
 
@@ -41,6 +43,15 @@ fun DeviceDxNav3Graph(
                         .padding(innerPadding)
                         .fillMaxWidth(),
                     navActions = navActions,
+                )
+            }
+
+            entry<Route.LatencyMonitor> {
+                LatencyScreenRoot(
+                    modifier = Modifier
+                        .padding(horizontal = 12.dp)
+                        .padding(innerPadding)
+                        .fillMaxWidth(),
                 )
             }
 

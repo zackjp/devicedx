@@ -2,11 +2,12 @@
     <string name="app_name">DeviceDx</string>
     <string name="select_your_diagnostic">Select your diagnostic</string>
     <string name="latency_ms">Most recent latency: %1$sms</string>
-    <string name="get_network_speeds">Get Network Speeds</string>
+    <string name="latency_monitor_start">Start Latency Monitor</string>
+    <string name="latency_monitor_open">Open Latency Monitor</string>
+    <string name="latency_monitor_stop">Stop Latency Monitor</string>
     <string name="get_wifi_ssids">Get Wifi SSIDs</string>
     <string name="start_traffic_monitor">Start Traffic Monitor</string>
     <string name="stop_wifi_monitor">Stop Wifi Monitor</string>
-    <string name="stop_latency_monitor">Stop Latency Monitor</string>
     <string name="stop_traffic_monitor">Stop Traffic Monitor</string>
     <string name="open_traffic_monitor">Open Traffic Monitor</string>
     <string name="coming_soon_here">Coming soon here.</string>
