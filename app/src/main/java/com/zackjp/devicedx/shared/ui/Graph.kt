@@ -68,7 +68,7 @@ fun <T> Graph(
 
         drawPath(
             path = path,
-            color = Color.White,
+            color = Color.Magenta,
             style = Stroke(2.dp.toPx())
         )
     }
