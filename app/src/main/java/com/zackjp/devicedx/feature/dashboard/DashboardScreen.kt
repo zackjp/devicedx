@@ -50,11 +50,11 @@ private fun DiagnosticButtonRow(
         }
 
         Button(onClick = navActions.toLatencyMonitor) {
-            Text(stringResource(R.string.latency_monitor_open))
+            Text(stringResource(R.string.dashboard_open_latency_monitor))
         }
 
         Button(onClick = navActions.toTrafficMonitor) {
-            Text(stringResource(R.string.open_traffic_monitor))
+            Text(stringResource(R.string.dashboard_open_traffic_monitor))
         }
     }
 }
