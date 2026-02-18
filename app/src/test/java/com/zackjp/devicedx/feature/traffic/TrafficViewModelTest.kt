@@ -4,7 +4,7 @@ import app.cash.turbine.test
 import com.zackjp.devicedx.concurrency.TestDispatcherProvider
 import com.zackjp.devicedx.data.RealTimeNetworkDataSource
 import com.zackjp.devicedx.feature.traffic.TrafficViewModel.Companion.TRAFFIC_METRICS_WINDOW_SECS
-import com.zackjp.devicedx.feature.dashboard.util.TrafficGraphUtil
+import com.zackjp.devicedx.feature.traffic.util.TrafficGraphUtil
 import com.zackjp.devicedx.model.TrafficData
 import com.zackjp.devicedx.model.TrafficMetric
 import com.zackjp.devicedx.model.fake

@@ -1,5 +1,6 @@
 package com.zackjp.devicedx.feature.dashboard.util
 
+import com.zackjp.devicedx.feature.traffic.util.TrafficGraphUtil
 import com.zackjp.devicedx.model.TrafficData
 import com.zackjp.devicedx.model.TrafficMetric
 import com.zackjp.devicedx.model.fake

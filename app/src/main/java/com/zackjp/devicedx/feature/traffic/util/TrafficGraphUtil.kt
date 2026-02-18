@@ -1,4 +1,4 @@
-package com.zackjp.devicedx.feature.dashboard.util
+package com.zackjp.devicedx.feature.traffic.util
 
 import com.zackjp.devicedx.model.TrafficData
 import com.zackjp.devicedx.model.TrafficMetric
