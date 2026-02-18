@@ -45,8 +45,9 @@ class TrafficViewModel @Inject constructor(
         .stateIn(viewModelScope, SharingStarted.WhileSubscribed(5000), _screenState.value)
 
     private val uiActiveFlow = _screenState.subscriptionCount.map { it > 0 }.distinctUntilChanged()
+    private val isMonitorActive = MutableStateFlow(false)
 
-    private val activatableTrafficMonitor: Job = viewEnabledFlow(
+    private val activatableTrafficMonitor: Job = uiActivatedFlow(
         dataSourceProvider = realTimeNetworkDataSource::getTrafficStats,
     )
         .runningFold(emptyList(), ::accumulateTrafficHistory)
@@ -57,10 +58,12 @@ class TrafficViewModel @Inject constructor(
 
     fun startMonitor() {
         _screenState.update { it.copy(isMonitorActive = true) }
+        isMonitorActive.value = true
     }
 
     fun stopMonitor() {
         _screenState.update { it.copy(isMonitorActive = false) }
+        isMonitorActive.value = false
     }
 
     private fun accumulateTrafficHistory(
@@ -88,14 +91,14 @@ class TrafficViewModel @Inject constructor(
     }
 
     @OptIn(ExperimentalCoroutinesApi::class)
-    private fun <T> viewEnabledFlow(
+    private fun <T> uiActivatedFlow(
         dataSourceProvider: () -> Flow<T>,
     ): Flow<T> = combine(
         uiActiveFlow,
-        _screenState,
-    ) { uiActive, screenState ->
-        uiActive && screenState.isMonitorActive
-    }.flatMapLatest { isMonitorActive ->
+        isMonitorActive,
+    ) { uiActive, isMonitorActive ->
+        uiActive && isMonitorActive
+    }.distinctUntilChanged().flatMapLatest { isMonitorActive ->
         if (isMonitorActive) dataSourceProvider() else emptyFlow()
     }
 

@@ -3,8 +3,8 @@ package com.zackjp.devicedx.feature.traffic
 import app.cash.turbine.test
 import com.zackjp.devicedx.concurrency.TestDispatcherProvider
 import com.zackjp.devicedx.data.RealTimeNetworkDataSource
-import com.zackjp.devicedx.feature.dashboard.util.TrafficGraphUtil
 import com.zackjp.devicedx.feature.traffic.TrafficViewModel.Companion.TRAFFIC_METRICS_WINDOW_SECS
+import com.zackjp.devicedx.feature.dashboard.util.TrafficGraphUtil
 import com.zackjp.devicedx.model.TrafficData
 import com.zackjp.devicedx.model.TrafficMetric
 import com.zackjp.devicedx.model.fake
@@ -16,8 +16,10 @@ import kotlinx.coroutines.ExperimentalCoroutinesApi
 import kotlinx.coroutines.flow.MutableSharedFlow
 import kotlinx.coroutines.flow.launchIn
 import kotlinx.coroutines.test.TestScope
+import kotlinx.coroutines.test.advanceTimeBy
 import kotlinx.coroutines.test.advanceUntilIdle
 import kotlinx.coroutines.test.resetMain
+import kotlinx.coroutines.test.runCurrent
 import kotlinx.coroutines.test.runTest
 import kotlinx.coroutines.test.setMain
 import org.junit.jupiter.api.AfterEach
@@ -92,6 +94,44 @@ class TrafficViewModelTest {
             advanceUntilIdle()
             expectMostRecentItem().trafficMetrics shouldBe expectedMetrics
         }
+    }
+
+    @Test
+    fun startMonitor_WhenScreenStateReachesZeroSubscribers_AutoPausesEmissions() = runTest {
+        // Manually subscribe and don't use Turbine, which would also count as a subscriber
+        val uiEmulatedSubscription = viewModel.screenState.launchIn(backgroundScope)
+        advanceUntilIdle()
+        val expectedTimeoutMs = 5000L
+
+        val firstMetrics = listOf(TrafficMetric(11, 22f), TrafficMetric(33, 44f))
+        val secondMetrics = listOf(TrafficMetric(55, 66f), TrafficMetric(77, 88f))
+
+        every { trafficGraphUtil.calculateMetrics(any(), any(), any()) } returns emptyList()
+        every { clock.now() } returns Instant.fromEpochMilliseconds(1234)
+
+        viewModel.startMonitor()
+        advanceUntilIdle()
+        viewModel.screenState.value.trafficMetrics shouldBe emptyList()
+
+        // 1) Cancel "ui" subscription and move time up until 1ms before WhileSubscribed times out
+        uiEmulatedSubscription.cancel()
+        advanceTimeBy(expectedTimeoutMs - 1)
+
+        // 2) Emit data that should still generate metrics
+        every { trafficGraphUtil.calculateMetrics(any(), any(), any()) } returns firstMetrics
+        trafficStatsFlow.emit(TrafficData.fake(1))
+        runCurrent() // use runCurrent so it doesn't advance the clock
+        viewModel.screenState.value.trafficMetrics shouldBe firstMetrics
+
+        // 3) Advance 1 more millisecond to force the WhileSubscribed timeout
+        every { trafficGraphUtil.calculateMetrics(any(), any(), any()) } returns secondMetrics
+        advanceTimeBy(1)
+        runCurrent()
+
+        // 4) Try to emit new data, which should not work
+        trafficStatsFlow.emit(TrafficData.fake(2))
+        runCurrent()
+        viewModel.screenState.value.trafficMetrics shouldBe firstMetrics
     }
 
     @Test
