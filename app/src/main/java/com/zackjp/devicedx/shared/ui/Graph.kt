@@ -7,26 +7,34 @@ import androidx.compose.ui.geometry.Offset
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.Path
 import androidx.compose.ui.graphics.drawscope.Stroke
+import androidx.compose.ui.text.drawText
+import androidx.compose.ui.text.rememberTextMeasurer
 import androidx.compose.ui.unit.LayoutDirection
 import androidx.compose.ui.unit.dp
 import kotlin.math.abs
-import kotlin.math.pow
 
 
 
 @Composable
-fun <T> Graph(
-    data: List<T>,
+fun Graph(
+    data: List<Pair<Float, Float>>,
+    getY: (index: Int) -> Float?,
+    getYTickLabel: (yValue: Float) -> String,
     maxDataPoints: Int,
-    getY: (x: Int) -> Float?,
     modifier: Modifier = Modifier,
+    unitScaleY: Int,
 ) {
+    val textMeasurer = rememberTextMeasurer()
     Canvas(modifier) {
         if (data.isEmpty() || maxDataPoints <= 0) return@Canvas
 
-        val maxYValue = (0..<maxDataPoints).maxOfOrNull { getY(it) ?: 0f } ?: 0f
-        val maxYAxisPoint = 10.0.pow(maxYValue.getDigitsCount())
-        val spacing = size.width / (maxDataPoints - 1)
+        val maxYValue = data.maxOfOrNull { it.second } ?: 0f
+        val yAxisScale = maxYValue.getScaleCount(unitScaleY)
+        val maxYTick = unitScaleY.toBigDecimal().pow(yAxisScale).toInt()
+        val yTickCount = 4
+        val yTickIncrement = maxYTick / yTickCount
+        val yTickSpacing = size.height / yTickCount
+        val xTickSpacing = size.width / (maxDataPoints - 1)
 
         val path = Path()
 
@@ -38,13 +46,14 @@ fun <T> Graph(
             }
 
             val rawY = getY(dataIndex)
-            val actualX = counter * spacing
-            val actualY = rawY?.let {
-                // normalize height and render starting from bottom
-                (size.height - (it / maxYAxisPoint) * size.height).toFloat()
+            val graphX = counter * xTickSpacing
+            val graphY = rawY?.let {
+                // normalize height within bounds and render starting from bottom
+                val normalizedHeight = (it / maxYTick) * size.height
+                size.height - normalizedHeight
             } ?: 0f
 
-            Offset(actualX, actualY)
+            Offset(graphX, graphY)
         }
 
         val firstPoint = plotPoints[0]
@@ -66,21 +75,41 @@ fun <T> Graph(
             )
         }
 
+        /*
+         * Draw line graph
+         */
         drawPath(
             path = path,
             color = Color.Magenta,
             style = Stroke(2.dp.toPx())
         )
+
+        /*
+         * Draw y-axis labels
+         */
+        (1..yTickCount).forEach {
+            val yTickValue = (it * yTickIncrement).toFloat()
+            val layoutResult = textMeasurer.measure(getYTickLabel(yTickValue))
+            val textOffset = Offset(
+                0f,
+                size.height - it * yTickSpacing,
+            )
+            drawText(
+                color = Color.White,
+                textLayoutResult = layoutResult,
+                topLeft = textOffset,
+            )
+        }
     }
 }
 
-private fun Number.getDigitsCount(): Int {
+private fun Number.getScaleCount(unitScale: Int): Int {
     var tmp = abs(toInt())
     if (tmp == 0) return 1
 
     var count = 0
     while (tmp != 0) {
-        tmp /= 10
+        tmp /= unitScale
         count++
     }
     return count

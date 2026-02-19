@@ -20,8 +20,11 @@ import com.zackjp.devicedx.R
 import com.zackjp.devicedx.feature.traffic.TrafficViewModel.Companion.TRAFFIC_METRICS_WINDOW_SECS
 import com.zackjp.devicedx.model.TrafficMetric
 import com.zackjp.devicedx.shared.ui.Graph
-import java.math.MathContext
+import java.math.BigDecimal
 import java.math.RoundingMode
+import java.text.DecimalFormat
+import java.text.DecimalFormatSymbols
+import java.util.Locale
 
 @Composable
 fun TrafficMonitorScreenRoot(
@@ -68,35 +71,56 @@ private fun TrafficMonitorScreen(
 private fun LazyListScope.trafficGraph(trafficMetrics: List<TrafficMetric>) {
     item {
         val mostRecentStat = trafficMetrics.lastOrNull()
-        val txBytes = mostRecentStat?.rxBytesPerSec ?: 0f
-        val txBigDecimal = txBytes.toBigDecimal(MathContext(2, RoundingMode.HALF_UP))
-        val txUnit = when {
-            txBigDecimal >= TB_SIZE -> "tb"
-            txBigDecimal >= GB_SIZE -> "gb"
-            txBigDecimal >= MB_SIZE -> "mb"
-            txBigDecimal >= KB_SIZE -> "kb"
-            else -> "b"
-        }
-        val txValue = when (txUnit) {
-            "b" -> txBigDecimal
-            "kb" -> txBigDecimal.divide(KB_SIZE, 2, RoundingMode.HALF_UP)
-            "mb" -> txBigDecimal.divide(MB_SIZE, 2, RoundingMode.HALF_UP)
-            "gb" -> txBigDecimal.divide(GB_SIZE, 2, RoundingMode.HALF_UP)
-            else -> txBigDecimal.divide(TB_SIZE, 2, RoundingMode.HALF_UP)
-        }
-        Text("Recent Traffic Received: ${txValue.toPlainString()}$txUnit/sec")
+        val rxBytes = mostRecentStat?.rxBytesPerSec ?: 0f
+        val (rxValue, rxUnit) = getBytesString(rxBytes)
+        Text("Recent Traffic Received: ${formatBigDecimal(rxValue)}$rxUnit/sec")
         Graph(
-            data = trafficMetrics,
-            maxDataPoints = TRAFFIC_METRICS_WINDOW_SECS,
+            data = trafficMetrics.mapIndexed { index, metric ->
+                Pair(index.toFloat(), metric.rxBytesPerSec)
+            },
             getY = { if (it > trafficMetrics.lastIndex) 0f else trafficMetrics[it].rxBytesPerSec },
+            getYTickLabel = { bytes ->
+                getBytesString(bytes).run {
+                    "${formatBigDecimal(first)}$second"
+                }
+            },
+            maxDataPoints = TRAFFIC_METRICS_WINDOW_SECS,
             modifier = Modifier
                 .background(Color.Black)
                 .fillMaxWidth()
                 .aspectRatio(1.5f),
+            unitScaleY = 128,
         )
     }
 }
 
+
+private fun getBytesString(bytes: Float): Pair<BigDecimal, String> {
+    val bigDecimalValue = bytes.toBigDecimal()
+    val unitString = when {
+        bigDecimalValue >= TB_SIZE -> "tb"
+        bigDecimalValue >= GB_SIZE -> "gb"
+        bigDecimalValue >= MB_SIZE -> "mb"
+        bigDecimalValue >= KB_SIZE -> "kb"
+        else -> "b"
+    }
+    val unitValue = when (unitString) {
+        "b" -> bigDecimalValue
+        "kb" -> bigDecimalValue.divide(KB_SIZE, 2, RoundingMode.HALF_UP)
+        "mb" -> bigDecimalValue.divide(MB_SIZE, 2, RoundingMode.HALF_UP)
+        "gb" -> bigDecimalValue.divide(GB_SIZE, 2, RoundingMode.HALF_UP)
+        else -> bigDecimalValue.divide(TB_SIZE, 2, RoundingMode.HALF_UP)
+    }
+    return Pair(unitValue, unitString)
+}
+
+
+fun formatBigDecimal(number: BigDecimal): String {
+    val decimalFormat = DecimalFormat("#.##", DecimalFormatSymbols(Locale.US)).apply {
+        isGroupingUsed = false
+    }
+    return decimalFormat.format(number)
+}
 
 private val KB_SIZE = 1024.toBigDecimal()
 private val MB_SIZE = 1_048_576.toBigDecimal()

@@ -55,13 +55,17 @@ private fun LazyListScope.latencyGraph(
         Column(modifier) {
             Text(stringResource(R.string.latency_ms, latencyHistory.lastOrNull() ?: "-"))
             Graph(
-                data = latencyHistory,
-                maxDataPoints = MAX_LATENCY_DATA_POINTS,
+                data = latencyHistory.mapIndexed { index, latency ->
+                    Pair(index.toFloat(), latency.toFloat())
+                },
                 getY = { if (it !in 0..latencyHistory.lastIndex) 0f else latencyHistory[it].toFloat() },
+                getYTickLabel = { "${it.toInt()}ms" },
+                maxDataPoints = MAX_LATENCY_DATA_POINTS,
                 modifier = Modifier
                     .background(Color.Black)
                     .fillMaxWidth()
                     .aspectRatio(1.5f),
+                unitScaleY = 1000,
             )
         }
     }
