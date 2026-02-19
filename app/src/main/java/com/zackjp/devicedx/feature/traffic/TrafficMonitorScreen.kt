@@ -19,6 +19,7 @@ import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import com.zackjp.devicedx.R
 import com.zackjp.devicedx.feature.traffic.TrafficViewModel.Companion.TRAFFIC_METRICS_WINDOW_SECS
 import com.zackjp.devicedx.model.TrafficMetric
+import com.zackjp.devicedx.shared.ui.GraphEntry
 import com.zackjp.devicedx.shared.ui.Graph
 import java.math.BigDecimal
 import java.math.RoundingMode
@@ -76,7 +77,7 @@ private fun LazyListScope.trafficGraph(trafficMetrics: List<TrafficMetric>) {
         Text("Recent Traffic Received: ${formatBigDecimal(rxValue)}$rxUnit/sec")
         Graph(
             data = trafficMetrics.mapIndexed { index, metric ->
-                Pair(index.toFloat(), metric.rxBytesPerSec)
+                GraphEntry(index.toFloat(), metric.rxBytesPerSec)
             },
             getY = { if (it > trafficMetrics.lastIndex) 0f else trafficMetrics[it].rxBytesPerSec },
             getYTickLabel = { bytes ->

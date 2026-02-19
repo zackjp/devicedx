@@ -14,10 +14,11 @@ import androidx.compose.ui.unit.dp
 import kotlin.math.abs
 
 
+data class GraphEntry(val x: Float, val y: Float)
 
 @Composable
 fun Graph(
-    data: List<Pair<Float, Float>>,
+    data: List<GraphEntry>,
     getY: (index: Int) -> Float?,
     getYTickLabel: (yValue: Float) -> String,
     maxDataPoints: Int,
@@ -28,7 +29,7 @@ fun Graph(
     Canvas(modifier) {
         if (data.isEmpty() || maxDataPoints <= 0) return@Canvas
 
-        val maxYValue = data.maxOfOrNull { it.second } ?: 0f
+        val maxYValue = data.maxOfOrNull { it.y } ?: 0f
         val yAxisScale = maxYValue.getScaleCount(unitScaleY)
         val maxYTick = unitScaleY.toBigDecimal().pow(yAxisScale).toInt()
         val yTickCount = 4
@@ -39,39 +40,39 @@ fun Graph(
         val path = Path()
 
         // Map data to xy canvas coordinates
-        val plotPoints = (0 until maxDataPoints).map { counter ->
+        val canvasPoints = (0 until maxDataPoints).map { xIndex ->
             val dataIndex = when (layoutDirection) {
-                LayoutDirection.Ltr -> data.size - maxDataPoints + counter
-                LayoutDirection.Rtl -> data.lastIndex - counter
+                LayoutDirection.Ltr -> data.size - maxDataPoints + xIndex
+                LayoutDirection.Rtl -> data.lastIndex - xIndex
             }
 
             val rawY = getY(dataIndex)
-            val graphX = counter * xTickSpacing
-            val graphY = rawY?.let {
+            val canvasX = xIndex * xTickSpacing
+            val canvasY = rawY?.let {
                 // normalize height within bounds and render starting from bottom
                 val normalizedHeight = (it / maxYTick) * size.height
                 size.height - normalizedHeight
             } ?: 0f
 
-            Offset(graphX, graphY)
+            Offset(canvasX, canvasY)
         }
 
-        val firstPoint = plotPoints[0]
+        val firstPoint = canvasPoints[0]
         path.moveTo(firstPoint.x, firstPoint.y)
 
-        for (i in 0 until plotPoints.lastIndex) {
-            val current = plotPoints[i]
-            val next = plotPoints[i+1]
+        for (i in 0 until canvasPoints.lastIndex) {
+            val currentPoint = canvasPoints[i]
+            val nextPoint = canvasPoints[i + 1]
 
-            val distanceX = next.x - current.x
+            val distanceX = nextPoint.x - currentPoint.x
             val controlDistance = distanceX * CUBIC_SMOOTHING_FACTOR
             path.cubicTo(
-                x1 = current.x + controlDistance,
-                y1 = current.y,
-                x2 = next.x - controlDistance,
-                y2 = next.y,
-                x3 = next.x,
-                y3 = next.y
+                x1 = currentPoint.x + controlDistance,
+                y1 = currentPoint.y,
+                x2 = nextPoint.x - controlDistance,
+                y2 = nextPoint.y,
+                x3 = nextPoint.x,
+                y3 = nextPoint.y
             )
         }
 

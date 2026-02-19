@@ -18,6 +18,7 @@ import androidx.hilt.lifecycle.viewmodel.compose.hiltViewModel
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import com.zackjp.devicedx.R
 import com.zackjp.devicedx.feature.latency.LatencyViewModel.Companion.MAX_LATENCY_DATA_POINTS
+import com.zackjp.devicedx.shared.ui.GraphEntry
 import com.zackjp.devicedx.shared.ui.Graph
 
 @Composable
@@ -56,7 +57,7 @@ private fun LazyListScope.latencyGraph(
             Text(stringResource(R.string.latency_ms, latencyHistory.lastOrNull() ?: "-"))
             Graph(
                 data = latencyHistory.mapIndexed { index, latency ->
-                    Pair(index.toFloat(), latency.toFloat())
+                    GraphEntry(index.toFloat(), latency.toFloat())
                 },
                 getY = { if (it !in 0..latencyHistory.lastIndex) 0f else latencyHistory[it].toFloat() },
                 getYTickLabel = { "${it.toInt()}ms" },
