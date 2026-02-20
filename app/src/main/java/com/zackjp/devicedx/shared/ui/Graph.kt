@@ -7,12 +7,16 @@ import androidx.compose.ui.geometry.Offset
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.Path
 import androidx.compose.ui.graphics.drawscope.Stroke
+import androidx.compose.ui.text.TextStyle
 import androidx.compose.ui.text.drawText
 import androidx.compose.ui.text.rememberTextMeasurer
 import androidx.compose.ui.unit.LayoutDirection
 import androidx.compose.ui.unit.dp
+import androidx.compose.ui.unit.sp
 import kotlin.math.abs
 
+
+private val CANVAS_HEIGHT_THRESHOLD_FOR_FONT_SIZE = 300.dp
 
 data class GraphEntry(val x: Float, val y: Float)
 
@@ -88,9 +92,15 @@ fun Graph(
         /*
          * Draw y-axis labels
          */
+        // Adjust font size for resizable Canvas, eg, PictureInPicture mode
+        val fontScale = (size.height / CANVAS_HEIGHT_THRESHOLD_FOR_FONT_SIZE.toPx()).coerceIn(0.3f, 1.0f)
+        val style = with (TextStyle.Default) { copy(fontSize = 18.sp * fontScale) }
         (0 until yTickCount).forEach {
             val yTickValue = (it * yTickIncrement).toFloat()
-            val layoutResult = textMeasurer.measure(getYTickLabel(yTickValue))
+            val layoutResult = textMeasurer.measure(
+                text = getYTickLabel(yTickValue),
+                style = style,
+            )
             val textOffset = Offset(
                 0f,
                 size.height - it * yTickSpacing - layoutResult.size.height,
