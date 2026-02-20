@@ -2,7 +2,6 @@ package com.zackjp.devicedx.feature.traffic
 
 import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.aspectRatio
-import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.LazyListScope
@@ -19,13 +18,18 @@ import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import com.zackjp.devicedx.R
 import com.zackjp.devicedx.feature.traffic.TrafficViewModel.Companion.TRAFFIC_METRICS_WINDOW_SECS
 import com.zackjp.devicedx.model.TrafficMetric
-import com.zackjp.devicedx.shared.ui.GraphEntry
 import com.zackjp.devicedx.shared.ui.Graph
+import com.zackjp.devicedx.shared.ui.GraphEntry
+import com.zackjp.devicedx.shared.ui.rememberIsInPipMode
 import java.math.BigDecimal
 import java.math.RoundingMode
 import java.text.DecimalFormat
 import java.text.DecimalFormatSymbols
 import java.util.Locale
+
+private const val ASPECT_RATIO_NUMERATOR = 16
+private const val ASPECT_RATIO_DENOMINATOR = 9
+private const val ASPECT_RATIO_FLOAT = ASPECT_RATIO_NUMERATOR.toFloat() / ASPECT_RATIO_DENOMINATOR
 
 @Composable
 fun TrafficMonitorScreenRoot(
@@ -34,9 +38,18 @@ fun TrafficMonitorScreenRoot(
 ) {
     val state by viewModel.screenState.collectAsStateWithLifecycle()
 
-    Surface(modifier) {
+    val isInPipMode = rememberIsInPipMode(
+        isAllowed = state.isMonitorActive,
+        aspectRatioNumerator = ASPECT_RATIO_NUMERATOR,
+        aspectRatioDenominator = ASPECT_RATIO_DENOMINATOR,
+    )
+
+    Surface(
+        if (isInPipMode) Modifier else modifier
+    ) {
         TrafficMonitorScreen(
-            modifier = Modifier.fillMaxSize(),
+            isInPipMode = isInPipMode,
+            modifier = Modifier.fillMaxWidth(),
             onStartMonitor = { viewModel.startMonitor() },
             onStopMonitor = { viewModel.stopMonitor() },
             state = state,
@@ -46,35 +59,50 @@ fun TrafficMonitorScreenRoot(
 
 @Composable
 private fun TrafficMonitorScreen(
+    isInPipMode: Boolean,
     modifier: Modifier = Modifier,
     onStartMonitor: () -> Unit = {},
     onStopMonitor: () -> Unit = {},
     state: TrafficScreenState,
 ) {
     LazyColumn(modifier) {
-        item {
-            if (state.isMonitorActive) {
-                Button(onClick = onStopMonitor) {
-                    Text(stringResource(R.string.stop_traffic_monitor))
+        if (!isInPipMode) {
+            item {
+                if (state.isMonitorActive) {
+                    Button(onClick = onStopMonitor) {
+                        Text(stringResource(R.string.stop_traffic_monitor))
+                    }
+                } else {
+                    Button(onClick = onStartMonitor) {
+                        Text(stringResource(R.string.start_traffic_monitor))
+                    }
                 }
-            } else {
-                Button(onClick = onStartMonitor) {
-                    Text(stringResource(R.string.start_traffic_monitor))
-                }
+            }
+
+            item {
+                val trafficMetrics = state.trafficMetrics
+                val mostRecentStat = trafficMetrics.lastOrNull()
+                val rxBytes = mostRecentStat?.rxBytesPerSec ?: 0f
+                val (rxValue, rxUnit) = getBytesString(rxBytes)
+                Text("Recent Traffic Received: ${formatBigDecimal(rxValue)}$rxUnit/sec")
             }
         }
 
-        trafficGraph(state.trafficMetrics)
+        trafficGraph(
+            modifier = Modifier
+                .background(Color.Black)
+                .fillMaxWidth()
+                .aspectRatio(ASPECT_RATIO_FLOAT),
+            state.trafficMetrics,
+        )
     }
 }
 
-
-private fun LazyListScope.trafficGraph(trafficMetrics: List<TrafficMetric>) {
+private fun LazyListScope.trafficGraph(
+    modifier: Modifier = Modifier,
+    trafficMetrics: List<TrafficMetric>,
+) {
     item {
-        val mostRecentStat = trafficMetrics.lastOrNull()
-        val rxBytes = mostRecentStat?.rxBytesPerSec ?: 0f
-        val (rxValue, rxUnit) = getBytesString(rxBytes)
-        Text("Recent Traffic Received: ${formatBigDecimal(rxValue)}$rxUnit/sec")
         Graph(
             data = trafficMetrics.mapIndexed { index, metric ->
                 GraphEntry(index.toFloat(), metric.rxBytesPerSec)
@@ -86,10 +114,7 @@ private fun LazyListScope.trafficGraph(trafficMetrics: List<TrafficMetric>) {
                 }
             },
             maxDataPoints = TRAFFIC_METRICS_WINDOW_SECS,
-            modifier = Modifier
-                .background(Color.Black)
-                .fillMaxWidth()
-                .aspectRatio(1.5f),
+            modifier = modifier,
             unitScaleY = 128,
         )
     }

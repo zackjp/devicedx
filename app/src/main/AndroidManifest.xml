@@ -19,9 +19,11 @@
         android:supportsRtl="true"
         android:theme="@style/Theme.DeviceDx">
         <activity
+            android:configChanges="screenSize|smallestScreenSize|screenLayout|orientation"
             android:name=".MainActivity"
             android:exported="true"
             android:label="@string/app_name"
+            android:supportsPictureInPicture="true"
             android:theme="@style/Theme.DeviceDx">
             <intent-filter>
                 <action android:name="android.intent.action.MAIN" />
