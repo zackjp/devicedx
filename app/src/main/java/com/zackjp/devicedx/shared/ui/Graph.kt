@@ -88,12 +88,12 @@ fun Graph(
         /*
          * Draw y-axis labels
          */
-        (1..yTickCount).forEach {
+        (0 until yTickCount).forEach {
             val yTickValue = (it * yTickIncrement).toFloat()
             val layoutResult = textMeasurer.measure(getYTickLabel(yTickValue))
             val textOffset = Offset(
                 0f,
-                size.height - it * yTickSpacing,
+                size.height - it * yTickSpacing - layoutResult.size.height,
             )
             drawText(
                 color = Color.White,
