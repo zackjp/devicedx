@@ -1,18 +1,27 @@
 package com.zackjp.devicedx.feature.dashboard
 
-import androidx.compose.foundation.clickable
+import androidx.annotation.DrawableRes
+import androidx.annotation.StringRes
+import androidx.compose.foundation.layout.Arrangement
+import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.PaddingValues
+import androidx.compose.foundation.layout.aspectRatio
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.padding
-import androidx.compose.foundation.lazy.LazyColumn
-import androidx.compose.foundation.lazy.itemsIndexed
-import androidx.compose.material3.HorizontalDivider
+import androidx.compose.foundation.lazy.grid.GridCells
+import androidx.compose.foundation.lazy.grid.LazyVerticalGrid
+import androidx.compose.foundation.lazy.grid.items
+import androidx.compose.material3.Button
+import androidx.compose.material3.Icon
 import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.remember
+import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.res.stringResource
+import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
 import androidx.hilt.lifecycle.viewmodel.compose.hiltViewModel
 import com.zackjp.devicedx.R
@@ -26,43 +35,75 @@ fun DashboardScreen(
     viewModel: DashboardViewModel = hiltViewModel(),
 ) {
     Surface(modifier) {
-        val dxOptions = remember(navActions) {
+        val buttonInfoList = remember(navActions) {
             listOf(
-                R.string.dashboard_open_wifi_monitor to navActions.toWifiMonitor,
-                R.string.dashboard_open_latency_monitor to navActions.toLatencyMonitor,
-                R.string.dashboard_open_traffic_monitor to navActions.toTrafficMonitor,
+                DashButtonInfo(
+                    textResId = R.string.dashboard_open_wifi_monitor,
+                    iconResId = R.drawable.ic_rounded_android_wifi_3_bar_24,
+                    navAction = navActions.toWifiMonitor,
+                ),
+                DashButtonInfo(
+                    textResId = R.string.dashboard_open_latency_monitor,
+                    iconResId = R.drawable.ic_rounded_multiple_stop_24,
+                    navAction = navActions.toLatencyMonitor,
+                ),
+                DashButtonInfo(
+                    textResId = R.string.dashboard_open_traffic_monitor,
+                    iconResId = R.drawable.ic_rounded_traffic_24,
+                    navAction = navActions.toTrafficMonitor,
+                ),
             )
         }
 
-        LazyColumn(
-            contentPadding = PaddingValues(top = 16.dp),
+        LazyVerticalGrid(
+            columns = GridCells.Adaptive(100.dp),
+            contentPadding = PaddingValues(16.dp),
+            horizontalArrangement = Arrangement.spacedBy(8.dp),
             modifier = Modifier.fillMaxWidth(),
+            verticalArrangement = Arrangement.spacedBy(8.dp),
         ) {
-            itemsIndexed(dxOptions) { index, dxOptionPair ->
-                val (textResId, onClick) = dxOptionPair
-                DiagnosticOption(
+            items(buttonInfoList) { buttonInfo ->
+                DashboardButton(
+                    buttonInfo = buttonInfo,
                     modifier = Modifier
-                        .clickable(onClick = onClick)
-                        .padding(horizontal = 8.dp, vertical = 12.dp)
-                        .fillMaxWidth(),
-                    textResId = textResId,
+                        .aspectRatio(1f)
+                        .padding(8.dp)
                 )
-
-                if (index < dxOptions.lastIndex) {
-                    HorizontalDivider()
-                }
             }
         }
     }
 }
 
 @Composable
-private fun DiagnosticOption(
+private fun DashboardButton(
+    buttonInfo: DashButtonInfo,
     modifier: Modifier = Modifier,
-    textResId: Int,
 ) {
-    Text(
+    Button(
         modifier = modifier,
-        text = stringResource(textResId),
-    )
+        onClick = buttonInfo.navAction,
+    ) {
+        Column(
+            horizontalAlignment = Alignment.CenterHorizontally,
+        ) {
+            Icon(
+                contentDescription = null,
+                modifier = Modifier
+                    .weight(1f)
+                    .aspectRatio(1f),
+                painter = painterResource(buttonInfo.iconResId)
+            )
+            Text(
+                modifier = Modifier,
+                text = stringResource(buttonInfo.textResId),
+                textAlign = TextAlign.Center,
+            )
+        }
+    }
 }
+
+private data class DashButtonInfo(
+    @param:StringRes val textResId: Int,
+    @param:DrawableRes val iconResId: Int,
+    val navAction: () -> Unit,
+)
