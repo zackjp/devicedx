@@ -61,6 +61,8 @@ class WifiViewModelTest {
     fun startMonitor_SetsMonitorActiveToTrue() = runTest {
         initViewModel()
 
+        every { permissionChecker.hasFineLocation() } returns true
+
         viewModel.screenState.test {
             expectMostRecentItem().isMonitorActive shouldBe false
 
@@ -139,6 +141,8 @@ class WifiViewModelTest {
     @Test
     fun stopMonitor_SetsMonitorActiveToFalse() = runTest {
         initViewModel()
+
+        every { permissionChecker.hasFineLocation() } returns true
 
         viewModel.screenState.test {
             viewModel.startMonitor()
