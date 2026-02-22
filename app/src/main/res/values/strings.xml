@@ -1,8 +1,8 @@
 <resources>
     <string name="app_name">DeviceDx</string>
-    <string name="dashboard_open_latency_monitor">Latency Monitor</string>
-    <string name="dashboard_open_traffic_monitor">Traffic Monitor</string>
-    <string name="dashboard_open_wifi_monitor">Wifi Monitor</string>
+    <string name="dashboard_open_latency_monitor">Latency\nMonitor</string>
+    <string name="dashboard_open_traffic_monitor">Traffic\nMonitor</string>
+    <string name="dashboard_open_wifi_monitor">Wifi\nMonitor</string>
     <string name="latency_ms">Most recent latency: %1$sms</string>
     <string name="latency_monitor_start">Start Latency Monitor</string>
     <string name="latency_monitor_stop">Stop Latency Monitor</string>

@@ -3,14 +3,13 @@ package com.zackjp.devicedx.feature.dashboard
 import androidx.annotation.DrawableRes
 import androidx.annotation.StringRes
 import androidx.compose.foundation.layout.Arrangement
+import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
-import androidx.compose.foundation.layout.PaddingValues
+import androidx.compose.foundation.layout.FlowRow
 import androidx.compose.foundation.layout.aspectRatio
-import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.padding
-import androidx.compose.foundation.lazy.grid.GridCells
-import androidx.compose.foundation.lazy.grid.LazyVerticalGrid
-import androidx.compose.foundation.lazy.grid.items
+import androidx.compose.foundation.layout.width
+import androidx.compose.foundation.layout.wrapContentSize
 import androidx.compose.material3.Button
 import androidx.compose.material3.Icon
 import androidx.compose.material3.Surface
@@ -55,22 +54,26 @@ fun DashboardScreen(
             )
         }
 
-        LazyVerticalGrid(
-            columns = GridCells.Adaptive(100.dp),
-            contentPadding = PaddingValues(16.dp),
-            horizontalArrangement = Arrangement.spacedBy(8.dp),
-            modifier = Modifier.fillMaxWidth(),
-            verticalArrangement = Arrangement.spacedBy(8.dp),
+        Box(
+            contentAlignment = Alignment.TopCenter,
         ) {
-            items(buttonInfoList) { buttonInfo ->
-                DashboardButton(
-                    buttonInfo = buttonInfo,
-                    modifier = Modifier
-                        .aspectRatio(1f)
-                        .padding(8.dp)
-                )
+            FlowRow(
+                horizontalArrangement = Arrangement.spacedBy(8.dp),
+                modifier = Modifier.wrapContentSize(),
+                verticalArrangement = Arrangement.spacedBy(8.dp),
+            ) {
+                buttonInfoList.forEach { buttonInfo ->
+                    DashboardButton(
+                        buttonInfo = buttonInfo,
+                        modifier = Modifier
+                            .width(150.dp)
+                            .aspectRatio(1f)
+                            .padding(8.dp)
+                    )
+                }
             }
         }
+
     }
 }
 
