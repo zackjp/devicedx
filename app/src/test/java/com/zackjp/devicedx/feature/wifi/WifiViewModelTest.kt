@@ -10,11 +10,14 @@ import io.mockk.every
 import io.mockk.mockk
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.ExperimentalCoroutinesApi
+import kotlinx.coroutines.flow.MutableSharedFlow
 import kotlinx.coroutines.flow.flowOf
 import kotlinx.coroutines.flow.launchIn
 import kotlinx.coroutines.test.TestScope
+import kotlinx.coroutines.test.advanceTimeBy
 import kotlinx.coroutines.test.advanceUntilIdle
 import kotlinx.coroutines.test.resetMain
+import kotlinx.coroutines.test.runCurrent
 import kotlinx.coroutines.test.runTest
 import kotlinx.coroutines.test.setMain
 import org.junit.jupiter.api.AfterEach
@@ -26,12 +29,12 @@ import org.junit.jupiter.api.Test
 class WifiViewModelTest {
 
     private val testDispatcherProvider = TestDispatcherProvider()
-
     private val wifiDataSource = mockk<WifiDataSource>()
     private val permissionChecker = mockk<PermissionChecker>()
 
-    private lateinit var viewModel: WifiViewModel
+    private val wifiStrengthFlow = MutableSharedFlow<Int>()
 
+    private lateinit var viewModel: WifiViewModel
 
     private companion object {
         val result1 = ScanResult().apply { SSID = "ssid-name-1" }
@@ -45,6 +48,7 @@ class WifiViewModelTest {
 
         every { permissionChecker.hasFineLocation() } returns false
         every { wifiDataSource.getWifiScanFlow() } returns flowOf(scanResults)
+        every { wifiDataSource.getWifiStrengthFlow() } returns wifiStrengthFlow
         viewModel = WifiViewModel(
             dispatcherProvider = testDispatcherProvider,
             permissionChecker = permissionChecker,
@@ -55,6 +59,42 @@ class WifiViewModelTest {
     @AfterEach
     fun tearDown() {
         Dispatchers.resetMain()
+    }
+
+    @Test
+    fun init_RegistersWifiSignalStrengthListener() = runTest {
+        initViewModel()
+
+        viewModel.screenState.test {
+            wifiStrengthFlow.emit(3)
+            advanceUntilIdle()
+            expectMostRecentItem().wifiStrength shouldBe 3
+
+            wifiStrengthFlow.emit(2)
+            advanceUntilIdle()
+            expectMostRecentItem().wifiStrength shouldBe 2
+        }
+    }
+
+    @Test
+    fun init_WhenScreenStateReachesZeroSubscribers_AutoPausesSignalStrengthEmissions() = runTest {
+        val emulatedUiSubscription = viewModel.screenState.launchIn(backgroundScope)
+        val expectedTimeoutMs = 5000L
+        val expectedFinalEmission = 1
+        val unexpectedFinalEmission = 2
+        advanceUntilIdle()
+
+        emulatedUiSubscription.cancel()
+        advanceTimeBy(expectedTimeoutMs - 1)
+
+        wifiStrengthFlow.emit(expectedFinalEmission)
+        runCurrent()
+        viewModel.screenState.value.wifiStrength shouldBe expectedFinalEmission
+
+        advanceTimeBy(1)
+        wifiStrengthFlow.emit(unexpectedFinalEmission)
+        runCurrent()
+        viewModel.screenState.value.wifiStrength shouldBe expectedFinalEmission
     }
 
     @Test

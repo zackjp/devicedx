@@ -4,6 +4,7 @@ data class WifiScreenState(
     val isMonitorActive: Boolean,
     val permissionStatus: PermissionStatus,
     val wifiNames: List<String>,
+    val wifiStrength: Int,
 )
 
 enum class PermissionStatus {

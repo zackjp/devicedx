@@ -6,9 +6,9 @@ import android.content.Intent
 import android.net.wifi.ScanResult
 import android.net.wifi.WifiManager
 import app.cash.turbine.test
-import com.zackjp.devicedx.system.permissions.PermissionChecker
 import com.zackjp.devicedx.system.ReceiverManager
 import com.zackjp.devicedx.system.WifiManagerWrapper
+import com.zackjp.devicedx.system.permissions.PermissionChecker
 import io.kotest.matchers.shouldBe
 import io.mockk.every
 import io.mockk.invoke
@@ -20,6 +20,7 @@ import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.ExperimentalCoroutinesApi
 import kotlinx.coroutines.test.StandardTestDispatcher
 import kotlinx.coroutines.test.TestScope
+import kotlinx.coroutines.test.advanceUntilIdle
 import kotlinx.coroutines.test.resetMain
 import kotlinx.coroutines.test.runTest
 import kotlinx.coroutines.test.setMain
@@ -57,6 +58,29 @@ class WifiDataSourceTest {
     @AfterEach
     fun tearDown() {
         Dispatchers.resetMain()
+    }
+
+    @Test
+    fun getWifiStrengthFlow_EmitsSignalStrength() = runTest(testDispatcher) {
+        dataSource = WifiDataSource(
+            permissionChecker = permissionChecker,
+            appScope = backgroundScope,
+            receiverManager = receiverManager,
+            wifiManagerWrapper = wifiManagerWrapper,
+        )
+        every { wifiManagerWrapper.getWifiSignalStrength() }.returnsMany(3, 4, 1, 2)
+
+        val wifiStrengthFlow = dataSource.getWifiStrengthFlow()
+
+        wifiStrengthFlow.test {
+            awaitItem() shouldBe 0
+            awaitItem() shouldBe 3
+            awaitItem() shouldBe 4
+            awaitItem() shouldBe 1
+            awaitItem() shouldBe 2
+
+            cancelAndIgnoreRemainingEvents()
+        }
     }
 
     @Test

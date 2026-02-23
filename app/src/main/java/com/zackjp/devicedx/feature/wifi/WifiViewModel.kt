@@ -1,6 +1,7 @@
 package com.zackjp.devicedx.feature.wifi
 
 import android.net.wifi.ScanResult
+import androidx.annotation.IntRange
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import com.zackjp.devicedx.concurrency.DispatcherProvider
@@ -43,6 +44,7 @@ class WifiViewModel @Inject constructor(
             isMonitorActive = false,
             permissionStatus = PermissionStatus.Unknown,
             wifiNames = emptyList(),
+            wifiStrength = 0,
         )
     )
     val screenState = _screenState
@@ -56,6 +58,13 @@ class WifiViewModel @Inject constructor(
     )
         .onEach(::handleWifiScanResults)
         .flowOn(dispatcherProvider.default)
+        .launchIn(viewModelScope)
+
+    @OptIn(ExperimentalCoroutinesApi::class)
+    private val activatableWifiStrengthMonitor: Job = uiActiveFlow.flatMapLatest { isUiActive ->
+        if (isUiActive) wifiDataSource.getWifiStrengthFlow() else emptyFlow()
+    }
+        .onEach(::handleWifiStrength)
         .launchIn(viewModelScope)
 
     fun startMonitor() {
@@ -75,6 +84,11 @@ class WifiViewModel @Inject constructor(
         }
     }
 
+    fun stopMonitor() {
+        _screenState.update { it.copy(isMonitorActive = false) }
+        isMonitorActive.value = false
+    }
+
     fun onFineLocationPermissionDenied() {
         _screenState.update { it.copy(permissionStatus = PermissionStatus.Denied) }
     }
@@ -86,10 +100,8 @@ class WifiViewModel @Inject constructor(
         }
     }
 
-
-    fun stopMonitor() {
-        _screenState.update { it.copy(isMonitorActive = false) }
-        isMonitorActive.value = false
+    private fun handleWifiStrength(@IntRange(0, 4) wifiStrength: Int) {
+        _screenState.update { it.copy(wifiStrength = wifiStrength) }
     }
 
     @OptIn(ExperimentalCoroutinesApi::class)

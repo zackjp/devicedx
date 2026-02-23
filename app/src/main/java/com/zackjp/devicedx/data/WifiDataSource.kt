@@ -6,15 +6,17 @@ import android.content.IntentFilter
 import android.net.wifi.ScanResult
 import android.net.wifi.WifiManager
 import com.zackjp.devicedx.di.ApplicationScope
-import com.zackjp.devicedx.system.permissions.PermissionChecker
 import com.zackjp.devicedx.system.ReceiverManager
 import com.zackjp.devicedx.system.WifiManagerWrapper
+import com.zackjp.devicedx.system.permissions.PermissionChecker
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.channels.ProducerScope
 import kotlinx.coroutines.channels.awaitClose
+import kotlinx.coroutines.delay
 import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.SharingStarted
 import kotlinx.coroutines.flow.callbackFlow
+import kotlinx.coroutines.flow.flow
 import kotlinx.coroutines.flow.stateIn
 import javax.inject.Inject
 import javax.inject.Singleton
@@ -44,7 +46,21 @@ class WifiDataSource @Inject constructor(
             emptyList(),
         )
 
+    private val wifiStrength = flow {
+        while (true) {
+            emit(wifiManagerWrapper.getWifiSignalStrength())
+            delay(2000)
+        }
+    }
+        .stateIn(
+            appScope,
+            SharingStarted.WhileSubscribed(1500),
+            0
+        )
+
     fun getWifiScanFlow(): Flow<List<ScanResult>> = wifiScanResults
+
+    fun getWifiStrengthFlow(): Flow<Int> = wifiStrength
 
     private fun ProducerScope<List<ScanResult>>.createScanResultsIntentHandler(): (Context?, Intent?) -> Unit =
         handler@{ _, _ ->
