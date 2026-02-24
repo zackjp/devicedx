@@ -9,6 +9,9 @@
     <string name="start_traffic_monitor">Start Traffic Monitor</string>
     <string name="stop_traffic_monitor">Stop Traffic Monitor</string>
     <string name="coming_soon_here">Coming soon here.</string>
+    <string name="wifi_open_settings">Wifi Monitor - Open Settings</string>
     <string name="wifi_start_monitor">Start Wifi Monitor</string>
     <string name="wifi_stop_monitor">Stop Wifi Monitor</string>
+    <string name="wifi_fine_location_permission_denied">To see available Wifi networks, the app needs access to fine location. You may change permissions in System Settings.</string>
+    <string name="wifi_fine_location_permission_rationale">To see available Wifi networks, the app needs access to fine location. Click again to request permission.</string>
 </resources>

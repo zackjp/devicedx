@@ -1,6 +1,10 @@
 package com.zackjp.devicedx.feature.wifi
 
 import android.Manifest.permission.ACCESS_FINE_LOCATION
+import android.content.Intent
+import android.net.Uri
+import android.provider.Settings
+import androidx.activity.compose.LocalActivity
 import androidx.activity.compose.rememberLauncherForActivityResult
 import androidx.activity.result.contract.ActivityResultContracts
 import androidx.compose.foundation.layout.Box
@@ -22,9 +26,11 @@ import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.unit.dp
+import androidx.core.app.ActivityCompat
 import androidx.hilt.lifecycle.viewmodel.compose.hiltViewModel
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import com.zackjp.devicedx.R
@@ -35,13 +41,17 @@ fun WifiScreenRoot(
     viewModel: WifiViewModel = hiltViewModel()
 ) {
     val state by viewModel.screenState.collectAsStateWithLifecycle()
+    val localActivity = LocalActivity.current
     val launcher =
         rememberLauncherForActivityResult(ActivityResultContracts.RequestPermission()) { isGranted ->
-            if (isGranted) {
-                viewModel.startMonitor()
-            } else {
-                viewModel.onFineLocationPermissionDenied()
-            }
+            val shouldShowRationale = localActivity?.let { activity ->
+                ActivityCompat.shouldShowRequestPermissionRationale(
+                    activity,
+                    ACCESS_FINE_LOCATION,
+                )
+            } ?: false
+
+            viewModel.onFineLocationPermissionResult(isGranted, shouldShowRationale)
         }
 
     LaunchedEffect(viewModel) {
@@ -69,16 +79,35 @@ fun WifiScreenRoot(
             }
 
             item {
-                val (textResId, onClick) = if (state.isMonitorActive) {
-                    R.string.wifi_stop_monitor to { viewModel.stopMonitor() }
-                } else {
-                    R.string.wifi_start_monitor to { viewModel.startMonitor() }
+                val context = LocalContext.current
+
+                val (textResId, onClick) = when {
+                    state.permissionStatus != PermissionStatus.DeniedPermanently -> {
+                        when (state.isMonitorActive) {
+                            true -> R.string.wifi_stop_monitor to { viewModel.stopMonitor() }
+                            false -> R.string.wifi_start_monitor to { viewModel.startMonitor() }
+                        }
+                    }
+
+                    else -> {
+                        R.string.wifi_open_settings to {
+                            context.startActivity(
+                                Intent(Settings.ACTION_APPLICATION_DETAILS_SETTINGS).apply {
+                                    data = Uri.fromParts("package", context.packageName, null)
+                                }
+                            )
+                        }
+                    }
                 }
 
-                Button(
-                    onClick = onClick
-                ) {
+                Button(onClick = onClick) {
                     Text(stringResource(textResId))
+                }
+
+                when (state.permissionStatus) {
+                    PermissionStatus.DeniedTemporarily -> Text(stringResource(R.string.wifi_fine_location_permission_rationale))
+                    PermissionStatus.DeniedPermanently -> Text(stringResource(R.string.wifi_fine_location_permission_denied))
+                    else -> {}
                 }
             }
 

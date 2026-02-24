@@ -5,7 +5,9 @@ import app.cash.turbine.test
 import com.zackjp.devicedx.concurrency.TestDispatcherProvider
 import com.zackjp.devicedx.data.WifiDataSource
 import com.zackjp.devicedx.system.permissions.PermissionChecker
+import io.kotest.matchers.should
 import io.kotest.matchers.shouldBe
+import io.kotest.matchers.shouldNotBe
 import io.mockk.every
 import io.mockk.mockk
 import kotlinx.coroutines.Dispatchers
@@ -198,16 +200,83 @@ class WifiViewModelTest {
     }
 
     @Test
-    fun onFineLocationPermissionDenied_SetsPermissionStatusToDenied() = runTest {
+    fun onFineLocationPermissionResult_WhenGrantedAndHasFineLocation_AutoStartsMonitor() = runTest {
         initViewModel()
 
+        every { permissionChecker.hasFineLocation() } returns true
+        val expectedWifiNames = listOf(result1.SSID, result2.SSID)
+
         viewModel.screenState.test {
-            viewModel.onFineLocationPermissionDenied()
+            expectMostRecentItem().should {
+                it.permissionStatus shouldNotBe PermissionStatus.Granted
+                it.wifiNames shouldNotBe expectedWifiNames
+            }
+
+            viewModel.onFineLocationPermissionResult(
+                isGranted = true,
+                shouldShowRationale = false,
+            )
             advanceUntilIdle()
 
-            expectMostRecentItem().permissionStatus shouldBe PermissionStatus.Denied
+            expectMostRecentItem().should {
+                it.permissionStatus shouldBe PermissionStatus.Granted
+                it.wifiNames shouldBe expectedWifiNames
+            }
         }
     }
+
+    @Test
+    fun onFineLocationPermissionResult_WhenGrantedAndWithoutFineLocation_DoesNotAutoStartMonitor() =
+        runTest {
+            initViewModel()
+
+            every { permissionChecker.hasFineLocation() } returns false
+
+            viewModel.screenState.test {
+                viewModel.onFineLocationPermissionResult(
+                    isGranted = true,
+                    shouldShowRationale = false,
+                )
+                advanceUntilIdle()
+
+                expectMostRecentItem().should {
+                    it.permissionStatus shouldNotBe PermissionStatus.Granted
+                    it.wifiNames shouldBe emptyList()
+                }
+            }
+        }
+
+    @Test
+    fun onFineLocationPermissionResult_WhenNotGrantedAndShouldShowRationale_SetsDeniedTemporarily() =
+        runTest {
+            initViewModel()
+
+            viewModel.screenState.test {
+                viewModel.onFineLocationPermissionResult(
+                    isGranted = false,
+                    shouldShowRationale = true,
+                )
+                advanceUntilIdle()
+
+                expectMostRecentItem().permissionStatus shouldBe PermissionStatus.DeniedTemporarily
+            }
+        }
+
+    @Test
+    fun onFineLocationPermissionResult_WhenNotGrantedAndShouldNotShowRationale_SetsDeniedPermanently() =
+        runTest {
+            initViewModel()
+
+            viewModel.screenState.test {
+                viewModel.onFineLocationPermissionResult(
+                    isGranted = false,
+                    shouldShowRationale = false,
+                )
+                advanceUntilIdle()
+
+                expectMostRecentItem().permissionStatus shouldBe PermissionStatus.DeniedPermanently
+            }
+        }
 
     private fun TestScope.initViewModel() {
         viewModel.screenState.launchIn(backgroundScope)

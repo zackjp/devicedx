@@ -8,7 +8,8 @@ data class WifiScreenState(
 )
 
 enum class PermissionStatus {
-    Denied,
+    DeniedPermanently,
+    DeniedTemporarily,
     Granted,
     Pending,
     Unknown,

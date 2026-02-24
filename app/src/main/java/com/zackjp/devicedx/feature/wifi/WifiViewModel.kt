@@ -77,7 +77,11 @@ class WifiViewModel @Inject constructor(
                     )
                 }
                 isMonitorActive.value = true
-            } else if (_screenState.value.permissionStatus == PermissionStatus.Unknown) {
+            } else if (_screenState.value.permissionStatus in listOf(
+                    PermissionStatus.Unknown,
+                    PermissionStatus.DeniedTemporarily
+                )
+            ) {
                 _screenState.update { it.copy(permissionStatus = PermissionStatus.Pending) }
                 _events.send(WifiScreenEvent.LaunchFineLocation)
             }
@@ -89,8 +93,19 @@ class WifiViewModel @Inject constructor(
         isMonitorActive.value = false
     }
 
-    fun onFineLocationPermissionDenied() {
-        _screenState.update { it.copy(permissionStatus = PermissionStatus.Denied) }
+    fun onFineLocationPermissionResult(isGranted: Boolean, shouldShowRationale: Boolean) {
+        if (isGranted) {
+            startMonitor()
+        } else {
+            _screenState.update {
+                it.copy(
+                    permissionStatus = if (shouldShowRationale)
+                        PermissionStatus.DeniedTemporarily
+                    else
+                        PermissionStatus.DeniedPermanently
+                )
+            }
+        }
     }
 
     private fun handleWifiScanResults(scanResults: List<ScanResult>) {
