@@ -79,39 +79,52 @@ fun WifiScreenRoot(
             }
 
             item {
-                val context = LocalContext.current
-
-                val (textResId, onClick) = when {
-                    state.permissionStatus != PermissionStatus.DeniedPermanently -> {
-                        when (state.isMonitorActive) {
-                            true -> R.string.wifi_stop_monitor to { viewModel.stopMonitor() }
-                            false -> R.string.wifi_start_monitor to { viewModel.startMonitor() }
-                        }
-                    }
-
-                    else -> {
-                        R.string.wifi_open_settings to {
-                            context.startActivity(
-                                Intent(Settings.ACTION_APPLICATION_DETAILS_SETTINGS).apply {
-                                    data = Uri.fromParts("package", context.packageName, null)
-                                }
-                            )
-                        }
-                    }
-                }
-
-                Button(onClick = onClick) {
-                    Text(stringResource(textResId))
-                }
-
-                when (state.permissionStatus) {
-                    PermissionStatus.DeniedTemporarily -> Text(stringResource(R.string.wifi_fine_location_permission_rationale))
-                    PermissionStatus.DeniedPermanently -> Text(stringResource(R.string.wifi_fine_location_permission_denied))
-                    else -> {}
-                }
+                StartMonitorButton(
+                    isMonitorActive = state.isMonitorActive,
+                    modifier = Modifier,
+                    onStartMonitor = { viewModel.startMonitor() },
+                    onStopMonitor = { viewModel.stopMonitor() },
+                    permissionStatus = state.permissionStatus,
+                )
             }
 
             wifiScanResults(state.wifiNames)
+        }
+    }
+}
+
+@Composable
+private fun StartMonitorButton(
+    isMonitorActive: Boolean,
+    modifier: Modifier = Modifier,
+    onStartMonitor: () -> Unit,
+    onStopMonitor: () -> Unit,
+    permissionStatus: PermissionStatus,
+) {
+    val context = LocalContext.current
+    val (textResId, onClick) = if (permissionStatus == PermissionStatus.DeniedPermanently) {
+        val launchSettingsAction = {
+            val launchSettingsIntent = Intent(Settings.ACTION_APPLICATION_DETAILS_SETTINGS).apply {
+                data = Uri.fromParts("package", context.packageName, null)
+            }
+            context.startActivity(launchSettingsIntent)
+        }
+        R.string.wifi_open_settings to launchSettingsAction
+    } else if (isMonitorActive) {
+        R.string.wifi_stop_monitor to onStopMonitor
+    } else {
+        R.string.wifi_start_monitor to onStartMonitor
+    }
+
+    Column(modifier) {
+        Button(onClick = onClick) {
+            Text(stringResource(textResId))
+        }
+
+        if (permissionStatus == PermissionStatus.DeniedTemporarily) {
+            Text(stringResource(R.string.wifi_fine_location_permission_rationale))
+        } else if (permissionStatus == PermissionStatus.DeniedPermanently) {
+            Text(stringResource(R.string.wifi_fine_location_permission_denied))
         }
     }
 }
