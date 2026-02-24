@@ -68,7 +68,6 @@ fun DeviceDxNav3Graph(
             entry<Route.WifiMonitor> {
                 WifiScreenRoot(
                     modifier = Modifier
-                        .padding(horizontal = 12.dp)
                         .padding(innerPadding)
                         .fillMaxWidth(),
                 )
