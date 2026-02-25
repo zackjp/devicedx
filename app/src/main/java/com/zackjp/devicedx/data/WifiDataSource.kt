@@ -7,6 +7,7 @@ import android.net.wifi.ScanResult
 import android.net.wifi.WifiManager
 import com.zackjp.devicedx.di.ApplicationScope
 import com.zackjp.devicedx.system.ReceiverManager
+import com.zackjp.devicedx.system.WifiInfo
 import com.zackjp.devicedx.system.WifiManagerWrapper
 import com.zackjp.devicedx.system.permissions.PermissionChecker
 import kotlinx.coroutines.CoroutineScope
@@ -46,21 +47,21 @@ class WifiDataSource @Inject constructor(
             emptyList(),
         )
 
-    private val wifiStrength = flow {
+    private val wifiInfo = flow {
         while (true) {
-            emit(wifiManagerWrapper.getWifiSignalStrength())
+            emit(wifiManagerWrapper.getWifiInfo())
             delay(2000)
         }
     }
         .stateIn(
             appScope,
             SharingStarted.WhileSubscribed(1500),
-            0
+            WifiInfo(),
         )
 
     fun getWifiScanFlow(): Flow<List<ScanResult>> = wifiScanResults
 
-    fun getWifiStrengthFlow(): Flow<Int> = wifiStrength
+    fun getWifiInfo(): Flow<WifiInfo> = wifiInfo
 
     private fun ProducerScope<List<ScanResult>>.createScanResultsIntentHandler(): (Context?, Intent?) -> Unit =
         handler@{ _, _ ->

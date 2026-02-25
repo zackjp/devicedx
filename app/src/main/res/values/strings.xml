@@ -9,6 +9,14 @@
     <string name="start_traffic_monitor">Start Traffic Monitor</string>
     <string name="stop_traffic_monitor">Stop Traffic Monitor</string>
     <string name="coming_soon_here">Coming soon here.</string>
+    <string name="wifi_connection_quality_excellent">Excellent</string>
+    <string name="wifi_connection_quality_fair">Fair</string>
+    <string name="wifi_connection_quality_good">Good</string>
+    <string name="wifi_connection_quality_poor">Poor</string>
+    <string name="wifi_info_grid_label_connection_quality">Connection Quality</string>
+    <string name="wifi_info_grid_label_ip_address">IP Address</string>
+    <string name="wifi_info_grid_label_link_speed">Link Speed</string>
+    <string name="wifi_info_grid_label_network">Network</string>
     <string name="wifi_open_settings">Wifi Monitor - Open Settings</string>
     <string name="wifi_start_monitor">Start Wifi Monitor</string>
     <string name="wifi_stop_monitor">Stop Wifi Monitor</string>

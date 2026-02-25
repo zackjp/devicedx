@@ -18,11 +18,18 @@ import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.widthIn
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.LazyListScope
+import androidx.compose.foundation.lazy.grid.GridCells
+import androidx.compose.foundation.lazy.grid.LazyVerticalGrid
+import androidx.compose.foundation.lazy.grid.items
 import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.pager.HorizontalPager
 import androidx.compose.foundation.pager.rememberPagerState
+import androidx.compose.foundation.text.BasicText
+import androidx.compose.foundation.text.TextAutoSize
 import androidx.compose.material3.Button
+import androidx.compose.material3.Card
 import androidx.compose.material3.Icon
+import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.PrimaryTabRow
 import androidx.compose.material3.Surface
 import androidx.compose.material3.Tab
@@ -36,11 +43,13 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.res.stringResource
+import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import androidx.core.app.ActivityCompat
 import androidx.hilt.lifecycle.viewmodel.compose.hiltViewModel
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import com.zackjp.devicedx.R
+import com.zackjp.devicedx.system.WifiInfo
 import kotlinx.coroutines.launch
 
 @Composable
@@ -106,7 +115,7 @@ fun WifiScreenRoot(
                             modifier = Modifier
                                 .fillMaxSize()
                                 .padding(16.dp),
-                            wifiStrength = state.wifiStrength,
+                            wifiInfo = state.wifiInfo,
                         )
                     }
 
@@ -129,23 +138,28 @@ fun WifiScreenRoot(
 @Composable
 private fun WifiStatsPage(
     modifier: Modifier = Modifier,
-    wifiStrength: Int,
+    wifiInfo: WifiInfo,
 ) {
     Column(
         modifier = modifier,
     ) {
-        WifiStrength(
+        WifiStrengthIcon(
             modifier = Modifier
                 .widthIn(128.dp, 196.dp)
                 .aspectRatio(1f)
                 .align(Alignment.CenterHorizontally),
-            wifiStrength,
+            wifiInfo.wifiStrength,
+        )
+
+        WifiDataGrid(
+            modifier = Modifier.fillMaxWidth(),
+            wifiInfo = wifiInfo,
         )
     }
 }
 
 @Composable
-fun WifiStrength(
+private fun WifiStrengthIcon(
     modifier: Modifier,
     wifiStrength: Int,
 ) {
@@ -166,6 +180,72 @@ fun WifiStrength(
                 .aspectRatio(1f),
             painter = painterResource(wifiIconId),
         )
+    }
+}
+
+@Composable
+private fun WifiDataGrid(
+    modifier: Modifier = Modifier,
+    wifiInfo: WifiInfo,
+) {
+    val connectionQuality = when {
+        wifiInfo.wifiStrength >= 3 -> stringResource(R.string.wifi_connection_quality_excellent)
+        wifiInfo.wifiStrength == 2 -> stringResource(R.string.wifi_connection_quality_good)
+        wifiInfo.wifiStrength == 1 -> stringResource(R.string.wifi_connection_quality_fair)
+        else -> stringResource(R.string.wifi_connection_quality_poor)
+    }
+    val stats = listOf(
+        stringResource(R.string.wifi_info_grid_label_network) to wifiInfo.ssid,
+        stringResource(R.string.wifi_info_grid_label_connection_quality) to connectionQuality,
+        stringResource(R.string.wifi_info_grid_label_ip_address) to wifiInfo.ipAddress,
+        stringResource(R.string.wifi_info_grid_label_link_speed) to "${wifiInfo.linkSpeedMbps} Mbps",
+    )
+
+    LazyVerticalGrid(
+        modifier = modifier,
+        columns = GridCells.Adaptive(128.dp),
+        userScrollEnabled = false,
+    ) {
+        items(stats) { stat ->
+            WifiInfoStat(
+                modifier = Modifier
+                    .height(96.dp)
+                    .padding(4.dp),
+                stat = stat,
+            )
+        }
+    }
+}
+
+@Composable
+private fun WifiInfoStat(
+    modifier: Modifier = Modifier,
+    stat: Pair<String, String>
+) {
+    Card(
+        modifier = modifier,
+    ) {
+        Column(
+            modifier = Modifier
+                .fillMaxWidth()
+                .padding(16.dp)
+        ) {
+            Text(
+                color = MaterialTheme.colorScheme.onSurfaceVariant,
+                modifier = Modifier.weight(1f),
+                style = MaterialTheme.typography.bodySmall,
+                text = stat.first,
+            )
+
+            val style = MaterialTheme.typography.headlineSmall
+            BasicText(
+                autoSize = TextAutoSize.StepBased(maxFontSize = style.fontSize),
+                maxLines = 1,
+                overflow = TextOverflow.MiddleEllipsis,
+                style = style,
+                text = stat.second,
+            )
+        }
     }
 }
 

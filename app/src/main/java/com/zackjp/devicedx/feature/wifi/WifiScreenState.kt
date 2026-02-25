@@ -1,10 +1,12 @@
 package com.zackjp.devicedx.feature.wifi
 
+import com.zackjp.devicedx.system.WifiInfo
+
 data class WifiScreenState(
     val isMonitorActive: Boolean,
     val permissionStatus: PermissionStatus,
     val wifiNames: List<String>,
-    val wifiStrength: Int,
+    val wifiInfo: WifiInfo,
 )
 
 enum class PermissionStatus {

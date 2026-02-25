@@ -4,6 +4,7 @@ import android.net.wifi.ScanResult
 import app.cash.turbine.test
 import com.zackjp.devicedx.concurrency.TestDispatcherProvider
 import com.zackjp.devicedx.data.WifiDataSource
+import com.zackjp.devicedx.system.WifiInfo
 import com.zackjp.devicedx.system.permissions.PermissionChecker
 import io.kotest.matchers.should
 import io.kotest.matchers.shouldBe
@@ -34,7 +35,7 @@ class WifiViewModelTest {
     private val wifiDataSource = mockk<WifiDataSource>()
     private val permissionChecker = mockk<PermissionChecker>()
 
-    private val wifiStrengthFlow = MutableSharedFlow<Int>()
+    private val wifiInfoFlow = MutableSharedFlow<WifiInfo>()
 
     private lateinit var viewModel: WifiViewModel
 
@@ -50,7 +51,7 @@ class WifiViewModelTest {
 
         every { permissionChecker.hasFineLocation() } returns false
         every { wifiDataSource.getWifiScanFlow() } returns flowOf(scanResults)
-        every { wifiDataSource.getWifiStrengthFlow() } returns wifiStrengthFlow
+        every { wifiDataSource.getWifiInfo() } returns wifiInfoFlow
         viewModel = WifiViewModel(
             dispatcherProvider = testDispatcherProvider,
             permissionChecker = permissionChecker,
@@ -68,13 +69,15 @@ class WifiViewModelTest {
         initViewModel()
 
         viewModel.screenState.test {
-            wifiStrengthFlow.emit(3)
+            val wifiInfo1 = WifiInfo(ipAddress = "ipAddress1", wifiStrength = 3)
+            wifiInfoFlow.emit(wifiInfo1)
             advanceUntilIdle()
-            expectMostRecentItem().wifiStrength shouldBe 3
+            expectMostRecentItem().wifiInfo shouldBe wifiInfo1
 
-            wifiStrengthFlow.emit(2)
+            val wifiInfo2 = WifiInfo(ipAddress = "ipAddress2", wifiStrength = 2)
+            wifiInfoFlow.emit(wifiInfo2)
             advanceUntilIdle()
-            expectMostRecentItem().wifiStrength shouldBe 2
+            expectMostRecentItem().wifiInfo shouldBe wifiInfo2
         }
     }
 
@@ -82,21 +85,21 @@ class WifiViewModelTest {
     fun init_WhenScreenStateReachesZeroSubscribers_AutoPausesSignalStrengthEmissions() = runTest {
         val emulatedUiSubscription = viewModel.screenState.launchIn(backgroundScope)
         val expectedTimeoutMs = 5000L
-        val expectedFinalEmission = 1
-        val unexpectedFinalEmission = 2
+        val expectedFinalEmission = WifiInfo(ipAddress = "info1", 1)
+        val unexpectedFinalEmission = WifiInfo(ipAddress = "info2", 2)
         advanceUntilIdle()
 
         emulatedUiSubscription.cancel()
         advanceTimeBy(expectedTimeoutMs - 1)
 
-        wifiStrengthFlow.emit(expectedFinalEmission)
+        wifiInfoFlow.emit(expectedFinalEmission)
         runCurrent()
-        viewModel.screenState.value.wifiStrength shouldBe expectedFinalEmission
+        viewModel.screenState.value.wifiInfo shouldBe expectedFinalEmission
 
         advanceTimeBy(1)
-        wifiStrengthFlow.emit(unexpectedFinalEmission)
+        wifiInfoFlow.emit(unexpectedFinalEmission)
         runCurrent()
-        viewModel.screenState.value.wifiStrength shouldBe expectedFinalEmission
+        viewModel.screenState.value.wifiInfo shouldBe expectedFinalEmission
     }
 
     @Test
