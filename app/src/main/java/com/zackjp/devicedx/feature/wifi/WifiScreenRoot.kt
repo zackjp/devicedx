@@ -133,7 +133,7 @@ private fun TabRow(
         tabNames.forEachIndexed { index, tab ->
             Tab(
                 selected = index == pagerState.currentPage,
-                onClick = { coroutineScope.launch { pagerState.scrollToPage(index) } },
+                onClick = { coroutineScope.launch { pagerState.animateScrollToPage(index) } },
                 modifier = Modifier.fillMaxWidth(),
                 text = { Text(tab) },
             )
