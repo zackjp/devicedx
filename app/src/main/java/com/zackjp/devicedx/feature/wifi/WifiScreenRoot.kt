@@ -23,6 +23,7 @@ import androidx.compose.foundation.lazy.grid.LazyVerticalGrid
 import androidx.compose.foundation.lazy.grid.items
 import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.pager.HorizontalPager
+import androidx.compose.foundation.pager.PagerState
 import androidx.compose.foundation.pager.rememberPagerState
 import androidx.compose.foundation.text.BasicText
 import androidx.compose.foundation.text.TextAutoSize
@@ -80,56 +81,97 @@ fun WifiScreenRoot(
     }
 
     Surface(modifier) {
-        Column(
+        ReadyContent(
             modifier = Modifier.fillMaxWidth(),
-        ) {
-            val pagerState = rememberPagerState { 2 }
-            val tabs = listOf(
-                stringResource(R.string.wifi_tab_stats),
-                stringResource(R.string.wifi_tab_scan),
-            )
-            val coroutineScope = rememberCoroutineScope()
+            onStartMonitor = viewModel::startMonitor,
+            onStopMonitor = viewModel::stopMonitor,
+            state = state,
+        )
+    }
+}
 
-            PrimaryTabRow(
+@Composable
+private fun ReadyContent(
+    modifier: Modifier = Modifier,
+    onStartMonitor: () -> Unit,
+    onStopMonitor: () -> Unit,
+    state: WifiScreenState,
+) {
+    Column(
+        modifier = modifier,
+    ) {
+        val pagerState = rememberPagerState { 2 }
+        val tabNames = listOf(
+            stringResource(R.string.wifi_tab_stats),
+            stringResource(R.string.wifi_tab_scan),
+        )
+
+        TabRow(
+            pagerState = pagerState,
+            tabNames = tabNames,
+        )
+        PagerContent(
+            pagerState = pagerState,
+            screenState = state,
+            onStartMonitor = onStartMonitor,
+            onStopMonitor = onStopMonitor,
+        )
+    }
+}
+
+@Composable
+private fun TabRow(
+    pagerState: PagerState,
+    tabNames: List<String>
+) {
+    val coroutineScope = rememberCoroutineScope()
+
+    PrimaryTabRow(
+        modifier = Modifier.fillMaxWidth(),
+        selectedTabIndex = pagerState.currentPage,
+    ) {
+        tabNames.forEachIndexed { index, tab ->
+            Tab(
+                selected = index == pagerState.currentPage,
+                onClick = { coroutineScope.launch { pagerState.scrollToPage(index) } },
                 modifier = Modifier.fillMaxWidth(),
-                selectedTabIndex = pagerState.currentPage,
-            ) {
-                tabs.forEachIndexed { index, tab ->
-                    Tab(
-                        selected = index == pagerState.currentPage,
-                        onClick = { coroutineScope.launch { pagerState.scrollToPage(index) } },
-                        modifier = Modifier.fillMaxWidth(),
-                        text = { Text(tab) },
-                    )
-                }
+                text = { Text(tab) },
+            )
+        }
+    }
+}
+
+@Composable
+private fun PagerContent(
+    pagerState: PagerState,
+    screenState: WifiScreenState,
+    onStartMonitor: () -> Unit,
+    onStopMonitor: () -> Unit
+) {
+    HorizontalPager(
+        modifier = Modifier.fillMaxWidth(),
+        state = pagerState,
+        verticalAlignment = Alignment.Top,
+    ) { pageIndex ->
+        when (pageIndex) {
+            0 -> {
+                WifiStatsPage(
+                    modifier = Modifier
+                        .fillMaxSize()
+                        .padding(16.dp),
+                    wifiInfo = screenState.wifiInfo,
+                )
             }
 
-            HorizontalPager(
-                modifier = Modifier.fillMaxWidth(),
-                state = pagerState,
-                verticalAlignment = Alignment.Top,
-            ) { pageIndex ->
-                when (pageIndex) {
-                    0 -> {
-                        WifiStatsPage(
-                            modifier = Modifier
-                                .fillMaxSize()
-                                .padding(16.dp),
-                            wifiInfo = state.wifiInfo,
-                        )
-                    }
-
-                    1 -> {
-                        WifiScanPage(
-                            isMonitorActive = state.isMonitorActive,
-                            modifier = Modifier.fillMaxSize(),
-                            onStartMonitor = viewModel::startMonitor,
-                            onStopMonitor = viewModel::stopMonitor,
-                            permissionStatus = state.permissionStatus,
-                            wifiNames = state.wifiNames
-                        )
-                    }
-                }
+            1 -> {
+                WifiScanPage(
+                    isMonitorActive = screenState.isMonitorActive,
+                    modifier = Modifier.fillMaxSize(),
+                    onStartMonitor = onStartMonitor,
+                    onStopMonitor = onStopMonitor,
+                    permissionStatus = screenState.permissionStatus,
+                    wifiNames = screenState.wifiNames
+                )
             }
         }
     }
