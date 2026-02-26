@@ -7,8 +7,11 @@ import android.provider.Settings
 import androidx.activity.compose.LocalActivity
 import androidx.activity.compose.rememberLauncherForActivityResult
 import androidx.activity.result.contract.ActivityResultContracts
+import androidx.compose.animation.core.Animatable
+import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.PaddingValues
+import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.aspectRatio
 import androidx.compose.foundation.layout.fillMaxSize
@@ -27,7 +30,6 @@ import androidx.compose.foundation.pager.PagerState
 import androidx.compose.foundation.pager.rememberPagerState
 import androidx.compose.foundation.text.BasicText
 import androidx.compose.foundation.text.TextAutoSize
-import androidx.compose.material3.Button
 import androidx.compose.material3.Card
 import androidx.compose.material3.Icon
 import androidx.compose.material3.MaterialTheme
@@ -38,12 +40,23 @@ import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableStateOf
+import androidx.compose.runtime.remember
 import androidx.compose.runtime.rememberCoroutineScope
+import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.graphics.graphicsLayer
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.res.stringResource
+import androidx.compose.ui.text.AnnotatedString
+import androidx.compose.ui.text.LinkAnnotation
+import androidx.compose.ui.text.SpanStyle
+import androidx.compose.ui.text.TextLinkStyles
+import androidx.compose.ui.text.buildAnnotatedString
+import androidx.compose.ui.text.fromHtml
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import androidx.core.app.ActivityCompat
@@ -52,6 +65,10 @@ import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import com.zackjp.devicedx.R
 import com.zackjp.devicedx.system.WifiInfo
 import kotlinx.coroutines.launch
+
+
+private val LightBlueLink = Color(0xFF4BB2F9)
+
 
 @Composable
 fun WifiScreenRoot(
@@ -300,63 +317,129 @@ private fun WifiScanPage(
     permissionStatus: PermissionStatus,
     wifiNames: List<String>,
 ) {
+    var scanResultsExpanded by remember { mutableStateOf(false) }
+
     LazyColumn(
         modifier = modifier,
         contentPadding = PaddingValues(vertical = 16.dp),
     ) {
         item {
-            StartMonitorButton(
-                isMonitorActive = isMonitorActive,
-                modifier = Modifier.padding(horizontal = 16.dp),
-                onStartMonitor = onStartMonitor,
-                onStopMonitor = onStopMonitor,
-                permissionStatus = permissionStatus,
+            CollapsibleButton(
+                isExpanded = scanResultsExpanded,
+                modifier = Modifier
+                    .clickable {
+                        scanResultsExpanded = !scanResultsExpanded
+                        if (scanResultsExpanded) {
+                            onStartMonitor()
+                        } else {
+                            onStopMonitor()
+                        }
+                    }
+                    .padding(horizontal = 16.dp, vertical = 8.dp)
+                    .fillMaxWidth(),
+                text = "Show Networks",
             )
             Spacer(Modifier.height(8.dp))
         }
 
-        wifiScanResults(
-            rowModifier = Modifier
-                .fillMaxWidth()
-                .padding(horizontal = 16.dp),
-            wifiNames = wifiNames,
-        )
+        if (scanResultsExpanded) {
+            when (permissionStatus) {
+                PermissionStatus.DeniedTemporarily -> {
+                    scanPermissionRationaleMessage(
+                        modifier = Modifier.padding(horizontal = 16.dp)
+                    )
+                }
+
+                PermissionStatus.DeniedPermanently -> {
+                    scanPermissionDeniedMessage(
+                        modifier = Modifier.padding(horizontal = 16.dp)
+                    )
+                }
+
+                else -> {
+                    wifiScanResults(
+                        rowModifier = Modifier
+                            .fillMaxWidth()
+                            .padding(horizontal = 16.dp),
+                        wifiNames = wifiNames,
+                    )
+                }
+            }
+        }
     }
 }
 
 @Composable
-private fun StartMonitorButton(
-    isMonitorActive: Boolean,
+private fun CollapsibleButton(
+    isExpanded: Boolean,
     modifier: Modifier = Modifier,
-    onStartMonitor: () -> Unit,
-    onStopMonitor: () -> Unit,
-    permissionStatus: PermissionStatus,
+    text: String,
 ) {
-    val context = LocalContext.current
-    val (textResId, onClick) = if (permissionStatus == PermissionStatus.DeniedPermanently) {
-        val launchSettingsAction = {
-            val launchSettingsIntent = Intent(Settings.ACTION_APPLICATION_DETAILS_SETTINGS).apply {
-                data = Uri.fromParts("package", context.packageName, null)
-            }
-            context.startActivity(launchSettingsIntent)
+    val animatable = remember { Animatable(0f) }
+    LaunchedEffect(isExpanded) {
+        if (isExpanded) {
+            animatable.animateTo(1f)
+        } else {
+            animatable.animateTo(0f)
         }
-        R.string.wifi_open_settings to launchSettingsAction
-    } else if (isMonitorActive) {
-        R.string.wifi_stop_monitor to onStopMonitor
-    } else {
-        R.string.wifi_start_monitor to onStartMonitor
     }
 
-    Column(modifier) {
-        Button(onClick = onClick) {
-            Text(stringResource(textResId))
+    Row(
+        modifier = modifier
+    ) {
+        Text(
+            modifier = Modifier.graphicsLayer {
+                rotationZ = 90f * animatable.value
+            },
+            text = ">",
+        )
+        Text(" $text")
+    }
+}
+
+private fun LazyListScope.scanPermissionRationaleMessage(
+    modifier: Modifier = Modifier,
+) {
+    item {
+        Text(
+            modifier = modifier,
+            text = stringResource(R.string.wifi_fine_location_permission_rationale),
+        )
+    }
+}
+
+private fun LazyListScope.scanPermissionDeniedMessage(
+    modifier: Modifier = Modifier,
+) {
+    item {
+        val context = LocalContext.current
+        val launchSettingsAction = {
+            context.startActivity(Intent(Settings.ACTION_APPLICATION_DETAILS_SETTINGS).apply {
+                this.data = Uri.fromParts("package", context.packageName, null)
+            })
         }
 
-        if (permissionStatus == PermissionStatus.DeniedTemporarily) {
-            Text(stringResource(R.string.wifi_fine_location_permission_rationale))
-        } else if (permissionStatus == PermissionStatus.DeniedPermanently) {
-            Text(stringResource(R.string.wifi_fine_location_permission_denied))
+        val stylizedText = buildAnnotatedString {
+            val rawString = stringResource(R.string.wifi_fine_location_permission_denied)
+            append(
+                AnnotatedString.fromHtml(
+                    htmlString = rawString,
+                    linkStyles = TextLinkStyles(style = SpanStyle(color = LightBlueLink)),
+                    linkInteractionListener = { linkAnnotation ->
+                        if (linkAnnotation is LinkAnnotation.Url) {
+                            if (linkAnnotation.url == "#app-permissions") {
+                                launchSettingsAction()
+                            }
+                        }
+                    }
+                )
+            )
         }
+
+        Text(
+            modifier = modifier,
+            text = stylizedText,
+        )
     }
 }
 

@@ -20,8 +20,8 @@
     <string name="wifi_open_settings">Wifi Monitor - Open Settings</string>
     <string name="wifi_start_monitor">Start Wifi Monitor</string>
     <string name="wifi_stop_monitor">Stop Wifi Monitor</string>
-    <string name="wifi_fine_location_permission_denied">To see available Wifi networks, the app needs access to fine location. You may change permissions in System Settings.</string>
-    <string name="wifi_fine_location_permission_rationale">To see available Wifi networks, the app needs access to fine location. Click again to request permission.</string>
+    <string name="wifi_fine_location_permission_denied">To show Wifi networks, this app needs Fine Location permission. Try again or change permission in &lt;a href="#app-permissions"&gt;System Settings&lt;/a&gt;.</string>
+    <string name="wifi_fine_location_permission_rationale">To show Wifi networks, this app needs Fine Location permission. Try again to request permission.</string>
     <string name="wifi_tab_stats">Wifi Stats</string>
     <string name="wifi_tab_scan">Wifi Scan</string>
 </resources>
