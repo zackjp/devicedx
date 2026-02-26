@@ -4,6 +4,7 @@ import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.aspectRatio
 import androidx.compose.foundation.layout.fillMaxWidth
+import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.LazyListScope
 import androidx.compose.material3.Button
@@ -17,6 +18,7 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.res.stringResource
+import androidx.compose.ui.unit.dp
 import androidx.hilt.lifecycle.viewmodel.compose.hiltViewModel
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import com.zackjp.devicedx.R
@@ -76,7 +78,8 @@ private fun LazyListScope.latencyGraph(
                     .clip(MaterialTheme.shapes.medium)
                     .background(Color.Black)
                     .fillMaxWidth()
-                    .aspectRatio(1.5f),
+                    .aspectRatio(1.5f)
+                    .padding(12.dp),
                 unitScaleY = 1000,
             )
         }

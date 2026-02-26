@@ -90,7 +90,8 @@ private fun TrafficMonitorScreen(
                 .clip(MaterialTheme.shapes.medium)
                 .background(Color.Black)
                 .fillMaxWidth()
-                .aspectRatio(ASPECT_RATIO_FLOAT),
+                .aspectRatio(ASPECT_RATIO_FLOAT)
+                .padding(12.dp),
         )
 
         Spacer(Modifier.height(12.dp))
