@@ -11,6 +11,7 @@ import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
+import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.res.stringResource
@@ -18,8 +19,8 @@ import androidx.hilt.lifecycle.viewmodel.compose.hiltViewModel
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import com.zackjp.devicedx.R
 import com.zackjp.devicedx.feature.latency.LatencyViewModel.Companion.MAX_LATENCY_DATA_POINTS
-import com.zackjp.devicedx.shared.ui.GraphEntry
 import com.zackjp.devicedx.shared.ui.Graph
+import com.zackjp.devicedx.shared.ui.GraphEntry
 
 @Composable
 fun LatencyScreenRoot(
@@ -30,20 +31,27 @@ fun LatencyScreenRoot(
 
     Surface(modifier) {
         LazyColumn {
-            item {
-                val (stringRes, onClick) = if (state.isMonitorActive)
-                    R.string.latency_monitor_stop to { viewModel.stopMonitor() }
-                else
-                    R.string.latency_monitor_start to { viewModel.startMonitor() }
-                Button(onClick = onClick) {
-                    Text(stringResource(stringRes))
-                }
-            }
-
             latencyGraph(
                 latencyHistory = state.latencyHistory,
                 modifier = Modifier.fillMaxWidth(),
             )
+
+            item {
+                val (textResId, onClick) = if (state.isMonitorActive)
+                    R.string.latency_monitor_stop to viewModel::stopMonitor
+                else
+                    R.string.latency_monitor_start to viewModel::startMonitor
+                Column(
+                    modifier = Modifier.fillMaxWidth(),
+                ) {
+                    Button(
+                        onClick = onClick,
+                        modifier = Modifier.align(Alignment.CenterHorizontally),
+                    ) {
+                        Text(stringResource(textResId))
+                    }
+                }
+            }
         }
     }
 }
