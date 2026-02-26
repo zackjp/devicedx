@@ -23,11 +23,12 @@ data class GraphEntry(val x: Float, val y: Float)
 @Composable
 fun Graph(
     data: List<GraphEntry>,
+    maxDataPoints: Int,
+    unitScaleY: Int,
     getY: (index: Int) -> Float?,
     getYTickLabel: (yValue: Float) -> String,
-    maxDataPoints: Int,
     modifier: Modifier = Modifier,
-    unitScaleY: Int,
+    lineColor: Color = Color.Magenta,
 ) {
     val textMeasurer = rememberTextMeasurer()
     Canvas(modifier) {
@@ -85,7 +86,7 @@ fun Graph(
          */
         drawPath(
             path = path,
-            color = Color.Magenta,
+            color = lineColor,
             style = Stroke(2.dp.toPx())
         )
 

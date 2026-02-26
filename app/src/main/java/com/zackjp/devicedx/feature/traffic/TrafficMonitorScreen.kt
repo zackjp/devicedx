@@ -2,9 +2,14 @@ package com.zackjp.devicedx.feature.traffic
 
 import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.Column
+import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.aspectRatio
 import androidx.compose.foundation.layout.fillMaxWidth
+import androidx.compose.foundation.layout.height
+import androidx.compose.foundation.layout.padding
 import androidx.compose.material3.Button
+import androidx.compose.material3.Card
+import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
@@ -13,6 +18,9 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.res.stringResource
+import androidx.compose.ui.text.buildAnnotatedString
+import androidx.compose.ui.text.withStyle
+import androidx.compose.ui.unit.dp
 import androidx.hilt.lifecycle.viewmodel.compose.hiltViewModel
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import com.zackjp.devicedx.R
@@ -30,6 +38,8 @@ import java.util.Locale
 private const val ASPECT_RATIO_NUMERATOR = 16
 private const val ASPECT_RATIO_DENOMINATOR = 9
 private const val ASPECT_RATIO_FLOAT = ASPECT_RATIO_NUMERATOR.toFloat() / ASPECT_RATIO_DENOMINATOR
+
+private val RxLineColor = Color.Magenta
 
 @Composable
 fun TrafficMonitorScreenRoot(
@@ -69,21 +79,22 @@ private fun TrafficMonitorScreen(
         horizontalAlignment = Alignment.CenterHorizontally,
         modifier = modifier,
     ) {
-        val trafficMetrics = state.trafficMetrics
-        val mostRecentStat = trafficMetrics.lastOrNull()
-        val rxBytes = mostRecentStat?.rxBytesPerSec ?: 0f
-        val (rxValue, rxUnit) = getBytesString(rxBytes)
-        Text(
-            modifier = Modifier.align(Alignment.Start),
-            text = "Recent Traffic Received: ${formatBigDecimal(rxValue)}$rxUnit/sec",
-        )
-
         TrafficGraphCard(
+            trafficMetrics = state.trafficMetrics,
+            rxLineColor = RxLineColor,
             modifier = Modifier
                 .background(Color.Black)
                 .fillMaxWidth()
                 .aspectRatio(ASPECT_RATIO_FLOAT),
-            state.trafficMetrics,
+        )
+
+        Spacer(Modifier.height(12.dp))
+
+        val trafficMetrics = state.trafficMetrics
+        val mostRecentStat = trafficMetrics.lastOrNull()
+        TrafficStat(
+            modifier = Modifier.fillMaxWidth(),
+            rxBytes = mostRecentStat?.rxBytesPerSec
         )
 
         if (!isInPipMode) {
@@ -101,23 +112,73 @@ private fun TrafficMonitorScreen(
 }
 
 @Composable
-private fun TrafficGraphCard(
+fun TrafficStat(
+    rxBytes: Float?,
     modifier: Modifier = Modifier,
+) {
+    Card(
+        modifier = modifier,
+    ) {
+        Column(
+            modifier = Modifier
+                .padding(12.dp)
+                .fillMaxWidth()
+        ) {
+            Text(
+                modifier = Modifier.fillMaxWidth(),
+                text = "Current Incoming",
+                style = MaterialTheme.typography.bodySmall,
+            )
+
+            val rxValueText: String
+            val rxUnitText: String
+            if (rxBytes == null) {
+                rxValueText = "-"
+                rxUnitText = "MB/s"
+            } else {
+                val displayStat = getBytesString(rxBytes)
+                rxValueText = displayStat.first.toPlainString()
+                rxUnitText = displayStat.second + "/s"
+            }
+
+            val formattedStat = buildAnnotatedString {
+                withStyle(style = MaterialTheme.typography.headlineMedium.toSpanStyle()) {
+                    append(rxValueText)
+                }
+                append(" ")
+                withStyle(style = MaterialTheme.typography.headlineSmall.toSpanStyle()) {
+                    append(rxUnitText)
+                }
+            }
+
+            Text(
+                modifier = Modifier,
+                text = formattedStat,
+            )
+        }
+    }
+}
+
+@Composable
+private fun TrafficGraphCard(
     trafficMetrics: List<TrafficMetric>,
+    rxLineColor: Color,
+    modifier: Modifier = Modifier,
 ) {
     Graph(
         data = trafficMetrics.mapIndexed { index, metric ->
             GraphEntry(index.toFloat(), metric.rxBytesPerSec)
         },
+        lineColor = rxLineColor,
+        maxDataPoints = TRAFFIC_METRICS_WINDOW_SECS,
+        unitScaleY = 128,
         getY = { if (it > trafficMetrics.lastIndex) 0f else trafficMetrics[it].rxBytesPerSec },
         getYTickLabel = { bytes ->
             getBytesString(bytes).run {
                 "${formatBigDecimal(first)}$second"
             }
         },
-        maxDataPoints = TRAFFIC_METRICS_WINDOW_SECS,
         modifier = modifier,
-        unitScaleY = 128,
     )
 }
 
