@@ -297,8 +297,10 @@ private fun WifiInfoStat(
             )
 
             val style = MaterialTheme.typography.headlineSmall
+            val onSurfaceColor = MaterialTheme.colorScheme.onSurface
             BasicText(
                 autoSize = TextAutoSize.StepBased(maxFontSize = style.fontSize),
+                color = { onSurfaceColor },
                 maxLines = 1,
                 overflow = TextOverflow.MiddleEllipsis,
                 style = style,
