@@ -186,17 +186,17 @@ private fun TrafficGraphCard(
 private fun getBytesString(bytes: Float): Pair<BigDecimal, String> {
     val bigDecimalValue = bytes.toBigDecimal()
     val unitString = when {
-        bigDecimalValue >= TB_SIZE -> "tb"
-        bigDecimalValue >= GB_SIZE -> "gb"
-        bigDecimalValue >= MB_SIZE -> "mb"
-        bigDecimalValue >= KB_SIZE -> "kb"
-        else -> "b"
+        bigDecimalValue >= TB_SIZE -> "TB"
+        bigDecimalValue >= GB_SIZE -> "GB"
+        bigDecimalValue >= MB_SIZE -> "MB"
+        bigDecimalValue >= KB_SIZE -> "KB"
+        else -> "B"
     }
     val unitValue = when (unitString) {
-        "b" -> bigDecimalValue
-        "kb" -> bigDecimalValue.divide(KB_SIZE, 2, RoundingMode.HALF_UP)
-        "mb" -> bigDecimalValue.divide(MB_SIZE, 2, RoundingMode.HALF_UP)
-        "gb" -> bigDecimalValue.divide(GB_SIZE, 2, RoundingMode.HALF_UP)
+        "B" -> bigDecimalValue
+        "KB" -> bigDecimalValue.divide(KB_SIZE, 2, RoundingMode.HALF_UP)
+        "MB" -> bigDecimalValue.divide(MB_SIZE, 2, RoundingMode.HALF_UP)
+        "GB" -> bigDecimalValue.divide(GB_SIZE, 2, RoundingMode.HALF_UP)
         else -> bigDecimalValue.divide(TB_SIZE, 2, RoundingMode.HALF_UP)
     }
     return Pair(unitValue, unitString)
