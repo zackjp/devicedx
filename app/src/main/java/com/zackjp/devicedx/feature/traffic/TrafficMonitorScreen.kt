@@ -1,15 +1,15 @@
 package com.zackjp.devicedx.feature.traffic
 
 import androidx.compose.foundation.background
+import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.aspectRatio
 import androidx.compose.foundation.layout.fillMaxWidth
-import androidx.compose.foundation.lazy.LazyColumn
-import androidx.compose.foundation.lazy.LazyListScope
 import androidx.compose.material3.Button
 import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
+import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.res.stringResource
@@ -65,59 +65,60 @@ private fun TrafficMonitorScreen(
     onStopMonitor: () -> Unit = {},
     state: TrafficScreenState,
 ) {
-    LazyColumn(modifier) {
-        if (!isInPipMode) {
-            item {
-                if (state.isMonitorActive) {
-                    Button(onClick = onStopMonitor) {
-                        Text(stringResource(R.string.stop_traffic_monitor))
-                    }
-                } else {
-                    Button(onClick = onStartMonitor) {
-                        Text(stringResource(R.string.start_traffic_monitor))
-                    }
-                }
-            }
+    Column(
+        horizontalAlignment = Alignment.CenterHorizontally,
+        modifier = modifier,
+    ) {
+        val trafficMetrics = state.trafficMetrics
+        val mostRecentStat = trafficMetrics.lastOrNull()
+        val rxBytes = mostRecentStat?.rxBytesPerSec ?: 0f
+        val (rxValue, rxUnit) = getBytesString(rxBytes)
+        Text(
+            modifier = Modifier.align(Alignment.Start),
+            text = "Recent Traffic Received: ${formatBigDecimal(rxValue)}$rxUnit/sec",
+        )
 
-            item {
-                val trafficMetrics = state.trafficMetrics
-                val mostRecentStat = trafficMetrics.lastOrNull()
-                val rxBytes = mostRecentStat?.rxBytesPerSec ?: 0f
-                val (rxValue, rxUnit) = getBytesString(rxBytes)
-                Text("Recent Traffic Received: ${formatBigDecimal(rxValue)}$rxUnit/sec")
-            }
-        }
-
-        trafficGraph(
+        TrafficGraphCard(
             modifier = Modifier
                 .background(Color.Black)
                 .fillMaxWidth()
                 .aspectRatio(ASPECT_RATIO_FLOAT),
             state.trafficMetrics,
         )
+
+        if (!isInPipMode) {
+            val (textResId, onClick) = if (state.isMonitorActive) {
+                R.string.stop_traffic_monitor to onStopMonitor
+            } else {
+                R.string.start_traffic_monitor to onStartMonitor
+            }
+            Button(onClick = onClick) {
+                Text(stringResource(textResId))
+            }
+        }
     }
+
 }
 
-private fun LazyListScope.trafficGraph(
+@Composable
+private fun TrafficGraphCard(
     modifier: Modifier = Modifier,
     trafficMetrics: List<TrafficMetric>,
 ) {
-    item {
-        Graph(
-            data = trafficMetrics.mapIndexed { index, metric ->
-                GraphEntry(index.toFloat(), metric.rxBytesPerSec)
-            },
-            getY = { if (it > trafficMetrics.lastIndex) 0f else trafficMetrics[it].rxBytesPerSec },
-            getYTickLabel = { bytes ->
-                getBytesString(bytes).run {
-                    "${formatBigDecimal(first)}$second"
-                }
-            },
-            maxDataPoints = TRAFFIC_METRICS_WINDOW_SECS,
-            modifier = modifier,
-            unitScaleY = 128,
-        )
-    }
+    Graph(
+        data = trafficMetrics.mapIndexed { index, metric ->
+            GraphEntry(index.toFloat(), metric.rxBytesPerSec)
+        },
+        getY = { if (it > trafficMetrics.lastIndex) 0f else trafficMetrics[it].rxBytesPerSec },
+        getYTickLabel = { bytes ->
+            getBytesString(bytes).run {
+                "${formatBigDecimal(first)}$second"
+            }
+        },
+        maxDataPoints = TRAFFIC_METRICS_WINDOW_SECS,
+        modifier = modifier,
+        unitScaleY = 128,
+    )
 }
 
 
@@ -141,7 +142,7 @@ private fun getBytesString(bytes: Float): Pair<BigDecimal, String> {
 }
 
 
-fun formatBigDecimal(number: BigDecimal): String {
+private fun formatBigDecimal(number: BigDecimal): String {
     val decimalFormat = DecimalFormat("#.##", DecimalFormatSymbols(Locale.US)).apply {
         isGroupingUsed = false
     }
