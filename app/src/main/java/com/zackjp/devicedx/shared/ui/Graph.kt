@@ -2,6 +2,7 @@ package com.zackjp.devicedx.shared.ui
 
 import androidx.compose.foundation.Canvas
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.remember
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.geometry.Offset
 import androidx.compose.ui.graphics.Color
@@ -31,6 +32,9 @@ fun Graph(
     lineColor: Color = Color.Magenta,
 ) {
     val textMeasurer = rememberTextMeasurer()
+    val path = remember { Path() }
+    path.rewind()
+
     Canvas(modifier) {
         if (data.isEmpty() || maxDataPoints <= 0) return@Canvas
 
@@ -41,8 +45,6 @@ fun Graph(
         val yTickIncrement = maxYTick / yTickCount
         val yTickSpacing = size.height / yTickCount
         val xTickSpacing = size.width / (maxDataPoints - 1)
-
-        val path = Path()
 
         // Map data to xy canvas coordinates
         val canvasPoints = (0 until maxDataPoints).map { xIndex ->
