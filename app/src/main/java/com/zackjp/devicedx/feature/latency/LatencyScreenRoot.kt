@@ -7,12 +7,14 @@ import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.LazyListScope
 import androidx.compose.material3.Button
+import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.res.stringResource
 import androidx.hilt.lifecycle.viewmodel.compose.hiltViewModel
@@ -71,6 +73,7 @@ private fun LazyListScope.latencyGraph(
                 getYTickLabel = { "${it.toInt()}ms" },
                 maxDataPoints = MAX_LATENCY_DATA_POINTS,
                 modifier = Modifier
+                    .clip(MaterialTheme.shapes.medium)
                     .background(Color.Black)
                     .fillMaxWidth()
                     .aspectRatio(1.5f),
