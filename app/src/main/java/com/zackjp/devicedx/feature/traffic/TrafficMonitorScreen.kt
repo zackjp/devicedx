@@ -9,6 +9,7 @@ import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
 import androidx.compose.material3.Button
 import androidx.compose.material3.Card
+import androidx.compose.material3.CardDefaults
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
@@ -29,6 +30,7 @@ import com.zackjp.devicedx.model.TrafficMetric
 import com.zackjp.devicedx.shared.ui.Graph
 import com.zackjp.devicedx.shared.ui.GraphEntry
 import com.zackjp.devicedx.shared.ui.rememberIsInPipMode
+import com.zackjp.devicedx.ui.theme.OffWhite
 import java.math.BigDecimal
 import java.math.RoundingMode
 import java.text.DecimalFormat
@@ -39,7 +41,8 @@ private const val ASPECT_RATIO_NUMERATOR = 16
 private const val ASPECT_RATIO_DENOMINATOR = 9
 private const val ASPECT_RATIO_FLOAT = ASPECT_RATIO_NUMERATOR.toFloat() / ASPECT_RATIO_DENOMINATOR
 
-private val RxLineColor = Color.Magenta
+private val RxLineColor = Color(0xFF6f9fc6)
+private val RxStatBgColor = Color(0xFF2B486A)
 
 @Composable
 fun TrafficMonitorScreenRoot(
@@ -94,6 +97,7 @@ private fun TrafficMonitorScreen(
         val mostRecentStat = trafficMetrics.lastOrNull()
         TrafficStat(
             modifier = Modifier.fillMaxWidth(),
+            bgColor = RxStatBgColor,
             rxBytes = mostRecentStat?.rxBytesPerSec
         )
 
@@ -113,11 +117,13 @@ private fun TrafficMonitorScreen(
 
 @Composable
 fun TrafficStat(
+    bgColor: Color,
     rxBytes: Float?,
     modifier: Modifier = Modifier,
 ) {
     Card(
         modifier = modifier,
+        colors = CardDefaults.cardColors(containerColor = bgColor),
     ) {
         Column(
             modifier = Modifier
@@ -126,6 +132,7 @@ fun TrafficStat(
         ) {
             Text(
                 modifier = Modifier.fillMaxWidth(),
+                color = OffWhite,
                 text = "Current Incoming",
                 style = MaterialTheme.typography.bodySmall,
             )
@@ -153,6 +160,7 @@ fun TrafficStat(
 
             Text(
                 modifier = Modifier,
+                color = OffWhite,
                 text = formattedStat,
             )
         }

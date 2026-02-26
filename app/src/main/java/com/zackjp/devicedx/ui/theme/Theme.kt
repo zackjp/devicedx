@@ -28,6 +28,7 @@ private val LightColorScheme = lightColorScheme(
     outlineVariant = Color.Magenta,
     onBackground = CharcoalGray,
     onSurface = CharcoalGray,
+    onSurfaceVariant = CharcoalGray,
 
     /* Other default colors to override
     background = Color(0xFFFFFBFE),
