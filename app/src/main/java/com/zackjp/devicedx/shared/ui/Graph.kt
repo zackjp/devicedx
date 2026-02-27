@@ -33,9 +33,9 @@ fun Graph(
 ) {
     val textMeasurer = rememberTextMeasurer()
     val path = remember { Path() }
-    path.rewind()
 
     Canvas(modifier) {
+        path.rewind()
         if (data.isEmpty() || maxDataPoints <= 0) return@Canvas
 
         val maxYValue = data.maxOfOrNull { it.y } ?: 0f
