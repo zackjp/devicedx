@@ -5,9 +5,13 @@ import androidx.compose.runtime.Composable
 import androidx.compose.runtime.remember
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.geometry.Offset
+import androidx.compose.ui.geometry.Rect
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.Path
+import androidx.compose.ui.graphics.drawscope.DrawScope
 import androidx.compose.ui.graphics.drawscope.Stroke
+import androidx.compose.ui.text.TextLayoutResult
+import androidx.compose.ui.text.TextMeasurer
 import androidx.compose.ui.text.TextStyle
 import androidx.compose.ui.text.drawText
 import androidx.compose.ui.text.rememberTextMeasurer
@@ -15,9 +19,14 @@ import androidx.compose.ui.unit.LayoutDirection
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import kotlin.math.abs
+import kotlin.math.max
 
+
+private const val CUBIC_SMOOTHING_FACTOR = 0.5f
 
 private val CANVAS_HEIGHT_THRESHOLD_FOR_FONT_SIZE = 300.dp
+
+private val DefaultChartOutlineColor = Color.LightGray
 
 data class GraphEntry(val x: Float, val y: Float)
 
@@ -40,80 +49,258 @@ fun Graph(
 
         val maxYValue = data.maxOfOrNull { it.y } ?: 0f
         val yAxisScale = maxYValue.getScaleCount(unitScaleY)
-        val maxYTick = unitScaleY.toBigDecimal().pow(yAxisScale).toInt()
+        val yTickMaxValue = unitScaleY.toBigDecimal().pow(yAxisScale).toInt()
         val yTickCount = 4
-        val yTickIncrement = maxYTick / yTickCount
-        val yTickSpacing = size.height / yTickCount
-        val xTickSpacing = size.width / (maxDataPoints - 1)
+        val yTickIncrement = yTickMaxValue / yTickCount
 
-        // Map data to xy canvas coordinates
-        val canvasPoints = (0 until maxDataPoints).map { xIndex ->
-            val dataIndex = when (layoutDirection) {
-                LayoutDirection.Ltr -> data.size - maxDataPoints + xIndex
-                LayoutDirection.Rtl -> data.lastIndex - xIndex
-            }
-
-            val rawY = getY(dataIndex)
-            val canvasX = xIndex * xTickSpacing
-            val canvasY = rawY?.let {
-                // normalize height within bounds and render starting from bottom
-                val normalizedHeight = (it / maxYTick) * size.height
-                size.height - normalizedHeight
-            } ?: 0f
-
-            Offset(canvasX, canvasY)
-        }
-
-        val firstPoint = canvasPoints[0]
-        path.moveTo(firstPoint.x, firstPoint.y)
-
-        for (i in 0 until canvasPoints.lastIndex) {
-            val currentPoint = canvasPoints[i]
-            val nextPoint = canvasPoints[i + 1]
-
-            val distanceX = nextPoint.x - currentPoint.x
-            val controlDistance = distanceX * CUBIC_SMOOTHING_FACTOR
-            path.cubicTo(
-                x1 = currentPoint.x + controlDistance,
-                y1 = currentPoint.y,
-                x2 = nextPoint.x - controlDistance,
-                y2 = nextPoint.y,
-                x3 = nextPoint.x,
-                y3 = nextPoint.y
-            )
-        }
+        val axisChartMarginPx = 8.dp.toPx()
 
         /*
-         * Draw line graph
+         * Calculate draw areas
          */
-        drawPath(
-            path = path,
-            color = lineColor,
-            style = Stroke(2.dp.toPx())
+        val yAxisLayoutResults = measureYAxisLabels(
+            yTickCount = yTickCount,
+            yTickIncrement = yTickIncrement,
+            textMeasurer = textMeasurer,
+            getYTickLabel = getYTickLabel,
         )
 
+        val yAxisLabelArea = calculateYAxisLabelArea(yAxisLayoutResults)
+
+        val halfYLabelHeight = (yAxisLayoutResults.maxLabelHeight / 2).toFloat()
+        val chartArea = calculateChartArea(yAxisLabelArea, axisChartMarginPx, halfYLabelHeight)
+
+        val xTickSpacing = chartArea.width / (maxDataPoints - 1)
+        val yTickSpacing = chartArea.height / yTickCount
+
         /*
-         * Draw y-axis labels
+         * Draw the chart elements
          */
-        // Adjust font size for resizable Canvas, eg, PictureInPicture mode
-        val fontScale = (size.height / CANVAS_HEIGHT_THRESHOLD_FOR_FONT_SIZE.toPx()).coerceIn(0.3f, 1.0f)
-        val style = with (TextStyle.Default) { copy(fontSize = 18.sp * fontScale) }
-        (0 until yTickCount).forEach {
-            val yTickValue = (it * yTickIncrement).toFloat()
-            val layoutResult = textMeasurer.measure(
-                text = getYTickLabel(yTickValue),
-                style = style,
-            )
-            val textOffset = Offset(
-                0f,
-                size.height - it * yTickSpacing - layoutResult.size.height,
-            )
-            drawText(
-                color = Color.White,
-                textLayoutResult = layoutResult,
-                topLeft = textOffset,
-            )
+        drawYAxisLabels(
+            yAxisLabelArea = yAxisLabelArea,
+            yAxisLayoutResults = yAxisLayoutResults,
+            yTickSpacing = yTickSpacing,
+        )
+
+        val canvasPoints = mapDataToCanvasPoints(
+            chartOffsetX = chartArea.left,
+            chartOffsetY = size.height - chartArea.bottom,
+            data = data,
+            xTickSpacing = xTickSpacing,
+            maxDataPoints = maxDataPoints,
+            maxYTickValue = yTickMaxValue,
+            getY = getY
+        )
+
+        drawDataLine(
+            canvasPoints = canvasPoints,
+            reusablePath = path,
+            lineColor = lineColor
+        )
+
+        drawChartOutline(
+            reusablePath = path,
+            chartArea = chartArea,
+            color = DefaultChartOutlineColor,
+        )
+
+    }
+}
+
+private fun DrawScope.calculateChartArea(
+    yAxisLabelArea: Rect,
+    axisChartMarginPx: Float,
+    halfYLabelHeight: Float
+): Rect = when (layoutDirection) {
+    LayoutDirection.Ltr -> {
+        Rect(
+            left = yAxisLabelArea.right + axisChartMarginPx,
+            top = halfYLabelHeight,
+            right = size.width,
+            bottom = size.height - halfYLabelHeight,
+        )
+    }
+
+    LayoutDirection.Rtl -> {
+        Rect(
+            left = 0f,
+            top = halfYLabelHeight,
+            right = yAxisLabelArea.left - axisChartMarginPx,
+            bottom = size.height - halfYLabelHeight,
+        )
+    }
+}
+
+private fun DrawScope.calculateYAxisLabelArea(
+    yAxisLayoutResults: AxisLayoutResults,
+): Rect = when (layoutDirection) {
+    LayoutDirection.Ltr -> {
+        Rect(
+            left = 0f,
+            top = 0f,
+            right = yAxisLayoutResults.maxLabelWidth.toFloat(),
+            bottom = 0f,
+        )
+    }
+
+    LayoutDirection.Rtl -> {
+        Rect(
+            left = size.width - yAxisLayoutResults.maxLabelWidth.toFloat(),
+            top = 0f,
+            right = size.width,
+            bottom = 0f,
+        )
+    }
+}
+
+private fun DrawScope.drawChartOutline(
+    reusablePath: Path,
+    chartArea: Rect,
+    color: Color,
+) {
+    val strokeWidth = 2.dp.toPx()
+    val topStart: Offset
+    val bottomStart: Offset
+    val bottomEnd: Offset
+    when (layoutDirection) {
+        LayoutDirection.Ltr -> {
+            topStart = chartArea.topLeft
+            bottomStart = chartArea.bottomLeft
+            bottomEnd = chartArea.bottomRight
         }
+
+        LayoutDirection.Rtl -> {
+            topStart = chartArea.topRight
+            bottomStart = chartArea.bottomRight
+            bottomEnd = chartArea.bottomLeft
+        }
+    }
+
+    reusablePath.rewind()
+    reusablePath.moveTo(topStart.x, topStart.y)
+    reusablePath.lineTo(bottomStart.x, bottomStart.y)
+    reusablePath.lineTo(bottomEnd.x, bottomEnd.y)
+
+    drawPath(
+        path = reusablePath,
+        color = color,
+        style = Stroke(width = strokeWidth)
+    )
+}
+
+private fun DrawScope.drawDataLine(
+    canvasPoints: List<Offset>,
+    reusablePath: Path,
+    lineColor: Color,
+) {
+    reusablePath.rewind()
+
+    val firstPoint = canvasPoints[0]
+    reusablePath.moveTo(firstPoint.x, firstPoint.y)
+
+    for (i in 0 until canvasPoints.lastIndex) {
+        val currentPoint = canvasPoints[i]
+        val nextPoint = canvasPoints[i + 1]
+
+        val distanceX = nextPoint.x - currentPoint.x
+        val controlDistance = distanceX * CUBIC_SMOOTHING_FACTOR
+        reusablePath.cubicTo(
+            x1 = currentPoint.x + controlDistance,
+            y1 = currentPoint.y,
+            x2 = nextPoint.x - controlDistance,
+            y2 = nextPoint.y,
+            x3 = nextPoint.x,
+            y3 = nextPoint.y
+        )
+    }
+
+    drawPath(
+        path = reusablePath,
+        color = lineColor,
+        style = Stroke(2.dp.toPx())
+    )
+}
+
+private fun DrawScope.mapDataToCanvasPoints(
+    chartOffsetX: Float,
+    chartOffsetY: Float,
+    data: List<GraphEntry>,
+    xTickSpacing: Float,
+    maxDataPoints: Int,
+    maxYTickValue: Int,
+    getY: (Int) -> Float?
+): List<Offset> = (0 until maxDataPoints).map { xIndex ->
+    val dataIndex = when (layoutDirection) {
+        LayoutDirection.Ltr -> data.size - maxDataPoints + xIndex
+        LayoutDirection.Rtl -> data.lastIndex - xIndex
+    }
+
+    val rawY = getY(dataIndex)
+    val canvasX = xIndex * xTickSpacing
+    val canvasY = rawY?.let {
+        // normalize height within bounds and render starting from bottom
+        val normalizedHeight = (it / maxYTickValue) * size.height
+        size.height - normalizedHeight
+    } ?: 0f
+
+    Offset(chartOffsetX + canvasX, canvasY - chartOffsetY)
+}
+
+private fun DrawScope.measureYAxisLabels(
+    yTickCount: Int,
+    yTickIncrement: Int,
+    textMeasurer: TextMeasurer,
+    getYTickLabel: (Float) -> String
+): AxisLayoutResults {
+    // Adjust font size for resizable Canvas, eg, PictureInPicture mode
+    val fontScale =
+        (size.height / CANVAS_HEIGHT_THRESHOLD_FOR_FONT_SIZE.toPx())
+            .coerceIn(0.3f, 1.0f)
+
+    val style = with(TextStyle.Default) {
+        copy(fontSize = 18.sp * fontScale)
+    }
+
+    var maxYLabelWidthPx = 0
+    var maxYLabelHeightPx = 0
+
+    val layoutResults = (0 until yTickCount).map {
+        val yTickValue = (it * yTickIncrement).toFloat()
+        val layoutResult = textMeasurer.measure(
+            text = getYTickLabel(yTickValue),
+            style = style,
+        )
+        maxYLabelWidthPx = max(maxYLabelWidthPx, layoutResult.size.width)
+        maxYLabelHeightPx = max(maxYLabelHeightPx, layoutResult.size.height)
+        layoutResult
+    }
+
+    return AxisLayoutResults(
+        textLayoutResults = layoutResults,
+        maxLabelWidth = maxYLabelWidthPx,
+        maxLabelHeight = maxYLabelHeightPx,
+    )
+}
+
+private fun DrawScope.drawYAxisLabels(
+    yAxisLabelArea: Rect,
+    yAxisLayoutResults: AxisLayoutResults,
+    yTickSpacing: Float,
+) {
+    val layoutResults = yAxisLayoutResults.textLayoutResults
+    val maxYLabelWidthPx = yAxisLayoutResults.maxLabelWidth
+
+    layoutResults.forEachIndexed { tickIndex, layoutResult ->
+        val x = when (layoutDirection) {
+            LayoutDirection.Ltr -> (maxYLabelWidthPx - layoutResult.size.width).toFloat()
+            LayoutDirection.Rtl -> yAxisLabelArea.left
+        }
+        val y = size.height - tickIndex * yTickSpacing - layoutResult.size.height // align to bottom
+        drawText(
+            color = Color.White,
+            textLayoutResult = layoutResult,
+            topLeft = Offset(x, y),
+        )
     }
 }
 
@@ -129,5 +316,8 @@ private fun Number.getScaleCount(unitScale: Int): Int {
     return count
 }
 
-
-private const val CUBIC_SMOOTHING_FACTOR = 0.5f
+private data class AxisLayoutResults(
+    val textLayoutResults: List<TextLayoutResult>,
+    val maxLabelWidth: Int,
+    val maxLabelHeight: Int,
+)
