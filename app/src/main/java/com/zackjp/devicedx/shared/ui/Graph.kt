@@ -10,6 +10,7 @@ import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.Path
 import androidx.compose.ui.graphics.drawscope.DrawScope
 import androidx.compose.ui.graphics.drawscope.Stroke
+import androidx.compose.ui.graphics.drawscope.withTransform
 import androidx.compose.ui.text.TextLayoutResult
 import androidx.compose.ui.text.TextMeasurer
 import androidx.compose.ui.text.TextStyle
@@ -44,66 +45,78 @@ fun Graph(
     val path = remember { Path() }
 
     Canvas(modifier) {
-        path.rewind()
-        if (data.isEmpty() || maxDataPoints <= 0) return@Canvas
-
-        val maxYValue = data.maxOfOrNull { it.y } ?: 0f
-        val yAxisScale = maxYValue.getScaleCount(unitScaleY)
-        val yTickMaxValue = unitScaleY.toBigDecimal().pow(yAxisScale).toInt()
-        val yTickCount = 4
-        val yTickIncrement = yTickMaxValue / yTickCount
-
-        val axisChartMarginPx = 8.dp.toPx()
-
+        val isRtl = layoutDirection == LayoutDirection.Rtl
         /*
-         * Calculate draw areas
+         * Strategy: Flip the canvas horizontally to support RTL. Within this block, calculate
+         * coordinates for LTR as normal. Only needs custom support when drawing text – just
+         * render the text backwards first using a scale(-1, 1) to negate this outer transform,
+         * which will again flip the text around.
          */
-        val yAxisLayoutResults = measureYAxisLabels(
-            yTickCount = yTickCount,
-            yTickIncrement = yTickIncrement,
-            textMeasurer = textMeasurer,
-            getYTickLabel = getYTickLabel,
-        )
+        withTransform({
+            if (isRtl) {
+                scale(-1f, 1f)
+            }
+        }) {
+            path.rewind()
+            if (data.isEmpty() || maxDataPoints <= 0) return@Canvas
 
-        val yAxisLabelArea = calculateYAxisLabelArea(yAxisLayoutResults)
+            val maxYValue = data.maxOfOrNull { it.y } ?: 0f
+            val yAxisScale = maxYValue.getScaleCount(unitScaleY)
+            val yTickMaxValue = unitScaleY.toBigDecimal().pow(yAxisScale).toInt()
+            val yTickCount = 4
+            val yTickIncrement = yTickMaxValue / yTickCount
 
-        val halfYLabelHeight = (yAxisLayoutResults.maxLabelHeight / 2).toFloat()
-        val chartArea = calculateChartArea(yAxisLabelArea, axisChartMarginPx, halfYLabelHeight)
+            val axisChartMarginPx = 8.dp.toPx()
 
-        val xTickSpacing = chartArea.width / (maxDataPoints - 1)
-        val yTickSpacing = chartArea.height / yTickCount
+            /*
+             * Calculate draw areas
+             */
+            val yAxisLayoutResults = measureYAxisLabels(
+                yTickCount = yTickCount,
+                yTickIncrement = yTickIncrement,
+                textMeasurer = textMeasurer,
+                getYTickLabel = getYTickLabel,
+            )
 
-        /*
-         * Draw the chart elements
-         */
-        drawYAxisLabels(
-            yAxisLabelArea = yAxisLabelArea,
-            yAxisLayoutResults = yAxisLayoutResults,
-            yTickSpacing = yTickSpacing,
-        )
+            val yAxisLabelArea = calculateYAxisLabelArea(yAxisLayoutResults)
 
-        val canvasPoints = mapDataToCanvasPoints(
-            chartOffsetX = chartArea.left,
-            chartOffsetY = size.height - chartArea.bottom,
-            data = data,
-            xTickSpacing = xTickSpacing,
-            maxDataPoints = maxDataPoints,
-            maxYTickValue = yTickMaxValue,
-            getY = getY
-        )
+            val halfYLabelHeight = (yAxisLayoutResults.maxLabelHeight / 2).toFloat()
+            val chartArea = calculateChartArea(yAxisLabelArea, axisChartMarginPx, halfYLabelHeight)
 
-        drawDataLine(
-            canvasPoints = canvasPoints,
-            reusablePath = path,
-            lineColor = lineColor
-        )
+            val xTickSpacing = chartArea.width / (maxDataPoints - 1)
+            val yTickSpacing = chartArea.height / yTickCount
 
-        drawChartOutline(
-            reusablePath = path,
-            chartArea = chartArea,
-            color = DefaultChartOutlineColor,
-        )
+            /*
+             * Draw the chart elements
+             */
+            drawYAxisLabels(
+                yAxisLabelArea = yAxisLabelArea,
+                yAxisLayoutResults = yAxisLayoutResults,
+                yTickSpacing = yTickSpacing,
+            )
 
+            val canvasPoints = mapDataToCanvasPoints(
+                chartOffsetX = chartArea.left,
+                chartOffsetY = size.height - chartArea.bottom,
+                data = data,
+                xTickSpacing = xTickSpacing,
+                maxDataPoints = maxDataPoints,
+                maxYTickValue = yTickMaxValue,
+                getY = getY
+            )
+
+            drawDataLine(
+                canvasPoints = canvasPoints,
+                reusablePath = path,
+                lineColor = lineColor
+            )
+
+            drawChartOutline(
+                reusablePath = path,
+                chartArea = chartArea,
+                color = DefaultChartOutlineColor,
+            )
+        }
     }
 }
 
@@ -111,47 +124,21 @@ private fun DrawScope.calculateChartArea(
     yAxisLabelArea: Rect,
     axisChartMarginPx: Float,
     halfYLabelHeight: Float
-): Rect = when (layoutDirection) {
-    LayoutDirection.Ltr -> {
-        Rect(
-            left = yAxisLabelArea.right + axisChartMarginPx,
-            top = halfYLabelHeight,
-            right = size.width,
-            bottom = size.height - halfYLabelHeight,
-        )
-    }
+): Rect = Rect(
+    left = yAxisLabelArea.right + axisChartMarginPx,
+    top = halfYLabelHeight,
+    right = size.width,
+    bottom = size.height - halfYLabelHeight,
+)
 
-    LayoutDirection.Rtl -> {
-        Rect(
-            left = 0f,
-            top = halfYLabelHeight,
-            right = yAxisLabelArea.left - axisChartMarginPx,
-            bottom = size.height - halfYLabelHeight,
-        )
-    }
-}
-
-private fun DrawScope.calculateYAxisLabelArea(
+private fun calculateYAxisLabelArea(
     yAxisLayoutResults: AxisLayoutResults,
-): Rect = when (layoutDirection) {
-    LayoutDirection.Ltr -> {
-        Rect(
-            left = 0f,
-            top = 0f,
-            right = yAxisLayoutResults.maxLabelWidth.toFloat(),
-            bottom = 0f,
-        )
-    }
-
-    LayoutDirection.Rtl -> {
-        Rect(
-            left = size.width - yAxisLayoutResults.maxLabelWidth.toFloat(),
-            top = 0f,
-            right = size.width,
-            bottom = 0f,
-        )
-    }
-}
+): Rect = Rect(
+    left = 0f,
+    top = 0f,
+    right = yAxisLayoutResults.maxLabelWidth.toFloat(),
+    bottom = 0f,
+)
 
 private fun DrawScope.drawChartOutline(
     reusablePath: Path,
@@ -159,22 +146,9 @@ private fun DrawScope.drawChartOutline(
     color: Color,
 ) {
     val strokeWidth = 2.dp.toPx()
-    val topStart: Offset
-    val bottomStart: Offset
-    val bottomEnd: Offset
-    when (layoutDirection) {
-        LayoutDirection.Ltr -> {
-            topStart = chartArea.topLeft
-            bottomStart = chartArea.bottomLeft
-            bottomEnd = chartArea.bottomRight
-        }
-
-        LayoutDirection.Rtl -> {
-            topStart = chartArea.topRight
-            bottomStart = chartArea.bottomRight
-            bottomEnd = chartArea.bottomLeft
-        }
-    }
+    val topStart = chartArea.topLeft
+    val bottomStart = chartArea.bottomLeft
+    val bottomEnd = chartArea.bottomRight
 
     reusablePath.rewind()
     reusablePath.moveTo(topStart.x, topStart.y)
@@ -230,10 +204,7 @@ private fun DrawScope.mapDataToCanvasPoints(
     maxYTickValue: Int,
     getY: (Int) -> Float?
 ): List<Offset> = (0 until maxDataPoints).map { xIndex ->
-    val dataIndex = when (layoutDirection) {
-        LayoutDirection.Ltr -> data.size - maxDataPoints + xIndex
-        LayoutDirection.Rtl -> data.lastIndex - xIndex
-    }
+    val dataIndex = data.size - maxDataPoints + xIndex
 
     val rawY = getY(dataIndex)
     val canvasX = xIndex * xTickSpacing
@@ -288,19 +259,29 @@ private fun DrawScope.drawYAxisLabels(
     yTickSpacing: Float,
 ) {
     val layoutResults = yAxisLayoutResults.textLayoutResults
-    val maxYLabelWidthPx = yAxisLayoutResults.maxLabelWidth
 
     layoutResults.forEachIndexed { tickIndex, layoutResult ->
-        val x = when (layoutDirection) {
-            LayoutDirection.Ltr -> (maxYLabelWidthPx - layoutResult.size.width).toFloat()
-            LayoutDirection.Rtl -> yAxisLabelArea.left
-        }
+        val x = yAxisLabelArea.right - layoutResult.size.width
         val y = size.height - tickIndex * yTickSpacing - layoutResult.size.height // align to bottom
-        drawText(
-            color = Color.White,
-            textLayoutResult = layoutResult,
-            topLeft = Offset(x, y),
-        )
+
+        val isRtl = layoutDirection == LayoutDirection.Rtl
+        withTransform({
+            // If RTL, render text flipped horizontally around its own center point
+            // to negate the outer canvas flip
+            if (isRtl) {
+                val centerPoint = Offset(
+                    x + (layoutResult.size.width / 2),
+                    y - (layoutResult.size.height / 2),
+                )
+                scale(-1f, 1f, centerPoint)
+            }
+        }) {
+            drawText(
+                color = Color.White,
+                textLayoutResult = layoutResult,
+                topLeft = Offset(x, y),
+            )
+        }
     }
 }
 
