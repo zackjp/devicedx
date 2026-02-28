@@ -29,15 +29,18 @@ private val CANVAS_HEIGHT_THRESHOLD_FOR_FONT_SIZE = 300.dp
 
 private val DefaultChartOutlineColor = Color.LightGray
 
-data class GraphEntry(val x: Float, val y: Float)
+data class GraphEntry(val x: Long, val y: Long)
+
 
 @Composable
 fun Graph(
     data: List<GraphEntry>,
-    maxDataPoints: Int,
-    unitScaleY: Int,
-    getY: (index: Int) -> Float?,
-    getYTickLabel: (yValue: Float) -> String,
+    xTickStartValue: Long,
+    xTickEndValue: Long,
+    yTickTopValue: Long,
+    yTickBottomValue: Long,
+    yTickCount: Int,
+    getYTickLabel: (yValue: Long) -> String,
     modifier: Modifier = Modifier,
     lineColor: Color = Color.Magenta,
 ) {
@@ -58,19 +61,14 @@ fun Graph(
             }
         }) {
             path.rewind()
-            if (data.isEmpty() || maxDataPoints <= 0) return@Canvas
-
-            val maxYValue = data.maxOfOrNull { it.y } ?: 0f
-            val yAxisScale = maxYValue.getScaleCount(unitScaleY)
-            val yTickMaxValue = unitScaleY.toBigDecimal().pow(yAxisScale).toInt()
-            val yTickCount = 4
-            val yTickIncrement = yTickMaxValue / yTickCount
+            if (data.isEmpty()) return@Canvas
 
             val axisChartMarginPx = 8.dp.toPx()
 
             /*
              * Calculate draw areas
              */
+            val yTickIncrement = (yTickTopValue - yTickBottomValue) / yTickCount
             val yAxisLayoutResults = measureYAxisLabels(
                 yTickCount = yTickCount,
                 yTickIncrement = yTickIncrement,
@@ -83,12 +81,11 @@ fun Graph(
             val halfYLabelHeight = (yAxisLayoutResults.maxLabelHeight / 2).toFloat()
             val chartArea = calculateChartArea(yAxisLabelArea, axisChartMarginPx, halfYLabelHeight)
 
-            val xTickSpacing = chartArea.width / (maxDataPoints - 1)
-            val yTickSpacing = chartArea.height / yTickCount
 
             /*
              * Draw the chart elements
              */
+            val yTickSpacing = chartArea.height / yTickCount
             drawYAxisLabels(
                 yAxisLabelArea = yAxisLabelArea,
                 yAxisLayoutResults = yAxisLayoutResults,
@@ -96,13 +93,12 @@ fun Graph(
             )
 
             val canvasPoints = mapDataToCanvasPoints(
-                chartOffsetX = chartArea.left,
-                chartOffsetY = size.height - chartArea.bottom,
                 data = data,
-                xTickSpacing = xTickSpacing,
-                maxDataPoints = maxDataPoints,
-                maxYTickValue = yTickMaxValue,
-                getY = getY
+                chartArea = chartArea,
+                xTickStartValue = xTickStartValue,
+                xTickEndValue = xTickEndValue,
+                yTickBottomValue = yTickBottomValue,
+                yTickTopValue = yTickTopValue,
             )
 
             drawDataLine(
@@ -195,33 +191,30 @@ private fun DrawScope.drawDataLine(
     )
 }
 
-private fun DrawScope.mapDataToCanvasPoints(
-    chartOffsetX: Float,
-    chartOffsetY: Float,
+private fun mapDataToCanvasPoints(
     data: List<GraphEntry>,
-    xTickSpacing: Float,
-    maxDataPoints: Int,
-    maxYTickValue: Int,
-    getY: (Int) -> Float?
-): List<Offset> = (0 until maxDataPoints).map { xIndex ->
-    val dataIndex = data.size - maxDataPoints + xIndex
+    chartArea: Rect,
+    xTickStartValue: Long,
+    xTickEndValue: Long,
+    yTickBottomValue: Long,
+    yTickTopValue: Long,
+): List<Offset> = data.map { graphEntry ->
+    // Normalize width & height within chart area bounds. Map Y coordinate starting from bottom
+    val xRangePercent =
+        (graphEntry.x - xTickStartValue).toFloat() / (xTickEndValue - xTickStartValue)
+    val yRangePercent =
+        (graphEntry.y - yTickBottomValue).toFloat() / (yTickTopValue - yTickBottomValue)
+    val normalizedX = xRangePercent * chartArea.width
+    val normalizedY = yRangePercent * chartArea.height
 
-    val rawY = getY(dataIndex)
-    val canvasX = xIndex * xTickSpacing
-    val canvasY = rawY?.let {
-        // normalize height within bounds and render starting from bottom
-        val normalizedHeight = (it / maxYTickValue) * size.height
-        size.height - normalizedHeight
-    } ?: 0f
-
-    Offset(chartOffsetX + canvasX, canvasY - chartOffsetY)
+    Offset(chartArea.left + normalizedX, chartArea.bottom - normalizedY)
 }
 
 private fun DrawScope.measureYAxisLabels(
     yTickCount: Int,
-    yTickIncrement: Int,
+    yTickIncrement: Long,
     textMeasurer: TextMeasurer,
-    getYTickLabel: (Float) -> String
+    getYTickLabel: (Long) -> String
 ): AxisLayoutResults {
     // Adjust font size for resizable Canvas, eg, PictureInPicture mode
     val fontScale =
@@ -236,7 +229,7 @@ private fun DrawScope.measureYAxisLabels(
     var maxYLabelHeightPx = 0
 
     val layoutResults = (0 until yTickCount).map {
-        val yTickValue = (it * yTickIncrement).toFloat()
+        val yTickValue = (it * yTickIncrement)
         val layoutResult = textMeasurer.measure(
             text = getYTickLabel(yTickValue),
             style = style,
@@ -285,7 +278,7 @@ private fun DrawScope.drawYAxisLabels(
     }
 }
 
-private fun Number.getScaleCount(unitScale: Int): Int {
+fun Number.getScaleCount(unitScale: Int): Int {
     var tmp = abs(toInt())
     if (tmp == 0) return 1
 

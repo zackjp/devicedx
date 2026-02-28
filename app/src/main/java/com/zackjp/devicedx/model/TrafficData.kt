@@ -3,9 +3,11 @@ package com.zackjp.devicedx.model
 data class TrafficData(
     val timestamp: Long,
     val rxBytes: Long,
-) { companion object }
+) {
+    companion object
+}
 
 data class TrafficMetric(
     val timestamp: Long,
-    val rxBytesPerSec: Float,
+    val rxBytesPerSec: Long,
 )

@@ -22,9 +22,10 @@ import androidx.compose.ui.unit.dp
 import androidx.hilt.lifecycle.viewmodel.compose.hiltViewModel
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import com.zackjp.devicedx.R
-import com.zackjp.devicedx.feature.latency.LatencyViewModel.Companion.MAX_LATENCY_DATA_POINTS
 import com.zackjp.devicedx.shared.ui.Graph
 import com.zackjp.devicedx.shared.ui.GraphEntry
+import com.zackjp.devicedx.shared.ui.getScaleCount
+import kotlin.math.max
 
 @Composable
 fun LatencyScreenRoot(
@@ -67,20 +68,34 @@ private fun LazyListScope.latencyGraph(
     item {
         Column(modifier) {
             Text(stringResource(R.string.latency_ms, latencyHistory.lastOrNull() ?: "-"))
+
+            val unitScaleY = 1000
+            val xMinValue = 0L
+            val xMaxValue = latencyHistory.lastIndex.toLong()
+            var yMaxValue = 0L
+            latencyHistory.forEach {
+                yMaxValue = max(yMaxValue, it)
+            }
+
+            val yAxisScale = yMaxValue.getScaleCount(unitScaleY)
+            val yTickMaxValue = unitScaleY.toBigDecimal().pow(yAxisScale).toLong()
+
             Graph(
                 data = latencyHistory.mapIndexed { index, latency ->
-                    GraphEntry(index.toFloat(), latency.toFloat())
+                    GraphEntry(index.toLong(), latency)
                 },
-                getY = { if (it !in 0..latencyHistory.lastIndex) 0f else latencyHistory[it].toFloat() },
                 getYTickLabel = { "${it.toInt()}ms" },
-                maxDataPoints = MAX_LATENCY_DATA_POINTS,
                 modifier = Modifier
                     .clip(MaterialTheme.shapes.medium)
                     .background(Color.Black)
                     .fillMaxWidth()
                     .aspectRatio(1.5f)
                     .padding(12.dp),
-                unitScaleY = 1000,
+                xTickStartValue = xMinValue,
+                xTickEndValue = xMaxValue,
+                yTickBottomValue = 0L,
+                yTickTopValue = yTickMaxValue,
+                yTickCount = 4,
             )
         }
     }

@@ -26,10 +26,10 @@ import androidx.compose.ui.unit.dp
 import androidx.hilt.lifecycle.viewmodel.compose.hiltViewModel
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import com.zackjp.devicedx.R
-import com.zackjp.devicedx.feature.traffic.TrafficViewModel.Companion.TRAFFIC_METRICS_WINDOW_SECS
 import com.zackjp.devicedx.model.TrafficMetric
 import com.zackjp.devicedx.shared.ui.Graph
 import com.zackjp.devicedx.shared.ui.GraphEntry
+import com.zackjp.devicedx.shared.ui.getScaleCount
 import com.zackjp.devicedx.shared.ui.rememberIsInPipMode
 import com.zackjp.devicedx.ui.theme.OffWhite
 import java.math.BigDecimal
@@ -37,6 +37,8 @@ import java.math.RoundingMode
 import java.text.DecimalFormat
 import java.text.DecimalFormatSymbols
 import java.util.Locale
+import kotlin.math.max
+import kotlin.math.min
 
 private const val ASPECT_RATIO_NUMERATOR = 16
 private const val ASPECT_RATIO_DENOMINATOR = 9
@@ -121,7 +123,7 @@ private fun TrafficMonitorScreen(
 @Composable
 fun TrafficStat(
     bgColor: Color,
-    rxBytes: Float?,
+    rxBytes: Long?,
     modifier: Modifier = Modifier,
 ) {
     Card(
@@ -176,14 +178,29 @@ private fun TrafficGraphCard(
     rxLineColor: Color,
     modifier: Modifier = Modifier,
 ) {
+    val unitScaleY = 128
+    var xMinValue = if (trafficMetrics.isEmpty()) 0L else trafficMetrics[0].timestamp
+    var xMaxValue = 0L
+    var yMaxValue = 0L
+    trafficMetrics.forEach {
+        xMinValue = min(xMinValue, it.timestamp)
+        xMaxValue = max(xMaxValue, it.timestamp)
+        yMaxValue = max(yMaxValue, it.rxBytesPerSec.toLong())
+    }
+
+    val yAxisScale = yMaxValue.getScaleCount(unitScaleY)
+    val yTickMaxValue = unitScaleY.toBigDecimal().pow(yAxisScale).toLong()
+
     Graph(
-        data = trafficMetrics.mapIndexed { index, metric ->
-            GraphEntry(index.toFloat(), metric.rxBytesPerSec)
+        data = trafficMetrics.map { metric ->
+            GraphEntry(metric.timestamp, metric.rxBytesPerSec)
         },
+        xTickStartValue = xMinValue,
+        xTickEndValue = xMaxValue,
+        yTickBottomValue = 0L,
+        yTickTopValue = yTickMaxValue,
+        yTickCount = 4,
         lineColor = rxLineColor,
-        maxDataPoints = TRAFFIC_METRICS_WINDOW_SECS,
-        unitScaleY = 128,
-        getY = { if (it > trafficMetrics.lastIndex) 0f else trafficMetrics[it].rxBytesPerSec },
         getYTickLabel = { bytes ->
             getBytesString(bytes).run {
                 "${formatBigDecimal(first)}$second"
@@ -194,7 +211,7 @@ private fun TrafficGraphCard(
 }
 
 
-private fun getBytesString(bytes: Float): Pair<BigDecimal, String> {
+private fun getBytesString(bytes: Long): Pair<BigDecimal, String> {
     val bigDecimalValue = bytes.toBigDecimal()
     val unitString = when {
         bigDecimalValue >= TB_SIZE -> "TB"
