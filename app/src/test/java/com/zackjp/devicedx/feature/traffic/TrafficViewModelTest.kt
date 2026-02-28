@@ -67,8 +67,8 @@ class TrafficViewModelTest {
     fun stopMonitoring_WhenMonitorActive_StopsNewEmissions() = runTest {
         initViewModel()
 
-        val expectedMetrics = listOf(TrafficMetric(11, 22f), TrafficMetric(33, 44f))
-        val unexpectedMetrics = listOf(TrafficMetric(55, 66f), TrafficMetric(77, 88f))
+        val expectedMetrics = listOf(TrafficMetric(11, 22), TrafficMetric(33, 44))
+        val unexpectedMetrics = listOf(TrafficMetric(55, 66), TrafficMetric(77, 88))
 
         every { trafficGraphUtil.calculateMetrics(any(), any(), any()) } returns emptyList()
         every { clock.now() } returns Instant.fromEpochMilliseconds(1234)
@@ -103,8 +103,8 @@ class TrafficViewModelTest {
         advanceUntilIdle()
         val expectedTimeoutMs = 5000L
 
-        val firstMetrics = listOf(TrafficMetric(11, 22f), TrafficMetric(33, 44f))
-        val secondMetrics = listOf(TrafficMetric(55, 66f), TrafficMetric(77, 88f))
+        val firstMetrics = listOf(TrafficMetric(11, 22), TrafficMetric(33, 44))
+        val secondMetrics = listOf(TrafficMetric(55, 66), TrafficMetric(77, 88))
 
         every { trafficGraphUtil.calculateMetrics(any(), any(), any()) } returns emptyList()
         every { clock.now() } returns Instant.fromEpochMilliseconds(1234)
@@ -172,7 +172,7 @@ class TrafficViewModelTest {
         val dataA = TrafficData.fake(1)
         val dataB = TrafficData.fake(3)
         val dataC = TrafficData.fake(5)
-        val expectedMetrics = listOf(TrafficMetric(111, 222f), TrafficMetric(333, 444f))
+        val expectedMetrics = listOf(TrafficMetric(111, 222), TrafficMetric(333, 444))
         val expectedClockTime = 12345L
         every { clock.now() } returns Instant.fromEpochMilliseconds(expectedClockTime)
         // define the more general mock first

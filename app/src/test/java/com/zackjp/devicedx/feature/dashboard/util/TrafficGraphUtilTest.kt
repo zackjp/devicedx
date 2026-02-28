@@ -36,7 +36,7 @@ class TrafficGraphUtilTest {
             1234L,
             1.seconds,
         ) shouldContainExactly listOf(
-            TrafficMetric(1000, 0f),
+            TrafficMetric(1000, 0),
         )
     }
 
@@ -53,9 +53,9 @@ class TrafficGraphUtilTest {
             partialBucketTime + 1,
             3.seconds,
         ) shouldContainExactly listOf(
-            TrafficMetric(1000, 0f),
-            TrafficMetric(2000, 2f),
-            TrafficMetric(3000, 4f),
+            TrafficMetric(1000, 0),
+            TrafficMetric(2000, 2),
+            TrafficMetric(3000, 4),
         )
     }
 
@@ -70,11 +70,11 @@ class TrafficGraphUtilTest {
             5500L,
             5.seconds,
         ) shouldContainExactly listOf(
-            TrafficMetric(1000, 0f),
-            TrafficMetric(2000, 0f),
-            TrafficMetric(3000, 0f),
-            TrafficMetric(4000, 0f),
-            TrafficMetric(5000, 4f),
+            TrafficMetric(1000, 0),
+            TrafficMetric(2000, 0),
+            TrafficMetric(3000, 0),
+            TrafficMetric(4000, 0),
+            TrafficMetric(5000, 4),
         )
     }
 
@@ -91,9 +91,9 @@ class TrafficGraphUtilTest {
             3000L,
             3.seconds,
         ) shouldContainExactly listOf(
-            TrafficMetric(1000, 0f),
-            TrafficMetric(2000, 6f),
-            TrafficMetric(3000, 10f),
+            TrafficMetric(1000, 0),
+            TrafficMetric(2000, 6),
+            TrafficMetric(3000, 10),
         )
     }
 
