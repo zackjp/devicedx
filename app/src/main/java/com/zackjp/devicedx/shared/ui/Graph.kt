@@ -29,12 +29,16 @@ private val CANVAS_HEIGHT_THRESHOLD_FOR_FONT_SIZE = 300.dp
 
 private val DefaultChartOutlineColor = Color.LightGray
 
+data class LineConfig(
+    val data: List<GraphEntry>,
+    val color: Color,
+)
 data class GraphEntry(val x: Long, val y: Long)
 
 
 @Composable
 fun Graph(
-    data: List<GraphEntry>,
+    lines: List<LineConfig>,
     xTickStartValue: Long,
     xTickEndValue: Long,
     yTickTopValue: Long,
@@ -42,7 +46,6 @@ fun Graph(
     yTickCount: Int,
     getYTickLabel: (yValue: Long) -> String,
     modifier: Modifier = Modifier,
-    lineColor: Color = Color.Magenta,
 ) {
     val textMeasurer = rememberTextMeasurer()
     val path = remember { Path() }
@@ -61,7 +64,7 @@ fun Graph(
             }
         }) {
             path.rewind()
-            if (data.isEmpty()) return@Canvas
+            if (lines.all { it.data.isEmpty() }) return@Canvas
 
             val axisChartMarginPx = 8.dp.toPx()
 
@@ -92,20 +95,22 @@ fun Graph(
                 yTickSpacing = yTickSpacing,
             )
 
-            val canvasPoints = mapDataToCanvasPoints(
-                data = data,
-                chartArea = chartArea,
-                xTickStartValue = xTickStartValue,
-                xTickEndValue = xTickEndValue,
-                yTickBottomValue = yTickBottomValue,
-                yTickTopValue = yTickTopValue,
-            )
+            lines.forEach { lineConfig ->
+                val canvasPoints = mapDataToCanvasPoints(
+                    data = lineConfig.data,
+                    chartArea = chartArea,
+                    xTickStartValue = xTickStartValue,
+                    xTickEndValue = xTickEndValue,
+                    yTickBottomValue = yTickBottomValue,
+                    yTickTopValue = yTickTopValue,
+                )
 
-            drawDataLine(
-                canvasPoints = canvasPoints,
-                reusablePath = path,
-                lineColor = lineColor
-            )
+                drawDataLine(
+                    canvasPoints = canvasPoints,
+                    reusablePath = path,
+                    lineColor = lineConfig.color
+                )
+            }
 
             drawChartOutline(
                 reusablePath = path,

@@ -29,6 +29,7 @@ import com.zackjp.devicedx.R
 import com.zackjp.devicedx.model.TrafficMetric
 import com.zackjp.devicedx.shared.ui.Graph
 import com.zackjp.devicedx.shared.ui.GraphEntry
+import com.zackjp.devicedx.shared.ui.LineConfig
 import com.zackjp.devicedx.shared.ui.getScaleCount
 import com.zackjp.devicedx.shared.ui.rememberIsInPipMode
 import com.zackjp.devicedx.ui.theme.OffWhite
@@ -192,15 +193,19 @@ private fun TrafficGraphCard(
     val yTickMaxValue = unitScaleY.toBigDecimal().pow(yAxisScale).toLong()
 
     Graph(
-        data = trafficMetrics.map { metric ->
-            GraphEntry(metric.timestamp, metric.rxBytesPerSec)
-        },
+        lines = listOf(
+            LineConfig(
+                data = trafficMetrics.map { metric ->
+                    GraphEntry(metric.timestamp, metric.rxBytesPerSec)
+                },
+                color = rxLineColor
+            ),
+        ),
         xTickStartValue = xMinValue,
         xTickEndValue = xMaxValue,
         yTickBottomValue = 0L,
         yTickTopValue = yTickMaxValue,
         yTickCount = 4,
-        lineColor = rxLineColor,
         getYTickLabel = { bytes ->
             getBytesString(bytes).run {
                 "${formatBigDecimal(first)}$second"

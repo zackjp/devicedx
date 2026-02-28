@@ -24,6 +24,7 @@ import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import com.zackjp.devicedx.R
 import com.zackjp.devicedx.shared.ui.Graph
 import com.zackjp.devicedx.shared.ui.GraphEntry
+import com.zackjp.devicedx.shared.ui.LineConfig
 import com.zackjp.devicedx.shared.ui.getScaleCount
 import kotlin.math.max
 
@@ -81,9 +82,14 @@ private fun LazyListScope.latencyGraph(
             val yTickMaxValue = unitScaleY.toBigDecimal().pow(yAxisScale).toLong()
 
             Graph(
-                data = latencyHistory.mapIndexed { index, latency ->
-                    GraphEntry(index.toLong(), latency)
-                },
+                lines = listOf(
+                    LineConfig(
+                        data = latencyHistory.mapIndexed { index, latency ->
+                            GraphEntry(index.toLong(), latency)
+                        },
+                        color = Color.Magenta,
+                    )
+                ),
                 getYTickLabel = { "${it.toInt()}ms" },
                 modifier = Modifier
                     .clip(MaterialTheme.shapes.medium)
