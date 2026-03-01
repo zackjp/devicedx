@@ -9,6 +9,8 @@
     <string name="start_traffic_monitor">Start Traffic Monitor</string>
     <string name="stop_traffic_monitor">Stop Traffic Monitor</string>
     <string name="coming_soon_here">Coming soon here.</string>
+    <string name="traffic_stat_label_rx">Current Incoming</string>
+    <string name="traffic_stat_label_tx">Current Outgoing</string>
     <string name="wifi_connection_quality_excellent">Excellent</string>
     <string name="wifi_connection_quality_fair">Fair</string>
     <string name="wifi_connection_quality_good">Good</string>

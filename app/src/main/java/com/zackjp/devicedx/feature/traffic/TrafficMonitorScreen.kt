@@ -2,11 +2,13 @@ package com.zackjp.devicedx.feature.traffic
 
 import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.Column
+import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.aspectRatio
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
+import androidx.compose.foundation.layout.width
 import androidx.compose.material3.Button
 import androidx.compose.material3.Card
 import androidx.compose.material3.CardDefaults
@@ -48,6 +50,7 @@ private const val ASPECT_RATIO_FLOAT = ASPECT_RATIO_NUMERATOR.toFloat() / ASPECT
 private val RxLineColor = Color(0xFF6F9FC6)
 private val TxLineColor = Color(0xFF8FC2A6)
 private val RxStatBgColor = Color(0xFF2B486A)
+private val TxStatBgColor = Color(0xFF2C4F36)
 
 @Composable
 fun TrafficMonitorScreenRoot(
@@ -99,17 +102,16 @@ private fun TrafficMonitorScreen(
                 .padding(12.dp),
         )
 
-        Spacer(Modifier.height(12.dp))
-
-        val trafficMetrics = state.trafficMetrics
-        val mostRecentStat = trafficMetrics.lastOrNull()
-        TrafficStat(
-            modifier = Modifier.fillMaxWidth(),
-            bgColor = RxStatBgColor,
-            rxBytes = mostRecentStat?.rxBytesPerSec
-        )
-
         if (!isInPipMode) {
+            Spacer(Modifier.height(12.dp))
+
+            val trafficMetrics = state.trafficMetrics
+            val mostRecentStat = trafficMetrics.lastOrNull()
+            TrafficStatsRow(
+                modifier = Modifier.fillMaxWidth(),
+                mostRecentStat = mostRecentStat,
+            )
+
             val (textResId, onClick) = if (state.isMonitorActive) {
                 R.string.stop_traffic_monitor to onStopMonitor
             } else {
@@ -124,14 +126,37 @@ private fun TrafficMonitorScreen(
 }
 
 @Composable
-fun TrafficStat(
-    bgColor: Color,
-    rxBytes: Long?,
+private fun TrafficStatsRow(
     modifier: Modifier = Modifier,
+    mostRecentStat: TrafficMetric?,
+) {
+    Row(modifier = modifier) {
+        TrafficStat(
+            modifier = Modifier.weight(1f),
+            cardColor = RxStatBgColor,
+            bytes = mostRecentStat?.rxBytesPerSec,
+            label = stringResource(R.string.traffic_stat_label_rx),
+        )
+        Spacer(Modifier.width(8.dp))
+        TrafficStat(
+            modifier = Modifier.weight(1f),
+            cardColor = TxStatBgColor,
+            bytes = mostRecentStat?.txBytesPerSec,
+            label = stringResource(R.string.traffic_stat_label_tx),
+        )
+    }
+}
+
+@Composable
+fun TrafficStat(
+    modifier: Modifier = Modifier,
+    cardColor: Color,
+    bytes: Long?,
+    label: String,
 ) {
     Card(
         modifier = modifier,
-        colors = CardDefaults.cardColors(containerColor = bgColor),
+        colors = CardDefaults.cardColors(containerColor = cardColor),
     ) {
         Column(
             modifier = Modifier
@@ -141,28 +166,28 @@ fun TrafficStat(
             Text(
                 modifier = Modifier.fillMaxWidth(),
                 color = OffWhite,
-                text = "Current Incoming",
+                text = label,
                 style = MaterialTheme.typography.bodySmall,
             )
 
-            val rxValueText: String
-            val rxUnitText: String
-            if (rxBytes == null) {
-                rxValueText = "-"
-                rxUnitText = "MB/s"
+            val valueText: String
+            val unitText: String
+            if (bytes == null) {
+                valueText = "-"
+                unitText = "MB/s"
             } else {
-                val displayStat = getBytesString(rxBytes)
-                rxValueText = displayStat.first.toPlainString()
-                rxUnitText = displayStat.second + "/s"
+                val displayStat = getBytesString(bytes)
+                valueText = displayStat.first.toPlainString()
+                unitText = displayStat.second + "/s"
             }
 
             val formattedStat = buildAnnotatedString {
                 withStyle(style = MaterialTheme.typography.headlineMedium.toSpanStyle()) {
-                    append(rxValueText)
+                    append(valueText)
                 }
                 append(" ")
                 withStyle(style = MaterialTheme.typography.headlineSmall.toSpanStyle()) {
-                    append(rxUnitText)
+                    append(unitText)
                 }
             }
 
