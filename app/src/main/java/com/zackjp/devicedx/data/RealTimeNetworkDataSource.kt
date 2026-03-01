@@ -12,27 +12,30 @@ import kotlinx.coroutines.flow.flow
 import kotlinx.coroutines.flow.shareIn
 import javax.inject.Inject
 import javax.inject.Singleton
+import kotlin.time.Clock
 
 
 @Singleton
 class RealTimeNetworkDataSource @Inject constructor(
-    @ApplicationScope appScope: CoroutineScope,
     networkUtility: NetworkUtility,
+    private val clock: Clock,
+    @ApplicationScope appScope: CoroutineScope,
     trafficStatsWrapper: TrafficStatsWrapper,
 ) {
 
     private val latencyMillisFlow = flow {
-        while(true) {
+        while (true) {
             emit(networkUtility.calculateLatency())
             delay(2000)
         }
     }.shareIn(appScope, SharingStarted.WhileSubscribed(5000), replay = 0)
 
     private val trafficStats = flow {
-        while(true) {
+        while (true) {
             val dataPoint = TrafficData(
-                timestamp = System.currentTimeMillis(),
+                timestamp = clock.now().toEpochMilliseconds(),
                 rxBytes = trafficStatsWrapper.getTotalRxBytes(),
+                txBytes = trafficStatsWrapper.getTotalTxBytes(),
             )
             emit(dataPoint)
             delay(1000)

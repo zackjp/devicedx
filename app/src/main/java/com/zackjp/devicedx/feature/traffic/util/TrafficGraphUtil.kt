@@ -43,11 +43,16 @@ class TrafficGraphUtil @Inject constructor() {
             val currentSecData = bucketedDataBySecond[currentSec]
             val priorSecData = bucketedDataBySecond[priorSec]
             if (currentSecData == null || priorSecData == null) {
-                TrafficMetric(currentSec, 0L)
+                TrafficMetric(
+                    timestamp = currentSec,
+                    rxBytesPerSec = 0L,
+                    txBytesPerSec = 0L,
+                )
             } else {
                 TrafficMetric(
-                    currentSec,
-                    (currentSecData.rxBytes - priorSecData.rxBytes).coerceAtLeast(0)
+                    timestamp = currentSec,
+                    rxBytesPerSec = (currentSecData.rxBytes - priorSecData.rxBytes).coerceAtLeast(0),
+                    txBytesPerSec = (currentSecData.txBytes - priorSecData.txBytes).coerceAtLeast(0),
                 )
             }
         }

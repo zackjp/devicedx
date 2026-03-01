@@ -45,7 +45,8 @@ private const val ASPECT_RATIO_NUMERATOR = 16
 private const val ASPECT_RATIO_DENOMINATOR = 9
 private const val ASPECT_RATIO_FLOAT = ASPECT_RATIO_NUMERATOR.toFloat() / ASPECT_RATIO_DENOMINATOR
 
-private val RxLineColor = Color(0xFF6f9fc6)
+private val RxLineColor = Color(0xFF6F9FC6)
+private val TxLineColor = Color(0xFF8FC2A6)
 private val RxStatBgColor = Color(0xFF2B486A)
 
 @Composable
@@ -89,6 +90,7 @@ private fun TrafficMonitorScreen(
         TrafficGraphCard(
             trafficMetrics = state.trafficMetrics,
             rxLineColor = RxLineColor,
+            txLineColor = TxLineColor,
             modifier = Modifier
                 .clip(MaterialTheme.shapes.medium)
                 .background(Color.Black)
@@ -177,6 +179,7 @@ fun TrafficStat(
 private fun TrafficGraphCard(
     trafficMetrics: List<TrafficMetric>,
     rxLineColor: Color,
+    txLineColor: Color,
     modifier: Modifier = Modifier,
 ) {
     val unitScaleY = 128
@@ -186,7 +189,7 @@ private fun TrafficGraphCard(
     trafficMetrics.forEach {
         xMinValue = min(xMinValue, it.timestamp)
         xMaxValue = max(xMaxValue, it.timestamp)
-        yMaxValue = max(yMaxValue, it.rxBytesPerSec.toLong())
+        yMaxValue = max(yMaxValue, max(it.rxBytesPerSec, it.txBytesPerSec))
     }
 
     val yAxisScale = yMaxValue.getScaleCount(unitScaleY)
@@ -194,6 +197,12 @@ private fun TrafficGraphCard(
 
     Graph(
         lines = listOf(
+            LineConfig(
+                data = trafficMetrics.map { metric ->
+                    GraphEntry(metric.timestamp, metric.txBytesPerSec)
+                },
+                color = txLineColor
+            ),
             LineConfig(
                 data = trafficMetrics.map { metric ->
                     GraphEntry(metric.timestamp, metric.rxBytesPerSec)

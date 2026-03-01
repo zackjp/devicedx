@@ -30,70 +30,85 @@ class TrafficGraphUtilTest {
     }
 
     @Test
-    fun calculateMetrics_WithSingleDataPoint_MeasuresZeroRxPerSec() {
+    fun calculateMetrics_WithSingleDataPoint_MeasuresZeroRxAndTxPerSec() {
         graphUtil.calculateMetrics(
             listOf(TrafficData.fake(1)),
             1234L,
             1.seconds,
         ) shouldContainExactly listOf(
-            TrafficMetric(1000, 0),
+            TrafficMetric(timestamp = 1000, rxBytesPerSec = 0, txBytesPerSec = 0),
         )
     }
 
     @Test
-    fun calculateMetrics_WithMultipleDataPoints_MeasuresCorrectRxPerSec() {
+    fun calculateMetrics_WithMultipleDataPoints_MeasuresCorrectRxAndTxPerSec() {
         val partialBucketTime = 3500L
         graphUtil.calculateMetrics(
             listOf(
-                TrafficData(timestamp = 1000, rxBytes = 5),
-                TrafficData(timestamp = 2000, rxBytes = 7),
-                TrafficData(timestamp = 3000, rxBytes = 11),
-                TrafficData(timestamp = partialBucketTime, rxBytes = 17), // should be ignored
+                TrafficData(timestamp = 1000, rxBytes = 5, txBytes = 101),
+                TrafficData(timestamp = 2000, rxBytes = 7, txBytes = 214),
+                TrafficData(timestamp = 3000, rxBytes = 11, txBytes = 300),
+                TrafficData( // should be ignored
+                    timestamp = partialBucketTime,
+                    rxBytes = 17,
+                    txBytes = 117
+                ),
             ),
             partialBucketTime + 1,
             3.seconds,
         ) shouldContainExactly listOf(
-            TrafficMetric(1000, 0),
-            TrafficMetric(2000, 2),
-            TrafficMetric(3000, 4),
+            TrafficMetric(timestamp = 1000, rxBytesPerSec = 0, txBytesPerSec = 0),
+            TrafficMetric(timestamp = 2000, rxBytesPerSec = 2, txBytesPerSec = 113),
+            TrafficMetric(timestamp = 3000, rxBytesPerSec = 4, txBytesPerSec = 86),
         )
     }
 
     @Test
-    fun calculateMetrics_WithSporadicDataPoints_MeasuresCorrectRxPerSec() {
+    fun calculateMetrics_WithSporadicDataPoints_MeasuresCorrectRxAndTxPerSec() {
         graphUtil.calculateMetrics(
             listOf(
-                TrafficData(timestamp = 2000, rxBytes = 5),
-                TrafficData(timestamp = 4000, rxBytes = 7),
-                TrafficData(timestamp = 5000, rxBytes = 11),
+                // skip timestamp = 1000
+                TrafficData(timestamp = 2000, rxBytes = 5, txBytes = 101),
+                // skip timestamp = 3000
+                TrafficData(timestamp = 4000, rxBytes = 7, txBytes = 214),
+                TrafficData(timestamp = 5000, rxBytes = 11, txBytes = 300),
             ),
             5500L,
             5.seconds,
         ) shouldContainExactly listOf(
-            TrafficMetric(1000, 0),
-            TrafficMetric(2000, 0),
-            TrafficMetric(3000, 0),
-            TrafficMetric(4000, 0),
-            TrafficMetric(5000, 4),
+            TrafficMetric(timestamp = 1000, rxBytesPerSec = 0, txBytesPerSec = 0),
+            TrafficMetric(timestamp = 2000, rxBytesPerSec = 0, txBytesPerSec = 0),
+            TrafficMetric(timestamp = 3000, rxBytesPerSec = 0, txBytesPerSec = 0),
+            TrafficMetric(timestamp = 4000, rxBytesPerSec = 0, txBytesPerSec = 0),
+            TrafficMetric(timestamp = 5000, rxBytesPerSec = 4, txBytesPerSec = 86),
         )
     }
 
     @Test
-    fun calculateMetrics_WithMultiBucketedDataPoints_MeasuresRxPerSecUsingLatestTimestampInBucket() {
+    fun calculateMetrics_WithMultiBucketedDataPoints_MeasuresRxTxUsingLatestTimestampInBucket() {
         graphUtil.calculateMetrics(
             listOf(
-                TrafficData(timestamp = 250, rxBytes = 5), // in order
-                TrafficData(timestamp = 750, rxBytes = 7), // in order. should be used in calc
-                TrafficData(timestamp = 1400, rxBytes = 13), // out of order. should be used in calc
-                TrafficData(timestamp = 1300, rxBytes = 11), // out of order
-                TrafficData(timestamp = 2500, rxBytes = 23), // single bucket value
+                // in chronological order:
+                TrafficData(timestamp = 250, rxBytes = 5, txBytes = 102),
+
+                // in chronological order. should be used in calc:
+                TrafficData(timestamp = 750, rxBytes = 7, txBytes = 208),
+
+                // out of chronological order. should be used in calc:
+                TrafficData(timestamp = 1400, rxBytes = 13, txBytes = 320),
+
+                // out of chronological order + not latest in bucket. not used in calc:
+                TrafficData(timestamp = 1300, rxBytes = 11, txBytes = 300),
+
+                // single bucket value:
+                TrafficData(timestamp = 2500, rxBytes = 23, txBytes = 400),
             ),
             3000L,
             3.seconds,
         ) shouldContainExactly listOf(
-            TrafficMetric(1000, 0),
-            TrafficMetric(2000, 6),
-            TrafficMetric(3000, 10),
+            TrafficMetric(timestamp = 1000, rxBytesPerSec = 0, txBytesPerSec = 0),
+            TrafficMetric(timestamp = 2000, rxBytesPerSec = 6, txBytesPerSec = 112),
+            TrafficMetric(timestamp = 3000, rxBytesPerSec = 10, txBytesPerSec = 80),
         )
     }
 

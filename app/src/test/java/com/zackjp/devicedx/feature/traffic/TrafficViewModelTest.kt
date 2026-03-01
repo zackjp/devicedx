@@ -42,6 +42,15 @@ class TrafficViewModelTest {
 
     private lateinit var viewModel: TrafficViewModel
 
+    val metrics1 = listOf(
+        TrafficMetric(timestamp = 11, rxBytesPerSec = 22, txBytesPerSec = 33),
+        TrafficMetric(timestamp = 44, rxBytesPerSec = 55, txBytesPerSec = 66)
+    )
+    val metrics2 = listOf(
+        TrafficMetric(timestamp = 987, rxBytesPerSec = 876, txBytesPerSec = 765),
+        TrafficMetric(timestamp = 654, rxBytesPerSec = 543, txBytesPerSec = 432)
+    )
+
     @BeforeEach
     fun setUp() {
         Dispatchers.setMain(testDispatcherProvider.default)
@@ -67,8 +76,8 @@ class TrafficViewModelTest {
     fun stopMonitoring_WhenMonitorActive_StopsNewEmissions() = runTest {
         initViewModel()
 
-        val expectedMetrics = listOf(TrafficMetric(11, 22), TrafficMetric(33, 44))
-        val unexpectedMetrics = listOf(TrafficMetric(55, 66), TrafficMetric(77, 88))
+        val expectedMetrics = metrics1
+        val unexpectedMetrics = metrics2
 
         every { trafficGraphUtil.calculateMetrics(any(), any(), any()) } returns emptyList()
         every { clock.now() } returns Instant.fromEpochMilliseconds(1234)
@@ -103,8 +112,8 @@ class TrafficViewModelTest {
         advanceUntilIdle()
         val expectedTimeoutMs = 5000L
 
-        val firstMetrics = listOf(TrafficMetric(11, 22), TrafficMetric(33, 44))
-        val secondMetrics = listOf(TrafficMetric(55, 66), TrafficMetric(77, 88))
+        val firstMetrics = metrics1
+        val secondMetrics = metrics2
 
         every { trafficGraphUtil.calculateMetrics(any(), any(), any()) } returns emptyList()
         every { clock.now() } returns Instant.fromEpochMilliseconds(1234)
@@ -172,7 +181,7 @@ class TrafficViewModelTest {
         val dataA = TrafficData.fake(1)
         val dataB = TrafficData.fake(3)
         val dataC = TrafficData.fake(5)
-        val expectedMetrics = listOf(TrafficMetric(111, 222), TrafficMetric(333, 444))
+        val expectedMetrics = metrics1
         val expectedClockTime = 12345L
         every { clock.now() } returns Instant.fromEpochMilliseconds(expectedClockTime)
         // define the more general mock first
