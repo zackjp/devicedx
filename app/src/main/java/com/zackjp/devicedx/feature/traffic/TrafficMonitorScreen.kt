@@ -32,7 +32,6 @@ import com.zackjp.devicedx.model.TrafficMetric
 import com.zackjp.devicedx.shared.ui.Graph
 import com.zackjp.devicedx.shared.ui.GraphEntry
 import com.zackjp.devicedx.shared.ui.LineConfig
-import com.zackjp.devicedx.shared.ui.getScaleCount
 import com.zackjp.devicedx.shared.ui.rememberIsInPipMode
 import com.zackjp.devicedx.ui.theme.OffWhite
 import java.math.BigDecimal
@@ -207,7 +206,6 @@ private fun TrafficGraphCard(
     txLineColor: Color,
     modifier: Modifier = Modifier,
 ) {
-    val unitScaleY = 128
     var xMinValue = if (trafficMetrics.isEmpty()) 0L else trafficMetrics[0].timestamp
     var xMaxValue = 0L
     var yMaxValue = 0L
@@ -217,8 +215,16 @@ private fun TrafficGraphCard(
         yMaxValue = max(yMaxValue, max(it.rxBytesPerSec, it.txBytesPerSec))
     }
 
-    val yAxisScale = yMaxValue.getScaleCount(unitScaleY)
-    val yTickMaxValue = unitScaleY.toBigDecimal().pow(yAxisScale).toLong()
+    val (maxY, maxYUnit) = getBytesString(yMaxValue)
+    val yScale = when (maxYUnit) {
+        "B" -> B_SIZE
+        "KB" -> KB_SIZE
+        "MB" -> MB_SIZE
+        "GB" -> GB_SIZE
+        else -> TB_SIZE
+    }
+    val yTickMaxSteppedUnscaled = yTickMaxSteps.firstOrNull { maxY <= it } ?: maxY
+    val yTickMaxValue = yTickMaxSteppedUnscaled * yScale
 
     Graph(
         lines = listOf(
@@ -238,8 +244,8 @@ private fun TrafficGraphCard(
         xTickStartValue = xMinValue,
         xTickEndValue = xMaxValue,
         yTickBottomValue = 0L,
-        yTickTopValue = yTickMaxValue,
-        yTickCount = 4,
+        yTickTopValue = yTickMaxValue.toLong(),
+        yTickCount = 5,
         getYTickLabel = { bytes ->
             getBytesString(bytes).run {
                 "${formatBigDecimal(first)}$second"
@@ -248,7 +254,6 @@ private fun TrafficGraphCard(
         modifier = modifier,
     )
 }
-
 
 private fun getBytesString(bytes: Long): Pair<BigDecimal, String> {
     val bigDecimalValue = bytes.toBigDecimal()
@@ -269,6 +274,20 @@ private fun getBytesString(bytes: Long): Pair<BigDecimal, String> {
     return Pair(unitValue, unitString)
 }
 
+private val yTickMaxSteps = listOf(
+    5.toBigDecimal(),
+    10.toBigDecimal(),
+    15.toBigDecimal(),
+    25.toBigDecimal(),
+    50.toBigDecimal(),
+    100.toBigDecimal(),
+    150.toBigDecimal(),
+    200.toBigDecimal(),
+    250.toBigDecimal(),
+    500.toBigDecimal(),
+    750.toBigDecimal(),
+    1000.toBigDecimal(),
+)
 
 private fun formatBigDecimal(number: BigDecimal): String {
     val decimalFormat = DecimalFormat("#.##", DecimalFormatSymbols(Locale.US)).apply {
@@ -277,6 +296,7 @@ private fun formatBigDecimal(number: BigDecimal): String {
     return decimalFormat.format(number)
 }
 
+private val B_SIZE = 1.toBigDecimal()
 private val KB_SIZE = 1024.toBigDecimal()
 private val MB_SIZE = 1_048_576.toBigDecimal()
 private val GB_SIZE = 1_073_741_824.toBigDecimal()
