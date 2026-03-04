@@ -71,8 +71,8 @@ fun TrafficMonitorScreenRoot(
         TrafficMonitorScreen(
             isInPipMode = isInPipMode,
             modifier = Modifier.fillMaxWidth(),
-            onStartMonitor = { viewModel.startMonitor() },
-            onStopMonitor = { viewModel.stopMonitor() },
+            onStartMonitor = viewModel::startMonitor,
+            onStopMonitor = viewModel::stopMonitor,
             state = state,
         )
     }
