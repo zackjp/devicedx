@@ -4,12 +4,11 @@ import androidx.compose.foundation.layout.PaddingValues
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.padding
 import androidx.compose.runtime.Composable
-import androidx.compose.runtime.snapshots.SnapshotStateList
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.unit.dp
 import androidx.lifecycle.viewmodel.navigation3.rememberViewModelStoreNavEntryDecorator
-import androidx.navigation3.runtime.NavKey
 import androidx.navigation3.runtime.entryProvider
+import androidx.navigation3.runtime.rememberNavBackStack
 import androidx.navigation3.runtime.rememberSaveableStateHolderNavEntryDecorator
 import androidx.navigation3.ui.NavDisplay
 import com.zackjp.devicedx.feature.dashboard.DashboardScreen
@@ -22,7 +21,7 @@ fun DeviceDxNav3Graph(
     innerPadding: PaddingValues,
     modifier: Modifier = Modifier,
 ) {
-    val backStack = SnapshotStateList<NavKey>(1) { Route.Dashboard }
+    val backStack = rememberNavBackStack(Route.Dashboard)
     val navActions = NavActions(
         toDashboard = { backStack.add(Route.Dashboard) },
         toLatencyMonitor = { backStack.add(Route.LatencyMonitor) },
