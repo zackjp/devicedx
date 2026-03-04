@@ -175,7 +175,23 @@ class TrafficViewModelTest {
     }
 
     @Test
-    fun startMonitorTraffic_WhenTrafficDataEmitted_UpdatesHistory() = runTest {
+    fun startMonitor_SetsSessionStartTimeToCurrentTime() = runTest {
+        initViewModel()
+
+        every { clock.now() } returns Instant.fromEpochMilliseconds(27)
+
+        viewModel.screenState.test {
+            expectMostRecentItem().sessionStartTime shouldBe null
+
+            viewModel.startMonitor()
+            advanceUntilIdle()
+
+            expectMostRecentItem().sessionStartTime shouldBe 27
+        }
+    }
+
+    @Test
+    fun startMonitor_WhenTrafficDataEmitted_UpdatesHistory() = runTest {
         initViewModel()
 
         val dataA = TrafficData.fake(1)
@@ -208,6 +224,23 @@ class TrafficViewModelTest {
             advanceUntilIdle()
 
             expectMostRecentItem().trafficMetrics shouldBe expectedMetrics
+        }
+    }
+
+    @Test
+    fun stopMonitor_WhenSessionStartTimeIsNonNull_ShouldNotResetTheStartTime() = runTest {
+        initViewModel()
+
+        viewModel.screenState.test {
+            every { clock.now() } returns Instant.fromEpochMilliseconds(19)
+            viewModel.startMonitor()
+            advanceUntilIdle()
+            expectMostRecentItem().sessionStartTime shouldBe 19
+
+            every { clock.now() } returns Instant.fromEpochMilliseconds(51)
+            viewModel.stopMonitor()
+            advanceUntilIdle()
+            expectMostRecentItem().sessionStartTime shouldBe 19
         }
     }
 

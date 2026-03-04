@@ -16,13 +16,18 @@ import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableStateOf
+import androidx.compose.runtime.remember
+import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.buildAnnotatedString
+import androidx.compose.ui.text.intl.Locale
 import androidx.compose.ui.text.withStyle
 import androidx.compose.ui.unit.dp
 import androidx.hilt.lifecycle.viewmodel.compose.hiltViewModel
@@ -35,13 +40,17 @@ import com.zackjp.devicedx.shared.ui.Graph
 import com.zackjp.devicedx.shared.ui.GraphEntry
 import com.zackjp.devicedx.shared.ui.LineConfig
 import com.zackjp.devicedx.shared.ui.rememberIsInPipMode
+import com.zackjp.devicedx.ui.theme.DarkSlate
 import com.zackjp.devicedx.ui.theme.OffWhite
+import kotlinx.coroutines.delay
 import java.math.BigDecimal
 import java.text.DecimalFormat
 import java.text.DecimalFormatSymbols
-import java.util.Locale
 import kotlin.math.max
 import kotlin.math.min
+import kotlin.time.Clock
+import kotlin.time.Duration
+import kotlin.time.Instant
 
 private const val ASPECT_RATIO_NUMERATOR = 16
 private const val ASPECT_RATIO_DENOMINATOR = 9
@@ -111,6 +120,16 @@ private fun TrafficMonitorScreen(
                 modifier = Modifier.fillMaxWidth(),
                 mostRecentStat = mostRecentStat,
             )
+
+            Spacer(Modifier.height(12.dp))
+
+            MonitorSessionInfo(
+                modifier = Modifier.fillMaxWidth(),
+                isActive = state.isMonitorActive,
+                sessionStartTime = state.sessionStartTime,
+            )
+
+            Spacer(Modifier.height(12.dp))
 
             val (textResId, onClick) = if (state.isMonitorActive) {
                 R.string.stop_traffic_monitor to onStopMonitor
@@ -255,6 +274,59 @@ private fun TrafficGraphCard(
     )
 }
 
+@Composable
+fun MonitorSessionInfo(
+    modifier: Modifier = Modifier,
+    isActive: Boolean,
+    sessionStartTime: Long?,
+) {
+    var sessionDuration by remember { mutableStateOf(Duration.ZERO) }
+    LaunchedEffect(isActive, sessionStartTime) {
+        if (sessionStartTime != null) {
+            val startInstant = Instant.fromEpochMilliseconds(sessionStartTime)
+            while (isActive) {
+                val now = Clock.System.now()
+                sessionDuration = now - startInstant
+                delay(1000)
+            }
+        }
+    }
+
+    Card(
+        modifier = modifier,
+        colors = CardDefaults.cardColors(
+            containerColor = DarkSlate,
+        )
+    ) {
+        Column(
+            modifier = Modifier.padding(12.dp),
+        ) {
+            Row(modifier = Modifier.fillMaxWidth()) {
+                Text("Session Duration:")
+                Spacer(Modifier.weight(1f))
+                sessionDuration.toComponents { _, hours, minutes, seconds, _ ->
+                    val formattedTime = when {
+                        hours == 0 -> String.format(
+                            Locale.current.platformLocale,
+                            "%02d:%02d",
+                            minutes,
+                            seconds,
+                        )
+                        else -> String.format(
+                            Locale.current.platformLocale,
+                            "%02d:%02d:%02d",
+                            hours,
+                            minutes,
+                            seconds,
+                        )
+                    }
+                    Text(formattedTime)
+                }
+            }
+        }
+    }
+}
+
 private val yTickMaxSteps = listOf(
     5.toBigDecimal(),
     10.toBigDecimal(),
@@ -272,7 +344,7 @@ private val yTickMaxSteps = listOf(
 )
 
 private fun formatBigDecimal(number: BigDecimal): String {
-    val decimalFormat = DecimalFormat("#.##", DecimalFormatSymbols(Locale.US)).apply {
+    val decimalFormat = DecimalFormat("#.##", DecimalFormatSymbols(java.util.Locale.US)).apply {
         isGroupingUsed = false
     }
     return decimalFormat.format(number)

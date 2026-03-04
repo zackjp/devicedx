@@ -38,6 +38,7 @@ class TrafficViewModel @Inject constructor(
     private val _screenState = MutableStateFlow(
         TrafficScreenState(
             isMonitorActive = false,
+            sessionStartTime = null,
             trafficMetrics = emptyList(),
         )
     )
@@ -57,7 +58,12 @@ class TrafficViewModel @Inject constructor(
 
 
     fun startMonitor() {
-        _screenState.update { it.copy(isMonitorActive = true) }
+        _screenState.update {
+            it.copy(
+                isMonitorActive = true,
+                sessionStartTime = clock.now().toEpochMilliseconds(),
+            )
+        }
         isMonitorActive.value = true
     }
 

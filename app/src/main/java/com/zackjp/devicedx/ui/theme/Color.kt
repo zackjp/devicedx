@@ -2,7 +2,7 @@ package com.zackjp.devicedx.ui.theme
 
 import androidx.compose.ui.graphics.Color
 
-val CharcoalGray = Color(0xFF4A4A4A)
+val DarkSlate = Color(0xFF222829)
 val OffWhite = Color(0xFFF1F1F1)
 
 val Purple80 = Color(0xFFD0BCFF)
