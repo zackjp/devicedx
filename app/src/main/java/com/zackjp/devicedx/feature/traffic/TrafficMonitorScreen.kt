@@ -28,6 +28,8 @@ import androidx.compose.ui.unit.dp
 import androidx.hilt.lifecycle.viewmodel.compose.hiltViewModel
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import com.zackjp.devicedx.R
+import com.zackjp.devicedx.model.Bytes.Companion.asDataUnit
+import com.zackjp.devicedx.model.DataUnit
 import com.zackjp.devicedx.model.TrafficMetric
 import com.zackjp.devicedx.shared.ui.Graph
 import com.zackjp.devicedx.shared.ui.GraphEntry
@@ -35,7 +37,6 @@ import com.zackjp.devicedx.shared.ui.LineConfig
 import com.zackjp.devicedx.shared.ui.rememberIsInPipMode
 import com.zackjp.devicedx.ui.theme.OffWhite
 import java.math.BigDecimal
-import java.math.RoundingMode
 import java.text.DecimalFormat
 import java.text.DecimalFormatSymbols
 import java.util.Locale
@@ -175,9 +176,9 @@ fun TrafficStat(
                 valueText = "-"
                 unitText = "MB/s"
             } else {
-                val displayStat = getBytesString(bytes)
+                val displayStat = bytes.asDataUnit(DataUnit.BYTE).bestDisplayableUnit
                 valueText = displayStat.first.toPlainString()
-                unitText = displayStat.second + "/s"
+                unitText = displayStat.second.displayString + "/s"
             }
 
             val formattedStat = buildAnnotatedString {
@@ -215,16 +216,12 @@ private fun TrafficGraphCard(
         yMaxValue = max(yMaxValue, max(it.rxBytesPerSec, it.txBytesPerSec))
     }
 
-    val (maxY, maxYUnit) = getBytesString(yMaxValue)
-    val yScale = when (maxYUnit) {
-        "B" -> B_SIZE
-        "KB" -> KB_SIZE
-        "MB" -> MB_SIZE
-        "GB" -> GB_SIZE
-        else -> TB_SIZE
-    }
-    val yTickMaxSteppedUnscaled = yTickMaxSteps.firstOrNull { maxY <= it } ?: maxY
-    val yTickMaxValue = yTickMaxSteppedUnscaled * yScale
+    val yTickBytesMax = yMaxValue.asDataUnit(DataUnit.BYTE)
+    val (yTickMaxDisplayableValue, yTickMaxDisplayableUnit) = yTickBytesMax.bestDisplayableUnit
+    val yTickSteppedMax = yTickMaxSteps.firstOrNull { steppedValue ->
+        yTickMaxDisplayableValue <= steppedValue
+    } ?: yTickMaxDisplayableValue
+    val yTickMaxValue = yTickSteppedMax.toLong().asDataUnit(yTickMaxDisplayableUnit)
 
     Graph(
         lines = listOf(
@@ -244,34 +241,18 @@ private fun TrafficGraphCard(
         xTickStartValue = xMinValue,
         xTickEndValue = xMaxValue,
         yTickBottomValue = 0L,
-        yTickTopValue = yTickMaxValue.toLong(),
+        yTickTopValue = yTickMaxValue.bytes,
         yTickCount = 5,
         getYTickLabel = { bytes ->
-            getBytesString(bytes).run {
-                "${formatBigDecimal(first)}$second"
+            val bytesValue = bytes.asDataUnit(DataUnit.BYTE)
+            bytesValue.bestDisplayableUnit.run {
+                val number = first
+                val unitString = second.displayString
+                "${formatBigDecimal(number)}$unitString"
             }
         },
         modifier = modifier,
     )
-}
-
-private fun getBytesString(bytes: Long): Pair<BigDecimal, String> {
-    val bigDecimalValue = bytes.toBigDecimal()
-    val unitString = when {
-        bigDecimalValue >= TB_SIZE -> "TB"
-        bigDecimalValue >= GB_SIZE -> "GB"
-        bigDecimalValue >= MB_SIZE -> "MB"
-        bigDecimalValue >= KB_SIZE -> "KB"
-        else -> "B"
-    }
-    val unitValue = when (unitString) {
-        "B" -> bigDecimalValue
-        "KB" -> bigDecimalValue.divide(KB_SIZE, 2, RoundingMode.HALF_UP)
-        "MB" -> bigDecimalValue.divide(MB_SIZE, 2, RoundingMode.HALF_UP)
-        "GB" -> bigDecimalValue.divide(GB_SIZE, 2, RoundingMode.HALF_UP)
-        else -> bigDecimalValue.divide(TB_SIZE, 2, RoundingMode.HALF_UP)
-    }
-    return Pair(unitValue, unitString)
 }
 
 private val yTickMaxSteps = listOf(
@@ -287,6 +268,7 @@ private val yTickMaxSteps = listOf(
     500.toBigDecimal(),
     750.toBigDecimal(),
     1000.toBigDecimal(),
+    1030.toBigDecimal(), // covers the last 27 up until 1028
 )
 
 private fun formatBigDecimal(number: BigDecimal): String {
@@ -295,9 +277,3 @@ private fun formatBigDecimal(number: BigDecimal): String {
     }
     return decimalFormat.format(number)
 }
-
-private val B_SIZE = 1.toBigDecimal()
-private val KB_SIZE = 1024.toBigDecimal()
-private val MB_SIZE = 1_048_576.toBigDecimal()
-private val GB_SIZE = 1_073_741_824.toBigDecimal()
-private val TB_SIZE = 1_099_511_627_776.toBigDecimal()
