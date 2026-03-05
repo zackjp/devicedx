@@ -2,6 +2,7 @@ package com.zackjp.devicedx.feature.dashboard
 
 import androidx.annotation.DrawableRes
 import androidx.annotation.StringRes
+import androidx.compose.foundation.BorderStroke
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
@@ -16,6 +17,7 @@ import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
 import androidx.compose.material3.Button
+import androidx.compose.material3.ButtonDefaults
 import androidx.compose.material3.Card
 import androidx.compose.material3.CardDefaults
 import androidx.compose.material3.Icon
@@ -26,6 +28,7 @@ import androidx.compose.runtime.Composable
 import androidx.compose.runtime.remember
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.style.TextAlign
@@ -34,6 +37,8 @@ import androidx.compose.ui.unit.dp
 import androidx.hilt.lifecycle.viewmodel.compose.hiltViewModel
 import com.zackjp.devicedx.R
 import com.zackjp.devicedx.navigation.NavActions
+import com.zackjp.devicedx.ui.theme.NeonBlue
+import com.zackjp.devicedx.ui.theme.NeonGreen
 
 
 @Composable
@@ -73,13 +78,17 @@ private fun DashboardCard(
 ) {
     Card(
         modifier = modifier,
-        colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surfaceVariant),
+        border = BorderStroke(2.dp, cardInfo.cardColorTheme),
+        colors = CardDefaults.cardColors(
+            containerColor = MaterialTheme.colorScheme.surface
+        ),
     ) {
         Column(
             horizontalAlignment = Alignment.Start,
             modifier = Modifier.padding(16.dp),
         ) {
             Text(
+                color = cardInfo.cardColorTheme,
                 modifier = Modifier.fillMaxWidth(),
                 style = MaterialTheme.typography.headlineMedium,
                 text = stringResource(cardInfo.titleTextId),
@@ -96,7 +105,8 @@ private fun DashboardCard(
                     modifier = Modifier
                         .width(iconSize)
                         .aspectRatio(1f),
-                    painter = painterResource(cardInfo.iconResId)
+                    painter = painterResource(cardInfo.iconResId),
+                    tint = cardInfo.cardColorTheme,
                 )
 
                 Spacer(Modifier.width(16.dp))
@@ -112,6 +122,9 @@ private fun DashboardCard(
                     Button(
                         modifier = Modifier.fillMaxWidth(),
                         onClick = cardInfo.navAction,
+                        colors = ButtonDefaults.buttonColors(
+                            containerColor = cardInfo.cardColorTheme,
+                        )
                     ) {
                         Text(
                             modifier = Modifier,
@@ -135,6 +148,7 @@ private fun rememberDashboardCards(navActions: NavActions): List<DashCardInfo> {
                 descriptionTextId = R.string.dashboard_wifi_description,
                 launchTextId = R.string.dashboard_wifi_open_monitor,
                 iconResId = R.drawable.ic_rounded_android_wifi_3_bar_24,
+                cardColorTheme = NeonBlue,
                 navAction = navActions.toWifiMonitor,
             ),
             DashCardInfo(
@@ -142,6 +156,7 @@ private fun rememberDashboardCards(navActions: NavActions): List<DashCardInfo> {
                 descriptionTextId = R.string.dashboard_latency_description,
                 launchTextId = R.string.dashboard_latency_open_monitor,
                 iconResId = R.drawable.ic_rounded_multiple_stop_24,
+                cardColorTheme = NeonGreen,
                 navAction = navActions.toLatencyMonitor,
             ),
             DashCardInfo(
@@ -149,6 +164,7 @@ private fun rememberDashboardCards(navActions: NavActions): List<DashCardInfo> {
                 descriptionTextId = R.string.dashboard_traffic_description,
                 launchTextId = R.string.dashboard_traffic_open_monitor,
                 iconResId = R.drawable.ic_rounded_traffic_24,
+                cardColorTheme = NeonBlue,
                 navAction = navActions.toTrafficMonitor,
             ),
         )
@@ -160,5 +176,6 @@ private data class DashCardInfo(
     @param:StringRes val descriptionTextId: Int,
     @param:StringRes val launchTextId: Int,
     @param:DrawableRes val iconResId: Int,
+    val cardColorTheme: Color,
     val navAction: () -> Unit,
 )
