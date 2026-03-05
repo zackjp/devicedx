@@ -5,13 +5,21 @@ import androidx.annotation.StringRes
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
-import androidx.compose.foundation.layout.FlowRow
+import androidx.compose.foundation.layout.PaddingValues
+import androidx.compose.foundation.layout.Row
+import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.aspectRatio
+import androidx.compose.foundation.layout.fillMaxWidth
+import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.width
-import androidx.compose.foundation.layout.wrapContentSize
+import androidx.compose.foundation.lazy.LazyColumn
+import androidx.compose.foundation.lazy.items
 import androidx.compose.material3.Button
+import androidx.compose.material3.Card
+import androidx.compose.material3.CardDefaults
 import androidx.compose.material3.Icon
+import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
@@ -21,6 +29,7 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.style.TextAlign
+import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import androidx.hilt.lifecycle.viewmodel.compose.hiltViewModel
 import com.zackjp.devicedx.R
@@ -34,41 +43,21 @@ fun DashboardScreen(
     viewModel: DashboardViewModel = hiltViewModel(),
 ) {
     Surface(modifier) {
-        val buttonInfoList = remember(navActions) {
-            listOf(
-                DashButtonInfo(
-                    textResId = R.string.dashboard_open_wifi_monitor,
-                    iconResId = R.drawable.ic_rounded_android_wifi_3_bar_24,
-                    navAction = navActions.toWifiMonitor,
-                ),
-                DashButtonInfo(
-                    textResId = R.string.dashboard_open_latency_monitor,
-                    iconResId = R.drawable.ic_rounded_multiple_stop_24,
-                    navAction = navActions.toLatencyMonitor,
-                ),
-                DashButtonInfo(
-                    textResId = R.string.dashboard_open_traffic_monitor,
-                    iconResId = R.drawable.ic_rounded_traffic_24,
-                    navAction = navActions.toTrafficMonitor,
-                ),
-            )
-        }
+        val cardInfoList = rememberDashboardCards(navActions)
 
         Box(
             contentAlignment = Alignment.TopCenter,
         ) {
-            FlowRow(
-                horizontalArrangement = Arrangement.spacedBy(8.dp),
-                modifier = Modifier.wrapContentSize(),
+            LazyColumn(
+                contentPadding = PaddingValues(horizontal = 16.dp),
+                modifier = Modifier.fillMaxWidth(),
                 verticalArrangement = Arrangement.spacedBy(8.dp),
             ) {
-                buttonInfoList.forEach { buttonInfo ->
-                    DashboardButton(
-                        buttonInfo = buttonInfo,
+                items(cardInfoList) { cardInfo ->
+                    DashboardCard(
+                        cardInfo = cardInfo,
                         modifier = Modifier
-                            .width(150.dp)
-                            .aspectRatio(1f)
-                            .padding(8.dp)
+                            .fillMaxWidth()
                     )
                 }
             }
@@ -78,35 +67,98 @@ fun DashboardScreen(
 }
 
 @Composable
-private fun DashboardButton(
-    buttonInfo: DashButtonInfo,
+private fun DashboardCard(
+    cardInfo: DashCardInfo,
     modifier: Modifier = Modifier,
 ) {
-    Button(
+    Card(
         modifier = modifier,
-        onClick = buttonInfo.navAction,
+        colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surfaceVariant),
     ) {
         Column(
-            horizontalAlignment = Alignment.CenterHorizontally,
+            horizontalAlignment = Alignment.Start,
+            modifier = Modifier.padding(16.dp),
         ) {
-            Icon(
-                contentDescription = null,
-                modifier = Modifier
-                    .weight(1f)
-                    .aspectRatio(1f),
-                painter = painterResource(buttonInfo.iconResId)
-            )
             Text(
-                modifier = Modifier,
-                text = stringResource(buttonInfo.textResId),
-                textAlign = TextAlign.Center,
+                modifier = Modifier.fillMaxWidth(),
+                style = MaterialTheme.typography.headlineMedium,
+                text = stringResource(cardInfo.titleTextId),
             )
+
+            Spacer(Modifier.height(8.dp))
+
+            Row(
+                modifier = Modifier.fillMaxWidth(),
+            ) {
+                val iconSize = 100.dp
+                Icon(
+                    contentDescription = null,
+                    modifier = Modifier
+                        .width(iconSize)
+                        .aspectRatio(1f),
+                    painter = painterResource(cardInfo.iconResId)
+                )
+
+                Spacer(Modifier.width(16.dp))
+
+                Column(modifier = Modifier.weight(1f)) {
+                    Text(
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .height(iconSize),
+                        overflow = TextOverflow.Ellipsis,
+                        text = stringResource(cardInfo.descriptionTextId),
+                    )
+                    Button(
+                        modifier = Modifier.fillMaxWidth(),
+                        onClick = cardInfo.navAction,
+                    ) {
+                        Text(
+                            modifier = Modifier,
+                            text = stringResource(cardInfo.launchTextId),
+                            textAlign = TextAlign.Center,
+                        )
+                    }
+                }
+            }
         }
     }
 }
 
-private data class DashButtonInfo(
-    @param:StringRes val textResId: Int,
+@Composable
+private fun rememberDashboardCards(navActions: NavActions): List<DashCardInfo> {
+
+    return remember(navActions) {
+        listOf(
+            DashCardInfo(
+                titleTextId = R.string.dashboard_wifi_title,
+                descriptionTextId = R.string.dashboard_wifi_description,
+                launchTextId = R.string.dashboard_wifi_open_monitor,
+                iconResId = R.drawable.ic_rounded_android_wifi_3_bar_24,
+                navAction = navActions.toWifiMonitor,
+            ),
+            DashCardInfo(
+                titleTextId = R.string.dashboard_latency_title,
+                descriptionTextId = R.string.dashboard_latency_description,
+                launchTextId = R.string.dashboard_latency_open_monitor,
+                iconResId = R.drawable.ic_rounded_multiple_stop_24,
+                navAction = navActions.toLatencyMonitor,
+            ),
+            DashCardInfo(
+                titleTextId = R.string.dashboard_traffic_title,
+                descriptionTextId = R.string.dashboard_traffic_description,
+                launchTextId = R.string.dashboard_traffic_open_monitor,
+                iconResId = R.drawable.ic_rounded_traffic_24,
+                navAction = navActions.toTrafficMonitor,
+            ),
+        )
+    }
+}
+
+private data class DashCardInfo(
+    @param:StringRes val titleTextId: Int,
+    @param:StringRes val descriptionTextId: Int,
+    @param:StringRes val launchTextId: Int,
     @param:DrawableRes val iconResId: Int,
     val navAction: () -> Unit,
 )

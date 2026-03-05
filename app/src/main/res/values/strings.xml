@@ -1,8 +1,14 @@
 <resources>
     <string name="app_name">DeviceDx</string>
-    <string name="dashboard_open_latency_monitor">Latency\nMonitor</string>
-    <string name="dashboard_open_traffic_monitor">Traffic\nMonitor</string>
-    <string name="dashboard_open_wifi_monitor">Wifi\nMonitor</string>
+    <string name="dashboard_latency_description">Run pings to measure and graph response times.</string>
+    <string name="dashboard_latency_open_monitor">Open Latency Tool</string>
+    <string name="dashboard_latency_title">Latency Monitor</string>
+    <string name="dashboard_traffic_description">Monitor network usage and bandwidth statistics.</string>
+    <string name="dashboard_traffic_open_monitor">Open Traffic Tool</string>
+    <string name="dashboard_traffic_title">Traffic Monitor</string>
+    <string name="dashboard_wifi_description">View current connection details and scan for nearby networks.</string>
+    <string name="dashboard_wifi_open_monitor">Open Wifi Tool</string>
+    <string name="dashboard_wifi_title">Wi-Fi Monitor</string>
     <string name="latency_ms">Most recent latency: %1$sms</string>
     <string name="latency_monitor_start">Start Latency Monitor</string>
     <string name="latency_monitor_stop">Stop Latency Monitor</string>
