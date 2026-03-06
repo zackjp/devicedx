@@ -2,7 +2,6 @@ package com.zackjp.devicedx.feature.dashboard
 
 import androidx.annotation.DrawableRes
 import androidx.annotation.StringRes
-import androidx.compose.foundation.BorderStroke
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
@@ -18,8 +17,6 @@ import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
 import androidx.compose.material3.Button
 import androidx.compose.material3.ButtonDefaults
-import androidx.compose.material3.Card
-import androidx.compose.material3.CardDefaults
 import androidx.compose.material3.Icon
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Surface
@@ -28,9 +25,7 @@ import androidx.compose.runtime.Composable
 import androidx.compose.runtime.remember
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
-import androidx.compose.ui.draw.drawBehind
 import androidx.compose.ui.geometry.Offset
-import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.Shadow
 import androidx.compose.ui.res.painterResource
@@ -41,22 +36,12 @@ import androidx.compose.ui.unit.dp
 import androidx.hilt.lifecycle.viewmodel.compose.hiltViewModel
 import com.zackjp.devicedx.R
 import com.zackjp.devicedx.navigation.NavActions
+import com.zackjp.devicedx.shared.ui.GlassCard
 import com.zackjp.devicedx.ui.theme.DarkSlate
 import com.zackjp.devicedx.ui.theme.SoftCyan
 import com.zackjp.devicedx.ui.theme.SoftIndigo
 import com.zackjp.devicedx.ui.theme.SoftMagenta
 
-
-private val DashboardCardBorderGradient = Brush.linearGradient(
-    0.0f to Color.White.copy(alpha = 0.15f),
-    1f to Color.White.copy(alpha = 0.5f),
-)
-private val DashboardCardBackgroundGradient = Brush.linearGradient(
-    0.0f to Color.White.copy(alpha = 0.1f),
-    1f to Color.White.copy(alpha = 0.2f),
-    start = Offset.Infinite.copy(y = 0f),
-    end = Offset.Infinite.copy(x = 0f),
-)
 
 @Composable
 fun DashboardScreen(
@@ -96,24 +81,12 @@ private fun DashboardCard(
     cardInfo: DashCardInfo,
     modifier: Modifier = Modifier,
 ) {
-    Card(
+    GlassCard(
         modifier = modifier,
-        border = BorderStroke(
-            1.dp,
-            DashboardCardBorderGradient,
-        ),
-        colors = CardDefaults.cardColors(
-            containerColor = Color.Transparent
-        ),
     ) {
         Column(
             horizontalAlignment = Alignment.Start,
             modifier = Modifier
-                .drawBehind {
-                    drawRect(
-                        DashboardCardBackgroundGradient,
-                    )
-                }
                 .padding(16.dp),
         ) {
             Text(
