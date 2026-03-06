@@ -5,9 +5,10 @@ import androidx.compose.material3.darkColorScheme
 import androidx.compose.runtime.Composable
 
 private val DarkColorScheme = darkColorScheme(
-    primary = SoftCyan,
+    primary = OffWhite,
     onPrimary = DarkSlate,
-    secondary = SoftIndigo,
+    secondary = OffWhite,
+    onSecondary = DarkSlate,
     outlineVariant = OffWhite,
     onBackground = OffWhite,
     onSurface = OffWhite,

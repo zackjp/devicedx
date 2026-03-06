@@ -41,11 +41,10 @@ import androidx.compose.ui.unit.dp
 import androidx.hilt.lifecycle.viewmodel.compose.hiltViewModel
 import com.zackjp.devicedx.R
 import com.zackjp.devicedx.navigation.NavActions
-import com.zackjp.devicedx.ui.theme.SoftCyan
 import com.zackjp.devicedx.ui.theme.DarkSlate
-import com.zackjp.devicedx.ui.theme.SoftMagenta
+import com.zackjp.devicedx.ui.theme.SoftCyan
 import com.zackjp.devicedx.ui.theme.SoftIndigo
-import com.zackjp.devicedx.ui.theme.SoftTeal
+import com.zackjp.devicedx.ui.theme.SoftMagenta
 
 
 private val DashboardCardBorderGradient = Brush.linearGradient(

@@ -1,10 +1,10 @@
 package com.zackjp.devicedx.feature.traffic
 
-import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.aspectRatio
+import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
@@ -23,9 +23,9 @@ import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
-import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.res.stringResource
+import androidx.compose.ui.text.SpanStyle
 import androidx.compose.ui.text.buildAnnotatedString
 import androidx.compose.ui.text.intl.Locale
 import androidx.compose.ui.text.withStyle
@@ -36,11 +36,13 @@ import com.zackjp.devicedx.R
 import com.zackjp.devicedx.model.Bytes.Companion.asDataUnit
 import com.zackjp.devicedx.model.DataUnit
 import com.zackjp.devicedx.model.TrafficMetric
+import com.zackjp.devicedx.shared.ui.GlassCard
 import com.zackjp.devicedx.shared.ui.Graph
 import com.zackjp.devicedx.shared.ui.GraphEntry
 import com.zackjp.devicedx.shared.ui.LineConfig
 import com.zackjp.devicedx.shared.ui.rememberIsInPipMode
 import com.zackjp.devicedx.ui.theme.DarkSlate
+import com.zackjp.devicedx.ui.theme.ElectricMagenta
 import com.zackjp.devicedx.ui.theme.OffWhite
 import kotlinx.coroutines.delay
 import java.math.BigDecimal
@@ -56,10 +58,8 @@ private const val ASPECT_RATIO_NUMERATOR = 16
 private const val ASPECT_RATIO_DENOMINATOR = 9
 private const val ASPECT_RATIO_FLOAT = ASPECT_RATIO_NUMERATOR.toFloat() / ASPECT_RATIO_DENOMINATOR
 
-private val RxLineColor = Color(0xFF6F9FC6)
-private val TxLineColor = Color(0xFF8FC2A6)
-private val RxStatBgColor = Color(0xFF2B486A)
-private val TxStatBgColor = Color(0xFF2C4F36)
+private val RxLineColor = ElectricMagenta
+private val TxLineColor = OffWhite
 
 @Composable
 fun TrafficMonitorScreenRoot(
@@ -104,11 +104,8 @@ private fun TrafficMonitorScreen(
             rxLineColor = RxLineColor,
             txLineColor = TxLineColor,
             modifier = Modifier
-                .clip(MaterialTheme.shapes.medium)
-                .background(Color.Black)
                 .fillMaxWidth()
-                .aspectRatio(ASPECT_RATIO_FLOAT)
-                .padding(12.dp),
+                .aspectRatio(ASPECT_RATIO_FLOAT),
         )
 
         if (!isInPipMode) {
@@ -152,14 +149,14 @@ private fun TrafficStatsRow(
     Row(modifier = modifier) {
         TrafficStat(
             modifier = Modifier.weight(1f),
-            cardColor = RxStatBgColor,
+            cardColor = RxLineColor,
             bytes = mostRecentStat?.rxBytesPerSec,
             label = stringResource(R.string.traffic_stat_label_rx),
         )
         Spacer(Modifier.width(8.dp))
         TrafficStat(
             modifier = Modifier.weight(1f),
-            cardColor = TxStatBgColor,
+            cardColor = TxLineColor,
             bytes = mostRecentStat?.txBytesPerSec,
             label = stringResource(R.string.traffic_stat_label_tx),
         )
@@ -173,9 +170,8 @@ fun TrafficStat(
     bytes: Long?,
     label: String,
 ) {
-    Card(
+    GlassCard(
         modifier = modifier,
-        colors = CardDefaults.cardColors(containerColor = cardColor),
     ) {
         Column(
             modifier = Modifier
@@ -184,7 +180,6 @@ fun TrafficStat(
         ) {
             Text(
                 modifier = Modifier.fillMaxWidth(),
-                color = OffWhite,
                 text = label,
                 style = MaterialTheme.typography.bodySmall,
             )
@@ -201,6 +196,7 @@ fun TrafficStat(
             }
 
             val formattedStat = buildAnnotatedString {
+                pushStyle(style = SpanStyle(color = cardColor))
                 withStyle(style = MaterialTheme.typography.headlineMedium.toSpanStyle()) {
                     append(valueText)
                 }
@@ -242,36 +238,40 @@ private fun TrafficGraphCard(
     } ?: yTickMaxDisplayableValue
     val yTickMaxValue = yTickSteppedMax.toLong().asDataUnit(yTickMaxDisplayableUnit)
 
-    Graph(
-        lines = listOf(
-            LineConfig(
-                data = trafficMetrics.map { metric ->
-                    GraphEntry(metric.timestamp, metric.txBytesPerSec)
-                },
-                color = txLineColor
-            ),
-            LineConfig(
-                data = trafficMetrics.map { metric ->
-                    GraphEntry(metric.timestamp, metric.rxBytesPerSec)
-                },
-                color = rxLineColor
-            ),
-        ),
-        xTickStartValue = xMinValue,
-        xTickEndValue = xMaxValue,
-        yTickBottomValue = 0L,
-        yTickTopValue = yTickMaxValue.bytes,
-        yTickCount = 5,
-        getYTickLabel = { bytes ->
-            val bytesValue = bytes.asDataUnit(DataUnit.BYTE)
-            bytesValue.bestDisplayableUnit.run {
-                val number = first
-                val unitString = second.displayString
-                "${formatBigDecimal(number)}$unitString"
-            }
-        },
+    GlassCard(
         modifier = modifier,
-    )
+    ) {
+        Graph(
+            lines = listOf(
+                LineConfig(
+                    data = trafficMetrics.map { metric ->
+                        GraphEntry(metric.timestamp, metric.txBytesPerSec)
+                    },
+                    color = txLineColor
+                ),
+                LineConfig(
+                    data = trafficMetrics.map { metric ->
+                        GraphEntry(metric.timestamp, metric.rxBytesPerSec)
+                    },
+                    color = rxLineColor
+                ),
+            ),
+            xTickStartValue = xMinValue,
+            xTickEndValue = xMaxValue,
+            yTickBottomValue = 0L,
+            yTickTopValue = yTickMaxValue.bytes,
+            yTickCount = 5,
+            getYTickLabel = { bytes ->
+                val bytesValue = bytes.asDataUnit(DataUnit.BYTE)
+                bytesValue.bestDisplayableUnit.run {
+                    val number = first
+                    val unitString = second.displayString
+                    "${formatBigDecimal(number)}$unitString"
+                }
+            },
+            modifier = Modifier.fillMaxSize().padding(16.dp),
+        )
+    }
 }
 
 @Composable
@@ -312,6 +312,7 @@ fun MonitorSessionInfo(
                             minutes,
                             seconds,
                         )
+
                         else -> String.format(
                             Locale.current.platformLocale,
                             "%02d:%02d:%02d",
