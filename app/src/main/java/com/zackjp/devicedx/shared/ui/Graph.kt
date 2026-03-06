@@ -64,7 +64,6 @@ fun Graph(
             }
         }) {
             path.rewind()
-            if (lines.all { it.data.isEmpty() }) return@Canvas
 
             val axisChartMarginPx = 8.dp.toPx()
 
@@ -96,20 +95,22 @@ fun Graph(
             )
 
             lines.forEach { lineConfig ->
-                val canvasPoints = mapDataToCanvasPoints(
-                    data = lineConfig.data,
-                    chartArea = chartArea,
-                    xTickStartValue = xTickStartValue,
-                    xTickEndValue = xTickEndValue,
-                    yTickBottomValue = yTickBottomValue,
-                    yTickTopValue = yTickTopValue,
-                )
+                if (lineConfig.data.isNotEmpty()) {
+                    val canvasPoints = mapDataToCanvasPoints(
+                        data = lineConfig.data,
+                        chartArea = chartArea,
+                        xTickStartValue = xTickStartValue,
+                        xTickEndValue = xTickEndValue,
+                        yTickBottomValue = yTickBottomValue,
+                        yTickTopValue = yTickTopValue,
+                    )
 
-                drawDataLine(
-                    canvasPoints = canvasPoints,
-                    reusablePath = path,
-                    lineColor = lineConfig.color
-                )
+                    drawDataLine(
+                        canvasPoints = canvasPoints,
+                        reusablePath = path,
+                        lineColor = lineConfig.color
+                    )
+                }
             }
 
             drawChartOutline(
