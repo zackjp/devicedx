@@ -5,5 +5,12 @@ import androidx.compose.ui.graphics.Color
 val DarkSlate = Color(0xFF222829)
 val OffWhite = Color(0xFFF1F1F1)
 
-val NeonBlue = Color(0xFF6F9FC6)
-val NeonGreen = Color(0xFF8FC2A6)
+val ActiveBlue = Color(0xFF2979FF)
+val VividCyan = Color(0xFF00E5FF)
+val ElectricMagenta = Color(0xFFFF4081)
+val ElectricAmber = Color(0xFFFFAB40)
+
+val SoftCyan = Color(0xFF80DEEA)
+val SoftMagenta = Color(0xFFFF80AB)
+val SoftIndigo = Color(0xFF9FA8DA)
+val SoftTeal = Color(0xFF80CBC4)

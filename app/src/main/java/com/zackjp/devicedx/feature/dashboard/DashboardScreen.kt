@@ -28,7 +28,11 @@ import androidx.compose.runtime.Composable
 import androidx.compose.runtime.remember
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.draw.drawBehind
+import androidx.compose.ui.geometry.Offset
+import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.graphics.Shadow
 import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.style.TextAlign
@@ -37,13 +41,28 @@ import androidx.compose.ui.unit.dp
 import androidx.hilt.lifecycle.viewmodel.compose.hiltViewModel
 import com.zackjp.devicedx.R
 import com.zackjp.devicedx.navigation.NavActions
-import com.zackjp.devicedx.ui.theme.NeonBlue
-import com.zackjp.devicedx.ui.theme.NeonGreen
+import com.zackjp.devicedx.ui.theme.SoftCyan
+import com.zackjp.devicedx.ui.theme.DarkSlate
+import com.zackjp.devicedx.ui.theme.SoftMagenta
+import com.zackjp.devicedx.ui.theme.SoftIndigo
+import com.zackjp.devicedx.ui.theme.SoftTeal
 
+
+private val DashboardCardBorderGradient = Brush.linearGradient(
+    0.0f to Color.White.copy(alpha = 0.15f),
+    1f to Color.White.copy(alpha = 0.5f),
+)
+private val DashboardCardBackgroundGradient = Brush.linearGradient(
+    0.0f to Color.White.copy(alpha = 0.1f),
+    1f to Color.White.copy(alpha = 0.2f),
+    start = Offset.Infinite.copy(y = 0f),
+    end = Offset.Infinite.copy(x = 0f),
+)
 
 @Composable
 fun DashboardScreen(
     modifier: Modifier = Modifier,
+    innerPadding: PaddingValues,
     navActions: NavActions,
     viewModel: DashboardViewModel = hiltViewModel(),
 ) {
@@ -54,8 +73,10 @@ fun DashboardScreen(
             contentAlignment = Alignment.TopCenter,
         ) {
             LazyColumn(
-                contentPadding = PaddingValues(horizontal = 16.dp),
-                modifier = Modifier.fillMaxWidth(),
+                contentPadding = PaddingValues(16.dp),
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .padding(innerPadding),
                 verticalArrangement = Arrangement.spacedBy(8.dp),
             ) {
                 items(cardInfoList) { cardInfo ->
@@ -78,19 +99,34 @@ private fun DashboardCard(
 ) {
     Card(
         modifier = modifier,
-        border = BorderStroke(2.dp, cardInfo.cardColorTheme),
+        border = BorderStroke(
+            1.dp,
+            DashboardCardBorderGradient,
+        ),
         colors = CardDefaults.cardColors(
-            containerColor = MaterialTheme.colorScheme.surface
+            containerColor = Color.Transparent
         ),
     ) {
         Column(
             horizontalAlignment = Alignment.Start,
-            modifier = Modifier.padding(16.dp),
+            modifier = Modifier
+                .drawBehind {
+                    drawRect(
+                        DashboardCardBackgroundGradient,
+                    )
+                }
+                .padding(16.dp),
         ) {
             Text(
                 color = cardInfo.cardColorTheme,
                 modifier = Modifier.fillMaxWidth(),
-                style = MaterialTheme.typography.headlineMedium,
+                style = MaterialTheme.typography.headlineMedium.copy(
+                    shadow = Shadow(
+                        color = DarkSlate.copy(alpha = 0.5f),
+                        offset = Offset(2f, 2f),
+                        blurRadius = 4f
+                    )
+                ),
                 text = stringResource(cardInfo.titleTextId),
             )
 
@@ -139,36 +175,35 @@ private fun DashboardCard(
 }
 
 @Composable
-private fun rememberDashboardCards(navActions: NavActions): List<DashCardInfo> {
-
-    return remember(navActions) {
-        listOf(
-            DashCardInfo(
-                titleTextId = R.string.dashboard_wifi_title,
-                descriptionTextId = R.string.dashboard_wifi_description,
-                launchTextId = R.string.dashboard_wifi_open_monitor,
-                iconResId = R.drawable.ic_rounded_android_wifi_3_bar_24,
-                cardColorTheme = NeonBlue,
-                navAction = navActions.toWifiMonitor,
-            ),
-            DashCardInfo(
-                titleTextId = R.string.dashboard_latency_title,
-                descriptionTextId = R.string.dashboard_latency_description,
-                launchTextId = R.string.dashboard_latency_open_monitor,
-                iconResId = R.drawable.ic_rounded_multiple_stop_24,
-                cardColorTheme = NeonGreen,
-                navAction = navActions.toLatencyMonitor,
-            ),
-            DashCardInfo(
-                titleTextId = R.string.dashboard_traffic_title,
-                descriptionTextId = R.string.dashboard_traffic_description,
-                launchTextId = R.string.dashboard_traffic_open_monitor,
-                iconResId = R.drawable.ic_rounded_traffic_24,
-                cardColorTheme = NeonBlue,
-                navAction = navActions.toTrafficMonitor,
-            ),
-        )
-    }
+private fun rememberDashboardCards(
+    navActions: NavActions,
+): List<DashCardInfo> = remember(navActions) {
+    listOf(
+        DashCardInfo(
+            titleTextId = R.string.dashboard_wifi_title,
+            descriptionTextId = R.string.dashboard_wifi_description,
+            launchTextId = R.string.dashboard_wifi_open_monitor,
+            iconResId = R.drawable.ic_rounded_android_wifi_3_bar_24,
+            cardColorTheme = SoftCyan,
+            navAction = navActions.toWifiMonitor,
+        ),
+        DashCardInfo(
+            titleTextId = R.string.dashboard_latency_title,
+            descriptionTextId = R.string.dashboard_latency_description,
+            launchTextId = R.string.dashboard_latency_open_monitor,
+            iconResId = R.drawable.ic_rounded_multiple_stop_24,
+            cardColorTheme = SoftIndigo,
+            navAction = navActions.toLatencyMonitor,
+        ),
+        DashCardInfo(
+            titleTextId = R.string.dashboard_traffic_title,
+            descriptionTextId = R.string.dashboard_traffic_description,
+            launchTextId = R.string.dashboard_traffic_open_monitor,
+            iconResId = R.drawable.ic_rounded_traffic_24,
+            cardColorTheme = SoftMagenta,
+            navAction = navActions.toTrafficMonitor,
+        ),
+    )
 }
 
 private data class DashCardInfo(

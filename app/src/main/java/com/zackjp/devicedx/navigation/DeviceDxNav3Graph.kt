@@ -40,8 +40,8 @@ fun DeviceDxNav3Graph(
             entry<Route.Dashboard> {
                 DashboardScreen(
                     modifier = Modifier
-                        .padding(innerPadding)
                         .fillMaxWidth(),
+                    innerPadding = innerPadding,
                     navActions = navActions,
                 )
             }
