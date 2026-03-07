@@ -2,6 +2,7 @@ package com.zackjp.devicedx.feature.dashboard
 
 import androidx.annotation.DrawableRes
 import androidx.annotation.StringRes
+import androidx.compose.foundation.BorderStroke
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
@@ -15,8 +16,10 @@ import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
+import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material3.Button
 import androidx.compose.material3.ButtonDefaults
+import androidx.compose.material3.Card
 import androidx.compose.material3.Icon
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Surface
@@ -25,9 +28,7 @@ import androidx.compose.runtime.Composable
 import androidx.compose.runtime.remember
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
-import androidx.compose.ui.geometry.Offset
 import androidx.compose.ui.graphics.Color
-import androidx.compose.ui.graphics.Shadow
 import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.style.TextAlign
@@ -36,11 +37,8 @@ import androidx.compose.ui.unit.dp
 import androidx.hilt.lifecycle.viewmodel.compose.hiltViewModel
 import com.zackjp.devicedx.R
 import com.zackjp.devicedx.navigation.NavActions
-import com.zackjp.devicedx.shared.ui.GlassCard
-import com.zackjp.devicedx.ui.theme.DarkSlate
-import com.zackjp.devicedx.ui.theme.SoftCyan
-import com.zackjp.devicedx.ui.theme.SoftIndigo
-import com.zackjp.devicedx.ui.theme.SoftMagenta
+import com.zackjp.devicedx.ui.theme.Sage
+import com.zackjp.devicedx.ui.theme.SteelGray
 
 
 @Composable
@@ -61,7 +59,7 @@ fun DashboardScreen(
                 modifier = Modifier
                     .fillMaxWidth()
                     .padding(innerPadding),
-                verticalArrangement = Arrangement.spacedBy(8.dp),
+                verticalArrangement = Arrangement.spacedBy(16.dp),
             ) {
                 items(cardInfoList) { cardInfo ->
                     DashboardCard(
@@ -81,37 +79,22 @@ private fun DashboardCard(
     cardInfo: DashCardInfo,
     modifier: Modifier = Modifier,
 ) {
-    GlassCard(
+    Card(
+        border = BorderStroke(1.dp, SteelGray),
         modifier = modifier,
     ) {
         Column(
             horizontalAlignment = Alignment.Start,
             modifier = Modifier
-                .padding(16.dp),
+                .padding(horizontal = 16.dp, vertical = 24.dp),
         ) {
-            Text(
-                color = cardInfo.cardColorTheme,
-                modifier = Modifier.fillMaxWidth(),
-                style = MaterialTheme.typography.headlineMedium.copy(
-                    shadow = Shadow(
-                        color = DarkSlate.copy(alpha = 0.5f),
-                        offset = Offset(2f, 2f),
-                        blurRadius = 4f
-                    )
-                ),
-                text = stringResource(cardInfo.titleTextId),
-            )
-
-            Spacer(Modifier.height(8.dp))
-
             Row(
                 modifier = Modifier.fillMaxWidth(),
             ) {
-                val iconSize = 100.dp
                 Icon(
                     contentDescription = null,
                     modifier = Modifier
-                        .width(iconSize)
+                        .width(80.dp)
                         .aspectRatio(1f),
                     painter = painterResource(cardInfo.iconResId),
                     tint = cardInfo.cardColorTheme,
@@ -121,26 +104,44 @@ private fun DashboardCard(
 
                 Column(modifier = Modifier.weight(1f)) {
                     Text(
+                        modifier = Modifier.fillMaxWidth(),
+                        style = MaterialTheme.typography.headlineSmall,
+                        text = stringResource(cardInfo.titleTextId),
+                    )
+
+                    Spacer(Modifier.height(8.dp))
+
+                    Text(
+                        maxLines = 2,
                         modifier = Modifier
-                            .fillMaxWidth()
-                            .height(iconSize),
+                            .fillMaxWidth(),
                         overflow = TextOverflow.Ellipsis,
+                        style = MaterialTheme.typography.bodyMedium,
                         text = stringResource(cardInfo.descriptionTextId),
                     )
-                    Button(
-                        modifier = Modifier.fillMaxWidth(),
-                        onClick = cardInfo.navAction,
-                        colors = ButtonDefaults.buttonColors(
-                            containerColor = cardInfo.cardColorTheme,
-                        )
-                    ) {
-                        Text(
-                            modifier = Modifier,
-                            text = stringResource(cardInfo.launchTextId),
-                            textAlign = TextAlign.Center,
-                        )
-                    }
                 }
+            }
+
+            Spacer(Modifier.height(24.dp))
+
+            Button(
+                border = BorderStroke(1.dp, cardInfo.cardColorTheme),
+                colors = ButtonDefaults.buttonColors(
+                    containerColor = Color.Transparent,
+                    contentColor = cardInfo.cardColorTheme,
+                ),
+                contentPadding = PaddingValues(vertical = 16.dp),
+                modifier = Modifier
+                    .fillMaxWidth(),
+                onClick = cardInfo.navAction,
+                shape = RoundedCornerShape(10.dp),
+            ) {
+                Text(
+                    modifier = Modifier,
+                    style = MaterialTheme.typography.bodyLarge,
+                    text = stringResource(cardInfo.launchTextId),
+                    textAlign = TextAlign.Center,
+                )
             }
         }
     }
@@ -156,7 +157,7 @@ private fun rememberDashboardCards(
             descriptionTextId = R.string.dashboard_wifi_description,
             launchTextId = R.string.dashboard_wifi_open_monitor,
             iconResId = R.drawable.ic_rounded_android_wifi_3_bar_24,
-            cardColorTheme = SoftCyan,
+            cardColorTheme = Sage,
             navAction = navActions.toWifiMonitor,
         ),
         DashCardInfo(
@@ -164,7 +165,7 @@ private fun rememberDashboardCards(
             descriptionTextId = R.string.dashboard_latency_description,
             launchTextId = R.string.dashboard_latency_open_monitor,
             iconResId = R.drawable.ic_rounded_multiple_stop_24,
-            cardColorTheme = SoftIndigo,
+            cardColorTheme = Sage,
             navAction = navActions.toLatencyMonitor,
         ),
         DashCardInfo(
@@ -172,7 +173,7 @@ private fun rememberDashboardCards(
             descriptionTextId = R.string.dashboard_traffic_description,
             launchTextId = R.string.dashboard_traffic_open_monitor,
             iconResId = R.drawable.ic_rounded_traffic_24,
-            cardColorTheme = SoftMagenta,
+            cardColorTheme = Sage,
             navAction = navActions.toTrafficMonitor,
         ),
     )

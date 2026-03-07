@@ -5,14 +5,17 @@ import androidx.compose.material3.darkColorScheme
 import androidx.compose.runtime.Composable
 
 private val DarkColorScheme = darkColorScheme(
-    primary = OffWhite,
-    onPrimary = DarkSlate,
+    primary = Sage,
+    onPrimary = Ink,
     secondary = OffWhite,
-    onSecondary = DarkSlate,
+    onSecondary = Sage,
     outlineVariant = OffWhite,
+    background = Ink,
     onBackground = OffWhite,
+    surface = Ink,
     onSurface = OffWhite,
-    surfaceVariant = DarkSlate,
+    surfaceContainerHighest = SlateGray,
+    surfaceVariant = SlateGray,
     onSurfaceVariant = OffWhite,
 )
 
@@ -23,6 +26,6 @@ fun DeviceDxTheme(
     MaterialTheme(
         colorScheme = DarkColorScheme,
         typography = Typography,
-        content = content
+        content = content,
     )
 }

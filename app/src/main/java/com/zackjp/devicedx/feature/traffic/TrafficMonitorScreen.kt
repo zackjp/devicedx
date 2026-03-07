@@ -41,7 +41,7 @@ import com.zackjp.devicedx.shared.ui.Graph
 import com.zackjp.devicedx.shared.ui.GraphEntry
 import com.zackjp.devicedx.shared.ui.LineConfig
 import com.zackjp.devicedx.shared.ui.rememberIsInPipMode
-import com.zackjp.devicedx.ui.theme.DarkSlate
+import com.zackjp.devicedx.ui.theme.Onyx
 import com.zackjp.devicedx.ui.theme.ElectricMagenta
 import com.zackjp.devicedx.ui.theme.OffWhite
 import kotlinx.coroutines.delay
@@ -295,7 +295,7 @@ fun MonitorSessionInfo(
     Card(
         modifier = modifier,
         colors = CardDefaults.cardColors(
-            containerColor = DarkSlate,
+            containerColor = Onyx,
         )
     ) {
         Column(
