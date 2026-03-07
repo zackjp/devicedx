@@ -70,7 +70,6 @@ fun DashboardScreen(
                 }
             }
         }
-
     }
 }
 
@@ -88,53 +87,17 @@ private fun DashboardCard(
             modifier = Modifier
                 .padding(horizontal = 16.dp, vertical = 24.dp),
         ) {
-            Row(
+            CardDescriptionRow(
                 modifier = Modifier.fillMaxWidth(),
-            ) {
-                Icon(
-                    contentDescription = null,
-                    modifier = Modifier
-                        .width(80.dp)
-                        .aspectRatio(1f),
-                    painter = painterResource(cardInfo.iconResId),
-                    tint = cardInfo.cardColorTheme,
-                )
-
-                Spacer(Modifier.width(16.dp))
-
-                Column(modifier = Modifier.weight(1f)) {
-                    Text(
-                        modifier = Modifier.fillMaxWidth(),
-                        style = MaterialTheme.typography.headlineSmall,
-                        text = stringResource(cardInfo.titleTextId),
-                    )
-
-                    Spacer(Modifier.height(8.dp))
-
-                    Text(
-                        maxLines = 2,
-                        modifier = Modifier
-                            .fillMaxWidth(),
-                        overflow = TextOverflow.Ellipsis,
-                        style = MaterialTheme.typography.bodyMedium,
-                        text = stringResource(cardInfo.descriptionTextId),
-                    )
-                }
-            }
+                cardInfo = cardInfo,
+            )
 
             Spacer(Modifier.height(24.dp))
 
-            Button(
-                border = BorderStroke(1.dp, cardInfo.cardColorTheme),
-                colors = ButtonDefaults.buttonColors(
-                    containerColor = Color.Transparent,
-                    contentColor = cardInfo.cardColorTheme,
-                ),
-                contentPadding = PaddingValues(vertical = 16.dp),
-                modifier = Modifier
-                    .fillMaxWidth(),
+            DashboardButton(
+                modifier = Modifier.fillMaxWidth(),
                 onClick = cardInfo.navAction,
-                shape = RoundedCornerShape(10.dp),
+                color = cardInfo.cardColorTheme,
             ) {
                 Text(
                     modifier = Modifier,
@@ -144,6 +107,68 @@ private fun DashboardCard(
                 )
             }
         }
+    }
+}
+
+@Composable
+private fun CardDescriptionRow(
+    modifier: Modifier = Modifier,
+    cardInfo: DashCardInfo,
+) {
+    Row(
+        modifier = modifier,
+    ) {
+        Icon(
+            contentDescription = null,
+            modifier = Modifier
+                .width(80.dp)
+                .aspectRatio(1f),
+            painter = painterResource(cardInfo.iconResId),
+            tint = cardInfo.cardColorTheme,
+        )
+
+        Spacer(Modifier.width(16.dp))
+
+        Column(modifier = Modifier.weight(1f)) {
+            Text(
+                modifier = Modifier.fillMaxWidth(),
+                style = MaterialTheme.typography.headlineSmall,
+                text = stringResource(cardInfo.titleTextId),
+            )
+
+            Spacer(Modifier.height(8.dp))
+
+            Text(
+                maxLines = 2,
+                modifier = Modifier
+                    .fillMaxWidth(),
+                overflow = TextOverflow.Ellipsis,
+                style = MaterialTheme.typography.bodyMedium,
+                text = stringResource(cardInfo.descriptionTextId),
+            )
+        }
+    }
+}
+
+@Composable
+private fun DashboardButton(
+    onClick: () -> Unit,
+    modifier: Modifier = Modifier,
+    color: Color,
+    content: @Composable () -> Unit,
+) {
+    Button(
+        border = BorderStroke(1.dp, color),
+        colors = ButtonDefaults.buttonColors(
+            containerColor = Color.Transparent,
+            contentColor = color,
+        ),
+        contentPadding = PaddingValues(vertical = 16.dp),
+        modifier = modifier,
+        onClick = onClick,
+        shape = RoundedCornerShape(10.dp),
+    ) {
+        content()
     }
 }
 
