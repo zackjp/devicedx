@@ -9,7 +9,6 @@ import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.width
-import androidx.compose.material3.Button
 import androidx.compose.material3.Card
 import androidx.compose.material3.CardDefaults
 import androidx.compose.material3.MaterialTheme
@@ -40,10 +39,11 @@ import com.zackjp.devicedx.shared.ui.GlassCard
 import com.zackjp.devicedx.shared.ui.Graph
 import com.zackjp.devicedx.shared.ui.GraphEntry
 import com.zackjp.devicedx.shared.ui.LineConfig
+import com.zackjp.devicedx.shared.ui.PrimaryButton
 import com.zackjp.devicedx.shared.ui.rememberIsInPipMode
-import com.zackjp.devicedx.ui.theme.Onyx
 import com.zackjp.devicedx.ui.theme.ElectricMagenta
 import com.zackjp.devicedx.ui.theme.OffWhite
+import com.zackjp.devicedx.ui.theme.Onyx
 import kotlinx.coroutines.delay
 import java.math.BigDecimal
 import java.text.DecimalFormat
@@ -133,9 +133,12 @@ private fun TrafficMonitorScreen(
             } else {
                 R.string.start_traffic_monitor to onStartMonitor
             }
-            Button(onClick = onClick) {
-                Text(stringResource(textResId))
-            }
+
+            PrimaryButton(
+                modifier = Modifier.fillMaxWidth(),
+                onClick = onClick,
+                text = stringResource(textResId),
+            )
         }
     }
 

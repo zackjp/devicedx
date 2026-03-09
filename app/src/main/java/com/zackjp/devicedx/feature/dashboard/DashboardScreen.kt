@@ -16,9 +16,6 @@ import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
-import androidx.compose.foundation.shape.RoundedCornerShape
-import androidx.compose.material3.Button
-import androidx.compose.material3.ButtonDefaults
 import androidx.compose.material3.Card
 import androidx.compose.material3.Icon
 import androidx.compose.material3.MaterialTheme
@@ -31,12 +28,12 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.res.stringResource
-import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import androidx.hilt.lifecycle.viewmodel.compose.hiltViewModel
 import com.zackjp.devicedx.R
 import com.zackjp.devicedx.navigation.NavActions
+import com.zackjp.devicedx.shared.ui.PrimaryButton
 import com.zackjp.devicedx.ui.theme.Sage
 import com.zackjp.devicedx.ui.theme.SteelGray
 
@@ -94,18 +91,11 @@ private fun DashboardCard(
 
             Spacer(Modifier.height(24.dp))
 
-            DashboardButton(
+            PrimaryButton(
                 modifier = Modifier.fillMaxWidth(),
                 onClick = cardInfo.navAction,
-                color = cardInfo.cardColorTheme,
-            ) {
-                Text(
-                    modifier = Modifier,
-                    style = MaterialTheme.typography.bodyLarge,
-                    text = stringResource(cardInfo.launchTextId),
-                    textAlign = TextAlign.Center,
-                )
-            }
+                text = stringResource(cardInfo.launchTextId),
+            )
         }
     }
 }
@@ -147,28 +137,6 @@ private fun CardDescriptionRow(
                 text = stringResource(cardInfo.descriptionTextId),
             )
         }
-    }
-}
-
-@Composable
-private fun DashboardButton(
-    onClick: () -> Unit,
-    modifier: Modifier = Modifier,
-    color: Color,
-    content: @Composable () -> Unit,
-) {
-    Button(
-        border = BorderStroke(1.dp, color),
-        colors = ButtonDefaults.buttonColors(
-            containerColor = Color.Transparent,
-            contentColor = color,
-        ),
-        contentPadding = PaddingValues(vertical = 16.dp),
-        modifier = modifier,
-        onClick = onClick,
-        shape = RoundedCornerShape(10.dp),
-    ) {
-        content()
     }
 }
 
