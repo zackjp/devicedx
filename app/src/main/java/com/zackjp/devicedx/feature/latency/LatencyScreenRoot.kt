@@ -18,17 +18,17 @@ import androidx.compose.ui.unit.dp
 import androidx.hilt.lifecycle.viewmodel.compose.hiltViewModel
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import com.zackjp.devicedx.R
-import com.zackjp.devicedx.shared.ui.GlassCard
+import com.zackjp.devicedx.shared.ui.AppCard
 import com.zackjp.devicedx.shared.ui.Graph
 import com.zackjp.devicedx.shared.ui.GraphEntry
 import com.zackjp.devicedx.shared.ui.LineConfig
 import com.zackjp.devicedx.shared.ui.PrimaryButton
 import com.zackjp.devicedx.shared.ui.getScaleCount
-import com.zackjp.devicedx.ui.theme.SoftIndigo
+import com.zackjp.devicedx.ui.theme.Turquoise
 import kotlin.math.max
 
 
-private val LatencyLineColor = SoftIndigo
+private val LatencyLineColor = Turquoise
 
 
 @Composable
@@ -85,7 +85,7 @@ private fun LazyListScope.latencyGraph(
             val yAxisScale = yMaxValue.getScaleCount(unitScaleY)
             val yTickMaxValue = unitScaleY.toBigDecimal().pow(yAxisScale).toLong()
 
-            GlassCard(
+            AppCard(
                 modifier = Modifier,
             ) {
                 Graph(

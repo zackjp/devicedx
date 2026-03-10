@@ -9,8 +9,6 @@ import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.width
-import androidx.compose.material3.Card
-import androidx.compose.material3.CardDefaults
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
@@ -35,15 +33,15 @@ import com.zackjp.devicedx.R
 import com.zackjp.devicedx.model.Bytes.Companion.asDataUnit
 import com.zackjp.devicedx.model.DataUnit
 import com.zackjp.devicedx.model.TrafficMetric
-import com.zackjp.devicedx.shared.ui.GlassCard
+import com.zackjp.devicedx.shared.ui.AppCard
 import com.zackjp.devicedx.shared.ui.Graph
 import com.zackjp.devicedx.shared.ui.GraphEntry
 import com.zackjp.devicedx.shared.ui.LineConfig
 import com.zackjp.devicedx.shared.ui.PrimaryButton
 import com.zackjp.devicedx.shared.ui.rememberIsInPipMode
-import com.zackjp.devicedx.ui.theme.ElectricMagenta
-import com.zackjp.devicedx.ui.theme.OffWhite
-import com.zackjp.devicedx.ui.theme.Onyx
+import com.zackjp.devicedx.ui.theme.CyberAmber
+import com.zackjp.devicedx.ui.theme.Platinum
+import com.zackjp.devicedx.ui.theme.Turquoise
 import kotlinx.coroutines.delay
 import java.math.BigDecimal
 import java.text.DecimalFormat
@@ -58,8 +56,8 @@ private const val ASPECT_RATIO_NUMERATOR = 16
 private const val ASPECT_RATIO_DENOMINATOR = 9
 private const val ASPECT_RATIO_FLOAT = ASPECT_RATIO_NUMERATOR.toFloat() / ASPECT_RATIO_DENOMINATOR
 
-private val RxLineColor = ElectricMagenta
-private val TxLineColor = OffWhite
+private val RxLineColor = Turquoise
+private val TxLineColor = CyberAmber
 
 @Composable
 fun TrafficMonitorScreenRoot(
@@ -173,7 +171,7 @@ fun TrafficStat(
     bytes: Long?,
     label: String,
 ) {
-    GlassCard(
+    AppCard(
         modifier = modifier,
     ) {
         Column(
@@ -211,7 +209,7 @@ fun TrafficStat(
 
             Text(
                 modifier = Modifier,
-                color = OffWhite,
+                color = Platinum,
                 text = formattedStat,
             )
         }
@@ -241,7 +239,7 @@ private fun TrafficGraphCard(
     } ?: yTickMaxDisplayableValue
     val yTickMaxValue = yTickSteppedMax.toLong().asDataUnit(yTickMaxDisplayableUnit)
 
-    GlassCard(
+    AppCard(
         modifier = modifier,
     ) {
         Graph(
@@ -295,11 +293,8 @@ fun MonitorSessionInfo(
         }
     }
 
-    Card(
+    AppCard(
         modifier = modifier,
-        colors = CardDefaults.cardColors(
-            containerColor = Onyx,
-        )
     ) {
         Column(
             modifier = Modifier.padding(12.dp),

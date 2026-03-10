@@ -5,18 +5,18 @@ import androidx.compose.material3.darkColorScheme
 import androidx.compose.runtime.Composable
 
 private val DarkColorScheme = darkColorScheme(
-    primary = Sage,
-    onPrimary = Ink,
-    secondary = OffWhite,
-    onSecondary = Sage,
-    outlineVariant = OffWhite,
-    background = Ink,
-    onBackground = OffWhite,
-    surface = Ink,
-    onSurface = OffWhite,
-    surfaceContainerHighest = SlateGray,
-    surfaceVariant = SlateGray,
-    onSurfaceVariant = OffWhite,
+    primary = IrisLight,
+    onPrimary = Platinum,
+    secondary = Turquoise,
+    onSecondary = Ink,
+    outlineVariant = Iris,
+    background = NightShade,
+    onBackground = Platinum,
+    surface = NightShade,
+    onSurface = Platinum,
+    surfaceContainerHighest = DarkSlate,
+    surfaceVariant = DarkSlate,
+    onSurfaceVariant = Platinum,
 )
 
 @Composable

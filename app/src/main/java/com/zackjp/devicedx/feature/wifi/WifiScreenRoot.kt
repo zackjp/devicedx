@@ -8,7 +8,6 @@ import androidx.activity.compose.LocalActivity
 import androidx.activity.compose.rememberLauncherForActivityResult
 import androidx.activity.result.contract.ActivityResultContracts
 import androidx.compose.animation.core.Animatable
-import androidx.compose.foundation.BorderStroke
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.PaddingValues
@@ -31,7 +30,6 @@ import androidx.compose.foundation.pager.PagerState
 import androidx.compose.foundation.pager.rememberPagerState
 import androidx.compose.foundation.text.BasicText
 import androidx.compose.foundation.text.TextAutoSize
-import androidx.compose.material3.Card
 import androidx.compose.material3.Icon
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.PrimaryTabRow
@@ -64,8 +62,8 @@ import androidx.core.app.ActivityCompat
 import androidx.hilt.lifecycle.viewmodel.compose.hiltViewModel
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import com.zackjp.devicedx.R
+import com.zackjp.devicedx.shared.ui.AppCard
 import com.zackjp.devicedx.system.WifiInfo
-import com.zackjp.devicedx.ui.theme.SteelGray
 import kotlinx.coroutines.launch
 
 
@@ -144,7 +142,6 @@ private fun TabRow(
     tabNames: List<String>
 ) {
     val coroutineScope = rememberCoroutineScope()
-
     PrimaryTabRow(
         modifier = Modifier.fillMaxWidth(),
         selectedTabIndex = pagerState.currentPage,
@@ -283,8 +280,7 @@ private fun WifiInfoStat(
     modifier: Modifier = Modifier,
     stat: Pair<String, String>
 ) {
-    Card(
-        border = BorderStroke(1.dp, SteelGray),
+    AppCard(
         modifier = modifier,
     ) {
         Column(
@@ -300,10 +296,10 @@ private fun WifiInfoStat(
             )
 
             val style = MaterialTheme.typography.headlineSmall
-            val primaryColor = MaterialTheme.colorScheme.primary
+            val textColor = MaterialTheme.colorScheme.onSurfaceVariant
             BasicText(
                 autoSize = TextAutoSize.StepBased(maxFontSize = style.fontSize),
-                color = { primaryColor },
+                color = { textColor },
                 maxLines = 1,
                 overflow = TextOverflow.MiddleEllipsis,
                 style = style,

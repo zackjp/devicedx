@@ -7,49 +7,41 @@ import androidx.compose.material3.CardDefaults
 import androidx.compose.runtime.Composable
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
-import androidx.compose.ui.draw.drawBehind
 import androidx.compose.ui.geometry.Offset
 import androidx.compose.ui.graphics.Brush
-import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.unit.dp
+import com.zackjp.devicedx.ui.theme.DarkSlate
+import com.zackjp.devicedx.ui.theme.Platinum
 
 
-private val GlassBorderGradient = Brush.linearGradient(
-    0.0f to Color.White.copy(alpha = 0.15f),
-    1f to Color.White.copy(alpha = 0.5f),
+private val AppCardBorderGradient = Brush.linearGradient(
+    0.0f to Platinum.copy(alpha = 0.15f),
+    1f to Platinum.copy(alpha = 0.5f),
+    start = Offset.Infinite.copy(x = 0f),
+    end = Offset.Infinite.copy(y = 0f),
 )
 
-private val GlassBackgroundGradient = Brush.linearGradient(
-    0.0f to Color.White.copy(alpha = 0.1f),
-    1f to Color.White.copy(alpha = 0.2f),
-    start = Offset.Infinite.copy(y = 0f),
-    end = Offset.Infinite.copy(x = 0f),
+private val AppCardBorderStroke = BorderStroke(
+    width = 1.dp,
+    brush = AppCardBorderGradient,
 )
 
 
 @Composable
-fun GlassCard(
+fun AppCard(
     modifier: Modifier = Modifier,
     content: @Composable () -> Unit,
 ) {
     Card(
         modifier = modifier,
-        border = BorderStroke(
-            1.dp,
-            GlassBorderGradient,
-        ),
+        border = AppCardBorderStroke,
         colors = CardDefaults.cardColors(
-            containerColor = Color.Transparent
+            containerColor = DarkSlate,
         ),
     ) {
         Column(
             horizontalAlignment = Alignment.Start,
-            modifier = Modifier
-                .drawBehind {
-                    drawRect(
-                        GlassBackgroundGradient,
-                    )
-                },
+            modifier = Modifier,
         ) {
             content()
         }

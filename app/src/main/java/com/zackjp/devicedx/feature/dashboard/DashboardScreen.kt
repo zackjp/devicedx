@@ -2,7 +2,6 @@ package com.zackjp.devicedx.feature.dashboard
 
 import androidx.annotation.DrawableRes
 import androidx.annotation.StringRes
-import androidx.compose.foundation.BorderStroke
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
@@ -16,7 +15,6 @@ import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
-import androidx.compose.material3.Card
 import androidx.compose.material3.Icon
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Surface
@@ -25,6 +23,8 @@ import androidx.compose.runtime.Composable
 import androidx.compose.runtime.remember
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.draw.drawWithCache
+import androidx.compose.ui.geometry.CornerRadius
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.res.stringResource
@@ -33,9 +33,9 @@ import androidx.compose.ui.unit.dp
 import androidx.hilt.lifecycle.viewmodel.compose.hiltViewModel
 import com.zackjp.devicedx.R
 import com.zackjp.devicedx.navigation.NavActions
+import com.zackjp.devicedx.shared.ui.AppCard
 import com.zackjp.devicedx.shared.ui.PrimaryButton
-import com.zackjp.devicedx.ui.theme.Sage
-import com.zackjp.devicedx.ui.theme.SteelGray
+import com.zackjp.devicedx.ui.theme.Turquoise
 
 
 @Composable
@@ -75,8 +75,7 @@ private fun DashboardCard(
     cardInfo: DashCardInfo,
     modifier: Modifier = Modifier,
 ) {
-    Card(
-        border = BorderStroke(1.dp, SteelGray),
+    AppCard(
         modifier = modifier,
     ) {
         Column(
@@ -108,14 +107,31 @@ private fun CardDescriptionRow(
     Row(
         modifier = modifier,
     ) {
-        Icon(
-            contentDescription = null,
+        Box(
             modifier = Modifier
-                .width(80.dp)
-                .aspectRatio(1f),
-            painter = painterResource(cardInfo.iconResId),
-            tint = cardInfo.cardColorTheme,
-        )
+                .width(60.dp)
+                .aspectRatio(1f)
+                .drawWithCache {
+                    val bg = cardInfo.cardColorTheme.copy(alpha = 0.15f)
+                    val cornerRadius = CornerRadius(10.dp.toPx())
+                    onDrawBehind {
+                        drawRoundRect(
+                            color = bg,
+                            cornerRadius = cornerRadius,
+                        )
+                    }
+                }
+                .padding(12.dp)
+        ) {
+            Icon(
+                contentDescription = null,
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .aspectRatio(1f),
+                painter = painterResource(cardInfo.iconResId),
+                tint = cardInfo.cardColorTheme,
+            )
+        }
 
         Spacer(Modifier.width(16.dp))
 
@@ -150,7 +166,7 @@ private fun rememberDashboardCards(
             descriptionTextId = R.string.dashboard_wifi_description,
             launchTextId = R.string.dashboard_wifi_open_monitor,
             iconResId = R.drawable.ic_rounded_android_wifi_3_bar_24,
-            cardColorTheme = Sage,
+            cardColorTheme = Turquoise,
             navAction = navActions.toWifiMonitor,
         ),
         DashCardInfo(
@@ -158,7 +174,7 @@ private fun rememberDashboardCards(
             descriptionTextId = R.string.dashboard_latency_description,
             launchTextId = R.string.dashboard_latency_open_monitor,
             iconResId = R.drawable.ic_rounded_multiple_stop_24,
-            cardColorTheme = Sage,
+            cardColorTheme = Turquoise,
             navAction = navActions.toLatencyMonitor,
         ),
         DashCardInfo(
@@ -166,7 +182,7 @@ private fun rememberDashboardCards(
             descriptionTextId = R.string.dashboard_traffic_description,
             launchTextId = R.string.dashboard_traffic_open_monitor,
             iconResId = R.drawable.ic_rounded_traffic_24,
-            cardColorTheme = Sage,
+            cardColorTheme = Turquoise,
             navAction = navActions.toTrafficMonitor,
         ),
     )

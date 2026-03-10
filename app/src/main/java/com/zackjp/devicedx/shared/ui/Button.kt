@@ -10,9 +10,10 @@ import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
-
+import com.zackjp.devicedx.ui.theme.IrisLight
 
 
 @Composable
@@ -24,7 +25,9 @@ fun PrimaryButton(
     ColorButton(
         modifier = modifier,
         onClick = onClick,
-        color = MaterialTheme.colorScheme.primary,
+        borderColor = IrisLight,
+        containerColor = IrisLight.copy(alpha = 0.05f),
+        contentColor = IrisLight,
         text = text,
     )
 }
@@ -33,14 +36,16 @@ fun PrimaryButton(
 fun ColorButton(
     onClick: () -> Unit,
     modifier: Modifier = Modifier,
-    color: Color,
+    borderColor: Color?,
+    containerColor: Color,
+    contentColor: Color,
     text: String,
 ) {
     Button(
-        border = BorderStroke(1.dp, color),
+        border = borderColor?.let { BorderStroke(1.dp, borderColor) },
         colors = ButtonDefaults.buttonColors(
-            containerColor = Color.Transparent,
-            contentColor = color,
+            containerColor = containerColor,
+            contentColor = contentColor,
         ),
         contentPadding = PaddingValues(16.dp),
         modifier = modifier,
@@ -49,7 +54,9 @@ fun ColorButton(
     ) {
         Text(
             modifier = Modifier,
-            style = MaterialTheme.typography.bodyLarge,
+            style = MaterialTheme.typography.bodyLarge.copy(
+                fontWeight = FontWeight.SemiBold
+            ),
             text = text,
             textAlign = TextAlign.Center,
         )
