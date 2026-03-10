@@ -6,6 +6,7 @@ import androidx.compose.runtime.remember
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.geometry.Offset
 import androidx.compose.ui.geometry.Rect
+import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.Path
 import androidx.compose.ui.graphics.drawscope.DrawScope
@@ -49,6 +50,7 @@ fun Graph(
 ) {
     val textMeasurer = rememberTextMeasurer()
     val path = remember { Path() }
+    val path2 = remember { Path() }
 
     Canvas(modifier) {
         val isRtl = layoutDirection == LayoutDirection.Rtl
@@ -108,7 +110,9 @@ fun Graph(
                     drawDataLine(
                         canvasPoints = canvasPoints,
                         reusablePath = path,
-                        lineColor = lineConfig.color
+                        reusablePath2 = path2,
+                        lineColor = lineConfig.color,
+                        chartArea = chartArea,
                     )
                 }
             }
@@ -167,7 +171,9 @@ private fun DrawScope.drawChartOutline(
 private fun DrawScope.drawDataLine(
     canvasPoints: List<Offset>,
     reusablePath: Path,
+    reusablePath2: Path,
     lineColor: Color,
+    chartArea: Rect,
 ) {
     reusablePath.rewind()
 
@@ -190,6 +196,24 @@ private fun DrawScope.drawDataLine(
         )
     }
 
+    // Draw gradient area under line
+    reusablePath2.apply {
+        rewind()
+        addPath(reusablePath)
+        lineTo(canvasPoints.last().x, chartArea.bottomRight.y)
+        lineTo(chartArea.bottomLeft.x, chartArea.bottomLeft.y)
+        close()
+
+        drawPath(
+            path = this,
+            brush = Brush.verticalGradient(
+                0f to lineColor.copy(alpha = 0.35f),
+                1f to Color.Transparent,
+            ),
+        )
+    }
+
+    // Draw line on top
     drawPath(
         path = reusablePath,
         color = lineColor,
