@@ -11,12 +11,12 @@ import androidx.compose.ui.geometry.Offset
 import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.unit.dp
 import com.zackjp.devicedx.ui.theme.DarkSlate
-import com.zackjp.devicedx.ui.theme.Platinum
+import com.zackjp.devicedx.ui.theme.IrisLight
 
 
 private val AppCardBorderGradient = Brush.linearGradient(
-    0.0f to Platinum.copy(alpha = 0.15f),
-    1f to Platinum.copy(alpha = 0.5f),
+    0.0f to IrisLight.copy(alpha = 0.15f),
+    1f to IrisLight.copy(alpha = 0.4f),
     start = Offset.Infinite.copy(x = 0f),
     end = Offset.Infinite.copy(y = 0f),
 )
