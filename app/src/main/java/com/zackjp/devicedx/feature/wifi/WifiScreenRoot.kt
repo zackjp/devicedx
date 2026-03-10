@@ -9,6 +9,7 @@ import androidx.activity.compose.rememberLauncherForActivityResult
 import androidx.activity.result.contract.ActivityResultContracts
 import androidx.compose.animation.core.Animatable
 import androidx.compose.foundation.clickable
+import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.PaddingValues
 import androidx.compose.foundation.layout.Row
@@ -26,6 +27,7 @@ import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.pager.HorizontalPager
 import androidx.compose.foundation.pager.PagerState
 import androidx.compose.foundation.pager.rememberPagerState
+import androidx.compose.material3.Card
 import androidx.compose.material3.HorizontalDivider
 import androidx.compose.material3.Icon
 import androidx.compose.material3.MaterialTheme
@@ -179,7 +181,6 @@ private fun PagerContent(
 
             1 -> {
                 WifiScanPage(
-                    isMonitorActive = screenState.isMonitorActive,
                     modifier = Modifier.fillMaxSize(),
                     onStartMonitor = onStartMonitor,
                     onStopMonitor = onStopMonitor,
@@ -320,7 +321,6 @@ private fun ConnectionDetailStat(
 
 @Composable
 private fun WifiScanPage(
-    isMonitorActive: Boolean,
     modifier: Modifier = Modifier,
     onStartMonitor: () -> Unit,
     onStopMonitor: () -> Unit,
@@ -328,10 +328,11 @@ private fun WifiScanPage(
     wifiNames: List<String>,
 ) {
     var scanResultsExpanded by remember { mutableStateOf(false) }
+    val networkBackgroundColor = MaterialTheme.colorScheme.surfaceVariant
 
     LazyColumn(
         modifier = modifier,
-        contentPadding = PaddingValues(vertical = 16.dp),
+        contentPadding = PaddingValues(16.dp),
     ) {
         item {
             CollapsibleButton(
@@ -345,7 +346,7 @@ private fun WifiScanPage(
                             onStopMonitor()
                         }
                     }
-                    .padding(horizontal = 16.dp, vertical = 8.dp)
+                    .padding(vertical = 8.dp)
                     .fillMaxWidth(),
                 text = "Show Networks",
             )
@@ -369,8 +370,7 @@ private fun WifiScanPage(
                 else -> {
                     wifiScanResults(
                         rowModifier = Modifier
-                            .fillMaxWidth()
-                            .padding(horizontal = 16.dp),
+                            .fillMaxWidth(),
                         wifiNames = wifiNames,
                     )
                 }
@@ -458,9 +458,18 @@ private fun LazyListScope.wifiScanResults(
     wifiNames: List<String>,
 ) {
     items(wifiNames) { wifiName ->
-        Text(
+        Card(
             modifier = rowModifier,
-            text = wifiName,
-        )
+        ) {
+            Box(
+                modifier = Modifier.padding(16.dp),
+            ) {
+                Text(
+                    modifier = rowModifier,
+                    text = wifiName,
+                )
+            }
+        }
+        Spacer(modifier = Modifier.height(12.dp))
     }
 }
