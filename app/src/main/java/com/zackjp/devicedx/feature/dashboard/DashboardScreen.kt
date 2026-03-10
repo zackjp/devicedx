@@ -23,8 +23,6 @@ import androidx.compose.runtime.Composable
 import androidx.compose.runtime.remember
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
-import androidx.compose.ui.draw.drawWithCache
-import androidx.compose.ui.geometry.CornerRadius
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.res.stringResource
@@ -56,7 +54,7 @@ fun DashboardScreen(
                 modifier = Modifier
                     .fillMaxWidth()
                     .padding(innerPadding),
-                verticalArrangement = Arrangement.spacedBy(16.dp),
+                verticalArrangement = Arrangement.spacedBy(24.dp),
             ) {
                 items(cardInfoList) { cardInfo ->
                     DashboardCard(
@@ -107,31 +105,14 @@ private fun CardDescriptionRow(
     Row(
         modifier = modifier,
     ) {
-        Box(
+        Icon(
+            contentDescription = null,
             modifier = Modifier
-                .width(60.dp)
-                .aspectRatio(1f)
-                .drawWithCache {
-                    val bg = cardInfo.cardColorTheme.copy(alpha = 0.15f)
-                    val cornerRadius = CornerRadius(10.dp.toPx())
-                    onDrawBehind {
-                        drawRoundRect(
-                            color = bg,
-                            cornerRadius = cornerRadius,
-                        )
-                    }
-                }
-                .padding(12.dp)
-        ) {
-            Icon(
-                contentDescription = null,
-                modifier = Modifier
-                    .fillMaxWidth()
-                    .aspectRatio(1f),
-                painter = painterResource(cardInfo.iconResId),
-                tint = cardInfo.cardColorTheme,
-            )
-        }
+                .width(52.dp)
+                .aspectRatio(1f),
+            painter = painterResource(cardInfo.iconResId),
+            tint = cardInfo.cardColorTheme,
+        )
 
         Spacer(Modifier.width(16.dp))
 
@@ -164,7 +145,7 @@ private fun rememberDashboardCards(
         DashCardInfo(
             titleTextId = R.string.dashboard_wifi_title,
             descriptionTextId = R.string.dashboard_wifi_description,
-            launchTextId = R.string.dashboard_wifi_open_monitor,
+            launchTextId = R.string.dashboard_open_tool,
             iconResId = R.drawable.ic_rounded_android_wifi_3_bar_24,
             cardColorTheme = Turquoise,
             navAction = navActions.toWifiMonitor,
@@ -172,7 +153,7 @@ private fun rememberDashboardCards(
         DashCardInfo(
             titleTextId = R.string.dashboard_latency_title,
             descriptionTextId = R.string.dashboard_latency_description,
-            launchTextId = R.string.dashboard_latency_open_monitor,
+            launchTextId = R.string.dashboard_open_tool,
             iconResId = R.drawable.ic_rounded_multiple_stop_24,
             cardColorTheme = Turquoise,
             navAction = navActions.toLatencyMonitor,
@@ -180,7 +161,7 @@ private fun rememberDashboardCards(
         DashCardInfo(
             titleTextId = R.string.dashboard_traffic_title,
             descriptionTextId = R.string.dashboard_traffic_description,
-            launchTextId = R.string.dashboard_traffic_open_monitor,
+            launchTextId = R.string.dashboard_open_tool,
             iconResId = R.drawable.ic_rounded_traffic_24,
             cardColorTheme = Turquoise,
             navAction = navActions.toTrafficMonitor,

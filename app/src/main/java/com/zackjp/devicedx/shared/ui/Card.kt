@@ -15,8 +15,8 @@ import com.zackjp.devicedx.ui.theme.IrisLight
 
 
 private val AppCardBorderGradient = Brush.linearGradient(
-    0.0f to IrisLight.copy(alpha = 0.15f),
-    1f to IrisLight.copy(alpha = 0.4f),
+    0.0f to IrisLight.copy(alpha = 0.25f),
+    1f to IrisLight.copy(alpha = 0.75f),
     start = Offset.Infinite.copy(x = 0f),
     end = Offset.Infinite.copy(y = 0f),
 )
