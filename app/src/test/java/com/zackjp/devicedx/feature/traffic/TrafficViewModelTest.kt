@@ -2,12 +2,9 @@ package com.zackjp.devicedx.feature.traffic
 
 import app.cash.turbine.test
 import com.zackjp.devicedx.concurrency.TestDispatcherProvider
-import com.zackjp.devicedx.data.RealTimeNetworkDataSource
-import com.zackjp.devicedx.feature.traffic.TrafficViewModel.Companion.TRAFFIC_METRICS_WINDOW_SECS
-import com.zackjp.devicedx.feature.traffic.util.TrafficGraphUtil
-import com.zackjp.devicedx.model.TrafficData
+import com.zackjp.devicedx.data.TrafficRepository
 import com.zackjp.devicedx.model.TrafficMetric
-import com.zackjp.devicedx.model.fake
+import com.zackjp.devicedx.model.TrafficSession
 import io.kotest.matchers.shouldBe
 import io.mockk.every
 import io.mockk.mockk
@@ -26,7 +23,6 @@ import org.junit.jupiter.api.AfterEach
 import org.junit.jupiter.api.BeforeEach
 import org.junit.jupiter.api.Test
 import kotlin.time.Clock
-import kotlin.time.Duration.Companion.seconds
 import kotlin.time.Instant
 
 @OptIn(ExperimentalCoroutinesApi::class) // advanceUntilIdle()
@@ -35,20 +31,25 @@ class TrafficViewModelTest {
     private val testDispatcherProvider = TestDispatcherProvider()
 
     private val clock = mockk<Clock>()
-    private val realTimeNetworkDataSource = mockk<RealTimeNetworkDataSource>()
-    private val trafficGraphUtil = mockk<TrafficGraphUtil>()
+    private val trafficRepository = mockk<TrafficRepository>()
 
-    private val trafficStatsFlow = MutableSharedFlow<TrafficData>()
+    private val trafficSessionFlow = MutableSharedFlow<TrafficSession>()
 
     private lateinit var viewModel: TrafficViewModel
 
-    val metrics1 = listOf(
-        TrafficMetric(timestamp = 11, rxBytesPerSec = 22, txBytesPerSec = 33),
-        TrafficMetric(timestamp = 44, rxBytesPerSec = 55, txBytesPerSec = 66)
+    val metricsSession1 = TrafficSession(
+        startTime = 7L,
+        trafficMetrics = listOf(
+            TrafficMetric(timestamp = 11, rxBytesPerSec = 22, txBytesPerSec = 33),
+            TrafficMetric(timestamp = 44, rxBytesPerSec = 55, txBytesPerSec = 66),
+        ),
     )
-    val metrics2 = listOf(
-        TrafficMetric(timestamp = 987, rxBytesPerSec = 876, txBytesPerSec = 765),
-        TrafficMetric(timestamp = 654, rxBytesPerSec = 543, txBytesPerSec = 432)
+    val metricsSession2 = TrafficSession(
+        startTime = 500L,
+        trafficMetrics = listOf(
+            TrafficMetric(timestamp = 987, rxBytesPerSec = 876, txBytesPerSec = 765),
+            TrafficMetric(timestamp = 654, rxBytesPerSec = 543, txBytesPerSec = 432)
+        ),
     )
 
     @BeforeEach
@@ -56,14 +57,11 @@ class TrafficViewModelTest {
         Dispatchers.setMain(testDispatcherProvider.default)
 
         every { clock.now() } returns Instant.fromEpochMilliseconds(10)
-        every { realTimeNetworkDataSource.getTrafficStats() } returns trafficStatsFlow
-        every { trafficGraphUtil.calculateMetrics(any(), any(), any()) } returns emptyList()
+        every { trafficRepository.recordTrafficMetrics() } returns trafficSessionFlow
 
         viewModel = TrafficViewModel(
             clock = clock,
-            dispatcherProvider = testDispatcherProvider,
-            realTimeNetworkDataSource = realTimeNetworkDataSource,
-            trafficGraphUtil = trafficGraphUtil,
+            trafficRepository = trafficRepository
         )
     }
 
@@ -73,50 +71,16 @@ class TrafficViewModelTest {
     }
 
     @Test
-    fun stopMonitoring_WhenMonitorActive_StopsNewEmissions() = runTest {
-        initViewModel()
-
-        val expectedMetrics = metrics1
-        val unexpectedMetrics = metrics2
-
-        every { trafficGraphUtil.calculateMetrics(any(), any(), any()) } returns emptyList()
-        every { clock.now() } returns Instant.fromEpochMilliseconds(1234)
-
-        viewModel.screenState.test {
-            viewModel.startMonitor()
-            advanceUntilIdle()
-            expectMostRecentItem().trafficMetrics shouldBe emptyList()
-
-            every { trafficGraphUtil.calculateMetrics(any(), any(), any()) } returns expectedMetrics
-            trafficStatsFlow.emit(TrafficData.fake(1))
-            advanceUntilIdle()
-            expectMostRecentItem().trafficMetrics shouldBe expectedMetrics
-
-            every {
-                trafficGraphUtil.calculateMetrics(any(), any(), any())
-            } returns unexpectedMetrics
-
-            viewModel.stopMonitor()
-            advanceUntilIdle()
-
-            trafficStatsFlow.emit(TrafficData.fake(1))
-            advanceUntilIdle()
-            expectMostRecentItem().trafficMetrics shouldBe expectedMetrics
-        }
-    }
-
-    @Test
     fun startMonitor_WhenScreenStateReachesZeroSubscribers_AutoPausesEmissions() = runTest {
         // Manually subscribe and don't use Turbine, which would also count as a subscriber
         val uiEmulatedSubscription = viewModel.screenState.launchIn(backgroundScope)
         advanceUntilIdle()
         val expectedTimeoutMs = 5000L
 
-        val firstMetrics = metrics1
-        val secondMetrics = metrics2
+        val sessionThatShouldEmit = metricsSession1
+        val sessionThatShouldNotEmit = metricsSession2
 
-        every { trafficGraphUtil.calculateMetrics(any(), any(), any()) } returns emptyList()
-        every { clock.now() } returns Instant.fromEpochMilliseconds(1234)
+        every { clock.now() } returns Instant.fromEpochMilliseconds(3333L)
 
         viewModel.startMonitor()
         advanceUntilIdle()
@@ -127,20 +91,18 @@ class TrafficViewModelTest {
         advanceTimeBy(expectedTimeoutMs - 1)
 
         // 2) Emit data that should still generate metrics
-        every { trafficGraphUtil.calculateMetrics(any(), any(), any()) } returns firstMetrics
-        trafficStatsFlow.emit(TrafficData.fake(1))
+        trafficSessionFlow.emit(sessionThatShouldEmit)
         runCurrent() // use runCurrent so it doesn't advance the clock
-        viewModel.screenState.value.trafficMetrics shouldBe firstMetrics
+        viewModel.screenState.value.trafficMetrics shouldBe sessionThatShouldEmit.trafficMetrics
 
         // 3) Advance 1 more millisecond to force the WhileSubscribed timeout
-        every { trafficGraphUtil.calculateMetrics(any(), any(), any()) } returns secondMetrics
         advanceTimeBy(1)
         runCurrent()
 
         // 4) Try to emit new data, which should not work
-        trafficStatsFlow.emit(TrafficData.fake(2))
+        trafficSessionFlow.emit(sessionThatShouldNotEmit)
         runCurrent()
-        viewModel.screenState.value.trafficMetrics shouldBe firstMetrics
+        viewModel.screenState.value.trafficMetrics shouldBe sessionThatShouldEmit.trafficMetrics
     }
 
     @Test
@@ -194,21 +156,9 @@ class TrafficViewModelTest {
     fun startMonitor_WhenTrafficDataEmitted_UpdatesHistory() = runTest {
         initViewModel()
 
-        val dataA = TrafficData.fake(1)
-        val dataB = TrafficData.fake(3)
-        val dataC = TrafficData.fake(5)
-        val expectedMetrics = metrics1
-        val expectedClockTime = 12345L
+        val expectedSession = metricsSession1
+        val expectedClockTime = expectedSession.maxTrafficTimestamp()
         every { clock.now() } returns Instant.fromEpochMilliseconds(expectedClockTime)
-        // define the more general mock first
-        every { trafficGraphUtil.calculateMetrics(any(), any(), any()) } returns emptyList()
-        every {
-            trafficGraphUtil.calculateMetrics(
-                listOf(dataA, dataB, dataC), // this will trigger on the last data emission
-                expectedClockTime,
-                TRAFFIC_METRICS_WINDOW_SECS.seconds
-            )
-        } returns expectedMetrics
 
         viewModel.screenState.test {
             expectMostRecentItem().trafficMetrics shouldBe emptyList()
@@ -216,14 +166,37 @@ class TrafficViewModelTest {
             viewModel.startMonitor()
             advanceUntilIdle()
 
-            trafficStatsFlow.emit(dataA)
-            advanceUntilIdle()
-            trafficStatsFlow.emit(dataB)
-            advanceUntilIdle()
-            trafficStatsFlow.emit(dataC)
+            trafficSessionFlow.emit(expectedSession)
             advanceUntilIdle()
 
-            expectMostRecentItem().trafficMetrics shouldBe expectedMetrics
+            expectMostRecentItem().trafficMetrics shouldBe expectedSession.trafficMetrics
+        }
+    }
+
+    @Test
+    fun stopMonitoring_WhenMonitorActive_StopsNewEmissions() = runTest {
+        initViewModel()
+
+        val session1 = metricsSession1
+        val session2 = metricsSession2
+
+        every { clock.now() } returns Instant.fromEpochMilliseconds(session1.maxTrafficTimestamp())
+
+        viewModel.screenState.test {
+            viewModel.startMonitor()
+            advanceUntilIdle()
+            expectMostRecentItem().trafficMetrics shouldBe emptyList()
+
+            trafficSessionFlow.emit(session1)
+            advanceUntilIdle()
+            expectMostRecentItem().trafficMetrics shouldBe session1.trafficMetrics
+
+            viewModel.stopMonitor()
+            advanceUntilIdle()
+
+            trafficSessionFlow.emit(session2)
+            advanceUntilIdle()
+            expectMostRecentItem().trafficMetrics shouldBe session1.trafficMetrics
         }
     }
 
@@ -249,3 +222,6 @@ class TrafficViewModelTest {
     }
 
 }
+
+private fun TrafficSession.maxTrafficTimestamp(): Long =
+    trafficMetrics.maxOf { it.timestamp }

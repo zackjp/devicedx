@@ -2,10 +2,8 @@ package com.zackjp.devicedx.feature.traffic
 
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
-import com.zackjp.devicedx.concurrency.DispatcherProvider
-import com.zackjp.devicedx.data.RealTimeNetworkDataSource
-import com.zackjp.devicedx.feature.traffic.util.TrafficGraphUtil
-import com.zackjp.devicedx.model.TrafficData
+import com.zackjp.devicedx.data.TrafficRepository
+import com.zackjp.devicedx.model.TrafficSession
 import dagger.hilt.android.lifecycle.HiltViewModel
 import kotlinx.coroutines.ExperimentalCoroutinesApi
 import kotlinx.coroutines.Job
@@ -16,11 +14,9 @@ import kotlinx.coroutines.flow.combine
 import kotlinx.coroutines.flow.distinctUntilChanged
 import kotlinx.coroutines.flow.emptyFlow
 import kotlinx.coroutines.flow.flatMapLatest
-import kotlinx.coroutines.flow.flowOn
 import kotlinx.coroutines.flow.launchIn
 import kotlinx.coroutines.flow.map
 import kotlinx.coroutines.flow.onEach
-import kotlinx.coroutines.flow.runningFold
 import kotlinx.coroutines.flow.stateIn
 import kotlinx.coroutines.flow.update
 import javax.inject.Inject
@@ -30,9 +26,7 @@ import kotlin.time.Duration.Companion.seconds
 @HiltViewModel
 class TrafficViewModel @Inject constructor(
     private val clock: Clock,
-    dispatcherProvider: DispatcherProvider,
-    realTimeNetworkDataSource: RealTimeNetworkDataSource,
-    private val trafficGraphUtil: TrafficGraphUtil,
+    private val trafficRepository: TrafficRepository,
 ) : ViewModel() {
 
     private val _screenState = MutableStateFlow(
@@ -49,11 +43,9 @@ class TrafficViewModel @Inject constructor(
     private val isMonitorActive = MutableStateFlow(false)
 
     private val activatableTrafficMonitor: Job = uiActivatedFlow(
-        dataSourceProvider = realTimeNetworkDataSource::getTrafficStats,
+        dataSourceProvider = { trafficRepository.recordTrafficMetrics() },
     )
-        .runningFold(emptyList(), ::accumulateTrafficHistory)
-        .onEach(::handleTrafficStats)
-        .flowOn(dispatcherProvider.default)
+        .onEach(::handleTrafficMetrics)
         .launchIn(viewModelScope)
 
 
@@ -72,28 +64,17 @@ class TrafficViewModel @Inject constructor(
         isMonitorActive.value = false
     }
 
-    private fun accumulateTrafficHistory(
-        accumulator: List<TrafficData>,
-        trafficData: TrafficData,
-    ): List<TrafficData> {
-        val startTimeCutoff = clock.now()
-            .minus(TRAFFIC_METRICS_WINDOW_SECS.seconds)
-            .minus(1.seconds) // accounts for partial data in the starting bucket
-            .minus(1.seconds) // accounts for starting metric requiring a prior data point
-            .toEpochMilliseconds()
-        return accumulator.filter { it.timestamp > startTimeCutoff } + trafficData
-    }
-
-    private fun handleTrafficStats(trafficHistory: List<TrafficData>) {
+    private fun handleTrafficMetrics(trafficSession: TrafficSession) {
         val now = clock.now()
+        val timeStart =
+            (now - TRAFFIC_METRICS_WINDOW_SECS.seconds).toEpochMilliseconds() / 1000 * 1000
 
-        val trafficMetrics = trafficGraphUtil.calculateMetrics(
-            data = trafficHistory,
-            endTime = now.toEpochMilliseconds(),
-            TRAFFIC_METRICS_WINDOW_SECS.seconds
-        )
+        val trafficMetrics = trafficSession.trafficMetrics
+        val filteredTrafficMetrics = trafficMetrics.filter {
+            it.timestamp >= timeStart
+        }
 
-        _screenState.update { it.copy(trafficMetrics = trafficMetrics) }
+        _screenState.update { it.copy(trafficMetrics = filteredTrafficMetrics) }
     }
 
     @OptIn(ExperimentalCoroutinesApi::class)
@@ -104,7 +85,8 @@ class TrafficViewModel @Inject constructor(
         isMonitorActive,
     ) { uiActive, isMonitorActive ->
         uiActive && isMonitorActive
-    }.distinctUntilChanged().flatMapLatest { isMonitorActive ->
+    }.distinctUntilChanged(
+    ).flatMapLatest { isMonitorActive ->
         if (isMonitorActive) dataSourceProvider() else emptyFlow()
     }
 

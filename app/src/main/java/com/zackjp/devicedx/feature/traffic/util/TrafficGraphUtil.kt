@@ -2,10 +2,59 @@ package com.zackjp.devicedx.feature.traffic.util
 
 import com.zackjp.devicedx.model.TrafficData
 import com.zackjp.devicedx.model.TrafficMetric
+import kotlinx.coroutines.flow.Flow
+import kotlinx.coroutines.flow.distinctUntilChanged
+import kotlinx.coroutines.flow.mapNotNull
+import kotlinx.coroutines.flow.scan
 import javax.inject.Inject
 import kotlin.time.Duration
 
+
 class TrafficGraphUtil @Inject constructor() {
+
+    fun runningMetricsCalculation(flow: Flow<TrafficData>): Flow<TrafficMetric> =
+        flow.scan(emptyMap<Long, TrafficData>()) { accumulator, value ->
+            // Minus 1ms to have an exact second count towards itself (eg, 3000-1 -> 3000)
+            val bucket = (value.timestamp - 1) / 1000 * 1000 + 1000
+
+            // Ignore additional data points for the same time bucket, if necessary. This could
+            // happen if TrafficStats are emitted more than once in the same time bucket.
+            val bucketedData = if (accumulator.containsKey(bucket)) {
+                accumulator
+            } else {
+                accumulator + (bucket to value)
+            }
+
+            // Drop the earliest timestamp, if necessary. We only want 2 data points
+            // to calculate deltas.
+            if (bucketedData.size > 2) {
+                val firstKey = bucketedData.keys.first()
+                bucketedData - firstKey
+            } else {
+                bucketedData
+            }
+        }
+            .distinctUntilChanged() // Don't re-record bucketed data that hasn't changed
+            .mapNotNull { bucketedTrafficData ->
+                if (bucketedTrafficData.size != 2) {
+                    return@mapNotNull null
+                }
+                val (_, bucket2) = bucketedTrafficData.entries.take(2)
+                val data2 = bucket2.value
+                val data1 = bucketedTrafficData[bucket2.key - 1000] // Get data for prior second
+
+                val (rxBytesPerSec, txBytesPerSec) = if (data1 == null) {
+                    0L to 0L
+                } else {
+                    (data2.rxBytes - data1.rxBytes) to (data2.txBytes - data1.txBytes)
+                }
+
+                return@mapNotNull TrafficMetric(
+                    data2.timestamp,
+                    rxBytesPerSec = rxBytesPerSec,
+                    txBytesPerSec = txBytesPerSec,
+                )
+            }
 
     fun calculateMetrics(
         data: List<TrafficData>,

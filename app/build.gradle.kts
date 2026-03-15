@@ -50,6 +50,7 @@ kotlin {
 
 dependencies {
 
+    ksp(libs.androidx.room.compiler)
     ksp(libs.hilt.android.compiler)
     implementation(libs.androidx.core.ktx)
     implementation(libs.androidx.lifecycle.runtime.ktx)
@@ -63,6 +64,8 @@ dependencies {
     implementation(libs.androidx.navigation3.runtime)
     implementation(libs.androidx.navigation3.ui)
     implementation(libs.androidx.hilt.navigation.compose)
+    implementation(libs.androidx.room.ktx)
+    implementation(libs.androidx.room.runtime)
     implementation(libs.hilt.android)
     testImplementation(libs.junit.jupiter.api)
     testImplementation(libs.kotest.runner.junit5.jvm)
