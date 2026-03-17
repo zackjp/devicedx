@@ -14,19 +14,42 @@ import kotlinx.coroutines.flow.Flow
 
 
 @Dao
-interface TrafficDao {
+abstract class TrafficDao {
+
     @Insert
-    suspend fun createSession(trafficSessionEntity: TrafficSessionEntity): Long
+    protected abstract suspend fun insertMetric(trafficMetricEntity: TrafficMetricEntity)
+
+    @Query("""
+        UPDATE traffic_sessions
+        SET totalRxBytes = totalRxBytes + :rxBytes, 
+            totalTxBytes = totalTxBytes + :txBytes
+        WHERE sessionId = :sessionId
+    """)
+    protected abstract suspend fun updateTrafficSessionTotals(
+        sessionId: Long,
+        rxBytes: Long,
+        txBytes: Long,
+    )
+
+    @Insert
+    abstract suspend fun createSession(trafficSessionEntity: TrafficSessionEntity): Long
 
     @Query("UPDATE traffic_sessions SET endTime = :endTime WHERE sessionId = :sessionId")
-    suspend fun updateSessionEndTime(sessionId: Long, endTime: Long)
+    abstract suspend fun updateSessionEndTime(sessionId: Long, endTime: Long)
 
-    @Insert
-    suspend fun addMetric(trafficMetricEntity: TrafficMetricEntity)
+    @Transaction
+    open suspend fun addMetricAndSync(trafficMetricEntity: TrafficMetricEntity) {
+        insertMetric(trafficMetricEntity)
+        updateTrafficSessionTotals(
+            sessionId = trafficMetricEntity.sessionId,
+            rxBytes = trafficMetricEntity.rxBytesPerSec,
+            txBytes = trafficMetricEntity.txBytesPerSec,
+        )
+    }
 
     @Transaction // composite objects perform multiple queries
     @Query("SELECT * FROM traffic_sessions WHERE traffic_sessions.sessionId = :sessionId")
-    fun getSessionWithTrafficMetrics(sessionId: Long): Flow<TrafficSessionWithMetrics>
+    abstract fun getSessionWithTrafficMetrics(sessionId: Long): Flow<TrafficSessionWithMetrics>
 }
 
 @Entity(
@@ -37,6 +60,8 @@ data class TrafficSessionEntity(
     val sessionId: Long = 0L,
     val startTime: Long,
     val endTime: Long? = null,
+    val totalRxBytes: Long = 0L,
+    val totalTxBytes: Long = 0L,
 )
 
 @Entity(

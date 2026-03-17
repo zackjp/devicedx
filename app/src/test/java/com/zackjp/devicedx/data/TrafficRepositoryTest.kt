@@ -51,7 +51,7 @@ class TrafficRepositoryTest {
 
         every { clock.now() } returns Instant.fromEpochMilliseconds(CLOCK_TIME)
         every { realTimeNetworkDataSource.getTrafficStats() } returns MutableSharedFlow()
-        coEvery { trafficDao.addMetric(any()) } just runs
+        coEvery { trafficDao.addMetricAndSync(any()) } just runs
         coEvery { trafficDao.createSession(any()) } returns SESSION_ID
         coEvery { trafficDao.getSessionWithTrafficMetrics(SESSION_ID) } returns trafficSessionReadFlow
         coEvery { trafficDao.updateSessionEndTime(any(), any()) } just runs
@@ -105,18 +105,26 @@ class TrafficRepositoryTest {
 
         trafficSessionWriteFlow.emit(metric1)
         runCurrent()
-        coVerify { trafficDao.addMetric(metric1.toEntity(SESSION_ID)) }
+        coVerify { trafficDao.addMetricAndSync(metric1.toEntity(SESSION_ID)) }
 
         trafficSessionWriteFlow.emit(metric2)
         runCurrent()
-        coVerify { trafficDao.addMetric(metric2.toEntity(SESSION_ID)) }
+        coVerify { trafficDao.addMetricAndSync(metric2.toEntity(SESSION_ID)) }
     }
 
     @Test
     fun recordTrafficMetrics_EmitsTrafficMetricItemsFromDb() = runTest {
         val sessionStartTime = 12345L
+        val expectedTotalRxBytes = 8888L
+        val expectedTotalTxBytes = 9999L
+
         val metricsEntity = TrafficSessionWithMetrics(
-            TrafficSessionEntity(SESSION_ID, sessionStartTime),
+            TrafficSessionEntity(
+                SESSION_ID,
+                sessionStartTime,
+                totalRxBytes = expectedTotalRxBytes,
+                totalTxBytes = expectedTotalTxBytes,
+            ),
             listOf(
                 TrafficMetricEntity(
                     metricId = 10L,
@@ -130,6 +138,8 @@ class TrafficRepositoryTest {
         val expectedDomain = TrafficSession(
             id = SESSION_ID,
             startTime = sessionStartTime,
+            totalRxBytes = expectedTotalRxBytes,
+            totalTxBytes = expectedTotalTxBytes,
             trafficMetrics = listOf(
                 TrafficMetric(
                     timestamp = 1250L,

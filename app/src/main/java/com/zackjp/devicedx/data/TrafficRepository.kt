@@ -62,7 +62,7 @@ class TrafficRepository @Inject constructor(
     private fun recordMetricsToDbFlow(sessionId: Long) =
         trafficGraphUtil.runningMetricsCalculation(realTimeNetworkDataSource.getTrafficStats())
             .onEach { trafficMetric ->
-                trafficDao.addMetric(
+                trafficDao.addMetricAndSync(
                     TrafficMetricEntity(
                         sessionId = sessionId,
                         timestamp = trafficMetric.timestamp,
@@ -81,6 +81,8 @@ private fun TrafficSessionWithMetrics.toDomain(): TrafficSession =
         id = this.session.sessionId,
         startTime = this.session.startTime,
         endTime = this.session.endTime,
+        totalRxBytes = this.session.totalRxBytes,
+        totalTxBytes = this.session.totalTxBytes,
         trafficMetrics = this.metrics.map {
             TrafficMetric(
                 timestamp = it.timestamp,

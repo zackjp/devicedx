@@ -130,6 +130,8 @@ private fun TrafficMonitorScreen(
                 isActive = state.isMonitorActive,
                 sessionId = state.trafficSession?.id,
                 sessionStartTime = state.sessionStartTime,
+                totalRxBytes = state.trafficSession?.totalRxBytes,
+                totalTxBytes = state.trafficSession?.totalTxBytes,
             )
 
             Spacer(Modifier.height(12.dp))
@@ -291,6 +293,8 @@ fun SessionInfoCard(
     isActive: Boolean,
     sessionId: Long?,
     sessionStartTime: Long?,
+    totalRxBytes: Long?,
+    totalTxBytes: Long?,
 ) {
     var sessionDuration by remember { mutableStateOf(Duration.ZERO) }
     LaunchedEffect(isActive, sessionStartTime) {
@@ -324,6 +328,8 @@ fun SessionInfoCard(
                     stringResource(R.string.traffic_session_id_name, it)
                 } ?: "-"),
                 "DURATION" to formatDuration(sessionDuration),
+                "TOTAL INCOMING" to formatBytes(totalRxBytes),
+                "TOTAL OUTGOING" to formatBytes(totalTxBytes),
             )
 
             LazyVerticalGrid(
@@ -368,6 +374,16 @@ private fun formatDuration(sessionDuration: Duration): String =
                 seconds,
             )
         }
+    }
+
+private fun formatBytes(bytes: Long?): String =
+    if (bytes == null) {
+        "- MB"
+    } else {
+        val displayStat = bytes.asDataUnit(DataUnit.BYTE).bestDisplayableUnit
+        val valueText = displayStat.first.toPlainString()
+        val unitText = displayStat.second.displayString
+        "$valueText $unitText"
     }
 
 private val yTickMaxSteps = listOf(
