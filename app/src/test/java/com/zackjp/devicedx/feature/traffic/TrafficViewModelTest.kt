@@ -5,6 +5,8 @@ import com.zackjp.devicedx.concurrency.TestDispatcherProvider
 import com.zackjp.devicedx.data.TrafficRepository
 import com.zackjp.devicedx.model.TrafficMetric
 import com.zackjp.devicedx.model.TrafficSession
+import io.kotest.matchers.nulls.beNull
+import io.kotest.matchers.should
 import io.kotest.matchers.shouldBe
 import io.mockk.every
 import io.mockk.mockk
@@ -38,6 +40,7 @@ class TrafficViewModelTest {
     private lateinit var viewModel: TrafficViewModel
 
     val metricsSession1 = TrafficSession(
+        id = 100003,
         startTime = 7L,
         trafficMetrics = listOf(
             TrafficMetric(timestamp = 11, rxBytesPerSec = 22, txBytesPerSec = 33),
@@ -45,6 +48,7 @@ class TrafficViewModelTest {
         ),
     )
     val metricsSession2 = TrafficSession(
+        id = 100007,
         startTime = 500L,
         trafficMetrics = listOf(
             TrafficMetric(timestamp = 987, rxBytesPerSec = 876, txBytesPerSec = 765),
@@ -84,7 +88,7 @@ class TrafficViewModelTest {
 
         viewModel.startMonitor()
         advanceUntilIdle()
-        viewModel.screenState.value.trafficMetrics shouldBe emptyList()
+        viewModel.screenState.value.trafficSession should beNull()
 
         // 1) Cancel "ui" subscription and move time up until 1ms before WhileSubscribed times out
         uiEmulatedSubscription.cancel()
@@ -93,7 +97,7 @@ class TrafficViewModelTest {
         // 2) Emit data that should still generate metrics
         trafficSessionFlow.emit(sessionThatShouldEmit)
         runCurrent() // use runCurrent so it doesn't advance the clock
-        viewModel.screenState.value.trafficMetrics shouldBe sessionThatShouldEmit.trafficMetrics
+        viewModel.screenState.value.trafficSession shouldBe sessionThatShouldEmit
 
         // 3) Advance 1 more millisecond to force the WhileSubscribed timeout
         advanceTimeBy(1)
@@ -102,7 +106,7 @@ class TrafficViewModelTest {
         // 4) Try to emit new data, which should not work
         trafficSessionFlow.emit(sessionThatShouldNotEmit)
         runCurrent()
-        viewModel.screenState.value.trafficMetrics shouldBe sessionThatShouldEmit.trafficMetrics
+        viewModel.screenState.value.trafficSession shouldBe sessionThatShouldEmit
     }
 
     @Test
@@ -161,7 +165,7 @@ class TrafficViewModelTest {
         every { clock.now() } returns Instant.fromEpochMilliseconds(expectedClockTime)
 
         viewModel.screenState.test {
-            expectMostRecentItem().trafficMetrics shouldBe emptyList()
+            expectMostRecentItem().trafficSession should beNull()
 
             viewModel.startMonitor()
             advanceUntilIdle()
@@ -169,7 +173,7 @@ class TrafficViewModelTest {
             trafficSessionFlow.emit(expectedSession)
             advanceUntilIdle()
 
-            expectMostRecentItem().trafficMetrics shouldBe expectedSession.trafficMetrics
+            expectMostRecentItem().trafficSession shouldBe expectedSession
         }
     }
 
@@ -185,18 +189,18 @@ class TrafficViewModelTest {
         viewModel.screenState.test {
             viewModel.startMonitor()
             advanceUntilIdle()
-            expectMostRecentItem().trafficMetrics shouldBe emptyList()
+            expectMostRecentItem().trafficSession should beNull()
 
             trafficSessionFlow.emit(session1)
             advanceUntilIdle()
-            expectMostRecentItem().trafficMetrics shouldBe session1.trafficMetrics
+            expectMostRecentItem().trafficSession shouldBe session1
 
             viewModel.stopMonitor()
             advanceUntilIdle()
 
             trafficSessionFlow.emit(session2)
             advanceUntilIdle()
-            expectMostRecentItem().trafficMetrics shouldBe session1.trafficMetrics
+            expectMostRecentItem().trafficSession shouldBe session1
         }
     }
 

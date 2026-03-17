@@ -1,5 +1,6 @@
 package com.zackjp.devicedx.feature.traffic
 
+import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
@@ -9,6 +10,9 @@ import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.width
+import androidx.compose.foundation.lazy.grid.GridCells
+import androidx.compose.foundation.lazy.grid.LazyVerticalGrid
+import androidx.compose.foundation.lazy.grid.items
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
@@ -56,6 +60,8 @@ private const val ASPECT_RATIO_NUMERATOR = 16
 private const val ASPECT_RATIO_DENOMINATOR = 9
 private const val ASPECT_RATIO_FLOAT = ASPECT_RATIO_NUMERATOR.toFloat() / ASPECT_RATIO_DENOMINATOR
 
+private val MediumGray = Color(0xFF888888)
+
 private val RxLineColor = Turquoise
 private val TxLineColor = CyberAmber
 
@@ -97,8 +103,10 @@ private fun TrafficMonitorScreen(
         horizontalAlignment = Alignment.CenterHorizontally,
         modifier = modifier,
     ) {
+        val trafficMetrics = state.trafficSession?.trafficMetrics ?: emptyList()
+
         TrafficGraphCard(
-            trafficMetrics = state.trafficMetrics,
+            trafficMetrics = trafficMetrics,
             rxLineColor = RxLineColor,
             txLineColor = TxLineColor,
             modifier = Modifier
@@ -109,18 +117,18 @@ private fun TrafficMonitorScreen(
         if (!isInPipMode) {
             Spacer(Modifier.height(12.dp))
 
-            val trafficMetrics = state.trafficMetrics
             val mostRecentStat = trafficMetrics.lastOrNull()
-            TrafficStatsRow(
+            ThroughputRow(
                 modifier = Modifier.fillMaxWidth(),
                 mostRecentStat = mostRecentStat,
             )
 
             Spacer(Modifier.height(12.dp))
 
-            MonitorSessionInfo(
+            SessionInfoCard(
                 modifier = Modifier.fillMaxWidth(),
                 isActive = state.isMonitorActive,
+                sessionId = state.trafficSession?.id,
                 sessionStartTime = state.sessionStartTime,
             )
 
@@ -143,19 +151,19 @@ private fun TrafficMonitorScreen(
 }
 
 @Composable
-private fun TrafficStatsRow(
+private fun ThroughputRow(
     modifier: Modifier = Modifier,
     mostRecentStat: TrafficMetric?,
 ) {
     Row(modifier = modifier) {
-        TrafficStat(
+        ThroughputCard(
             modifier = Modifier.weight(1f),
             cardColor = RxLineColor,
             bytes = mostRecentStat?.rxBytesPerSec,
             label = stringResource(R.string.traffic_stat_label_rx),
         )
         Spacer(Modifier.width(8.dp))
-        TrafficStat(
+        ThroughputCard(
             modifier = Modifier.weight(1f),
             cardColor = TxLineColor,
             bytes = mostRecentStat?.txBytesPerSec,
@@ -165,7 +173,7 @@ private fun TrafficStatsRow(
 }
 
 @Composable
-fun TrafficStat(
+fun ThroughputCard(
     modifier: Modifier = Modifier,
     cardColor: Color,
     bytes: Long?,
@@ -182,7 +190,7 @@ fun TrafficStat(
             Text(
                 modifier = Modifier.fillMaxWidth(),
                 text = label,
-                style = MaterialTheme.typography.bodySmall,
+                style = MaterialTheme.typography.labelSmall,
             )
 
             val valueText: String
@@ -270,15 +278,18 @@ private fun TrafficGraphCard(
                     "${formatBigDecimal(number)}$unitString"
                 }
             },
-            modifier = Modifier.fillMaxSize().padding(16.dp),
+            modifier = Modifier
+                .fillMaxSize()
+                .padding(16.dp),
         )
     }
 }
 
 @Composable
-fun MonitorSessionInfo(
+fun SessionInfoCard(
     modifier: Modifier = Modifier,
     isActive: Boolean,
+    sessionId: Long?,
     sessionStartTime: Long?,
 ) {
     var sessionDuration by remember { mutableStateOf(Duration.ZERO) }
@@ -297,34 +308,67 @@ fun MonitorSessionInfo(
         modifier = modifier,
     ) {
         Column(
-            modifier = Modifier.padding(12.dp),
+            modifier = Modifier
+                .fillMaxWidth()
+                .padding(12.dp),
         ) {
-            Row(modifier = Modifier.fillMaxWidth()) {
-                Text("Session Duration:")
-                Spacer(Modifier.weight(1f))
-                sessionDuration.toComponents { _, hours, minutes, seconds, _ ->
-                    val formattedTime = when {
-                        hours == 0 -> String.format(
-                            Locale.current.platformLocale,
-                            "%02d:%02d",
-                            minutes,
-                            seconds,
-                        )
+            Text(
+                style = MaterialTheme.typography.titleMedium,
+                text = stringResource(R.string.traffic_session_card_label),
+            )
 
-                        else -> String.format(
-                            Locale.current.platformLocale,
-                            "%02d:%02d:%02d",
-                            hours,
-                            minutes,
-                            seconds,
+            Spacer(Modifier.height(8.dp))
+
+            val sessionStats: List<Pair<String, String>> = listOf(
+                "SESSION ID" to (sessionId?.let {
+                    stringResource(R.string.traffic_session_id_name, it)
+                } ?: "-"),
+                "DURATION" to formatDuration(sessionDuration),
+            )
+
+            LazyVerticalGrid(
+                modifier = Modifier.fillMaxWidth(),
+                columns = GridCells.Fixed(2),
+                verticalArrangement = Arrangement.spacedBy(16.dp),
+                horizontalArrangement = Arrangement.spacedBy(8.dp),
+            ) {
+                items(sessionStats) { (statLabel, statValue) ->
+                    Column {
+                        Text(
+                            color = MediumGray,
+                            style = MaterialTheme.typography.labelSmall,
+                            text = statLabel,
+                        )
+                        Text(
+                            style = MaterialTheme.typography.bodyLarge,
+                            text = statValue,
                         )
                     }
-                    Text(formattedTime)
                 }
             }
         }
     }
 }
+
+private fun formatDuration(sessionDuration: Duration): String =
+    sessionDuration.toComponents { _, hours, minutes, seconds, _ ->
+        when {
+            hours == 0 -> String.format(
+                Locale.current.platformLocale,
+                "%02d:%02d",
+                minutes,
+                seconds,
+            )
+
+            else -> String.format(
+                Locale.current.platformLocale,
+                "%02d:%02d:%02d",
+                hours,
+                minutes,
+                seconds,
+            )
+        }
+    }
 
 private val yTickMaxSteps = listOf(
     5.toBigDecimal(),

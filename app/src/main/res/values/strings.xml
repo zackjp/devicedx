@@ -13,8 +13,9 @@
     <string name="start_traffic_monitor">Start Traffic Monitor</string>
     <string name="stop_traffic_monitor">Stop Traffic Monitor</string>
     <string name="coming_soon_here">Coming soon here.</string>
-    <string name="traffic_stat_label_rx">Current Incoming</string>
-    <string name="traffic_stat_label_tx">Current Outgoing</string>
+    <string name="traffic_session_card_label">Session Info</string>
+    <string name="traffic_stat_label_rx">CURRENT INCOMING</string>
+    <string name="traffic_stat_label_tx">CURRENT OUTGOING</string>
     <string name="wifi_connection_quality_excellent">Excellent</string>
     <string name="wifi_connection_quality_fair">Fair</string>
     <string name="wifi_connection_quality_good">Good</string>
@@ -30,4 +31,5 @@
     <string name="wifi_fine_location_permission_rationale">To show Wifi networks, this app needs Fine Location permission. Try again to request permission.</string>
     <string name="wifi_tab_stats">Wifi Stats</string>
     <string name="wifi_tab_scan">Wifi Scan</string>
+    <string name="traffic_session_id_name">Session %1$d</string>
 </resources>

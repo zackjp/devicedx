@@ -2,6 +2,7 @@ package com.zackjp.devicedx.model
 
 
 data class TrafficSession(
+    val id: Long,
     val startTime: Long,
     val endTime: Long? = null,
     val trafficMetrics: List<TrafficMetric>,

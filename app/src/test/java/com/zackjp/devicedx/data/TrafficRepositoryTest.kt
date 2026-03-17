@@ -128,6 +128,7 @@ class TrafficRepositoryTest {
             ),
         )
         val expectedDomain = TrafficSession(
+            id = SESSION_ID,
             startTime = sessionStartTime,
             trafficMetrics = listOf(
                 TrafficMetric(

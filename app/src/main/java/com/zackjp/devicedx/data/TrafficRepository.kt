@@ -76,6 +76,7 @@ private fun Flow<*>.ignoreElements() = filter { false }.mapNotNull { null }
 
 private fun TrafficSessionWithMetrics.toDomain(): TrafficSession =
     TrafficSession(
+        id = this.session.sessionId,
         startTime = this.session.startTime,
         endTime = this.session.endTime,
         trafficMetrics = this.metrics.map {

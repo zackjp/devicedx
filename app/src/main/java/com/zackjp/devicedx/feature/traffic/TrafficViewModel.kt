@@ -33,7 +33,7 @@ class TrafficViewModel @Inject constructor(
         TrafficScreenState(
             isMonitorActive = false,
             sessionStartTime = null,
-            trafficMetrics = emptyList(),
+            trafficSession = null,
         )
     )
     val screenState = _screenState
@@ -69,12 +69,13 @@ class TrafficViewModel @Inject constructor(
         val timeStart =
             (now - TRAFFIC_METRICS_WINDOW_SECS.seconds).toEpochMilliseconds() / 1000 * 1000
 
-        val trafficMetrics = trafficSession.trafficMetrics
-        val filteredTrafficMetrics = trafficMetrics.filter {
-            it.timestamp >= timeStart
-        }
+        val filteredSession = trafficSession.copy(
+            trafficMetrics = trafficSession.trafficMetrics.filter {
+                it.timestamp >= timeStart
+            }
+        )
 
-        _screenState.update { it.copy(trafficMetrics = filteredTrafficMetrics) }
+        _screenState.update { it.copy(trafficSession = filteredSession) }
     }
 
     @OptIn(ExperimentalCoroutinesApi::class)
