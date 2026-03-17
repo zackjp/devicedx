@@ -324,12 +324,12 @@ fun SessionInfoCard(
             Spacer(Modifier.height(8.dp))
 
             val sessionStats: List<Pair<String, String>> = listOf(
-                "SESSION ID" to (sessionId?.let {
+                stringResource(R.string.traffic_session_info_label_session_id) to (sessionId?.let {
                     stringResource(R.string.traffic_session_id_name, it)
                 } ?: "-"),
-                "DURATION" to formatDuration(sessionDuration),
-                "TOTAL INCOMING" to formatBytes(totalRxBytes),
-                "TOTAL OUTGOING" to formatBytes(totalTxBytes),
+                stringResource(R.string.traffic_session_info_label_duration) to formatDuration(sessionDuration),
+                stringResource(R.string.traffic_session_info_label_total_incoming) to formatBytes(totalRxBytes),
+                stringResource(R.string.traffic_session_info_label_total_outgoing) to formatBytes(totalTxBytes),
             )
 
             LazyVerticalGrid(
