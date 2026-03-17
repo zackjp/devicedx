@@ -56,6 +56,8 @@ import kotlin.time.Clock
 import kotlin.time.Duration
 import kotlin.time.Instant
 
+private val InnerCardPadding = 16.dp
+
 private const val ASPECT_RATIO_NUMERATOR = 16
 private const val ASPECT_RATIO_DENOMINATOR = 9
 private const val ASPECT_RATIO_FLOAT = ASPECT_RATIO_NUMERATOR.toFloat() / ASPECT_RATIO_DENOMINATOR
@@ -183,7 +185,7 @@ fun ThroughputCard(
     ) {
         Column(
             modifier = Modifier
-                .padding(12.dp)
+                .padding(InnerCardPadding)
                 .fillMaxWidth()
         ) {
             Text(
@@ -311,7 +313,7 @@ fun SessionInfoCard(
         Column(
             modifier = Modifier
                 .fillMaxWidth()
-                .padding(12.dp),
+                .padding(InnerCardPadding),
         ) {
             Text(
                 style = MaterialTheme.typography.titleMedium,
