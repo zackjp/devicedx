@@ -5,6 +5,7 @@ import androidx.compose.ui.graphics.Color
 val Ink = Color(0xFF222126)
 val DeepPurple = Color(0xFF33313D)
 val SteelGray = Color(0xFF5A595E)
+val MediumGray = Color(0xFF888888)
 
 val Platinum = Color(0xFFE0E0E0)
 
