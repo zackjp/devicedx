@@ -134,19 +134,16 @@ private fun TrafficMonitorScreen(
                 totalTxBytes = state.trafficSession?.totalTxBytes,
             )
 
-            Spacer(Modifier.height(12.dp))
+            Spacer(Modifier.weight(1f))
 
-            val (textResId, onClick) = if (state.isMonitorActive) {
-                R.string.stop_traffic_monitor to onStopMonitor
-            } else {
-                R.string.start_traffic_monitor to onStartMonitor
-            }
-
-            PrimaryButton(
+            MonitorButton(
                 modifier = Modifier.fillMaxWidth(),
-                onClick = onClick,
-                text = stringResource(textResId),
+                isMonitorActive = state.isMonitorActive,
+                onStartMonitor = onStartMonitor,
+                onStopMonitor = onStopMonitor,
             )
+
+            Spacer(Modifier.height(16.dp))
         }
     }
 
@@ -354,6 +351,26 @@ fun SessionInfoCard(
             }
         }
     }
+}
+
+@Composable
+fun MonitorButton(
+    modifier: Modifier = Modifier,
+    isMonitorActive: Boolean,
+    onStartMonitor: () -> Unit = {},
+    onStopMonitor: () -> Unit = {},
+) {
+    val (textResId, onClick) = if (isMonitorActive) {
+        R.string.stop_traffic_monitor to onStopMonitor
+    } else {
+        R.string.start_traffic_monitor to onStartMonitor
+    }
+
+    PrimaryButton(
+        modifier = modifier,
+        onClick = onClick,
+        text = stringResource(textResId),
+    )
 }
 
 private fun formatDuration(sessionDuration: Duration): String =
