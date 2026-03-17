@@ -18,9 +18,11 @@ import kotlinx.coroutines.flow.onCompletion
 import kotlinx.coroutines.flow.onEach
 import kotlinx.coroutines.withContext
 import javax.inject.Inject
+import javax.inject.Singleton
 import kotlin.time.Clock
 
 @OptIn(ExperimentalCoroutinesApi::class) // flatMapLatest
+@Singleton
 class TrafficRepository @Inject constructor(
     private val clock: Clock,
     private val dispatcherProvider: DispatcherProvider,
