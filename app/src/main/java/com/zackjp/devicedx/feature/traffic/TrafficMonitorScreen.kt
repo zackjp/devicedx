@@ -97,10 +97,8 @@ private fun TrafficMonitorScreen(
             SessionInfoCard(
                 modifier = Modifier.fillMaxWidth(),
                 isActive = state.isMonitorActive,
-                sessionId = state.trafficSession?.id,
                 sessionStartTime = state.sessionStartTime,
-                totalRxBytes = state.trafficSession?.totalRxBytes,
-                totalTxBytes = state.trafficSession?.totalTxBytes,
+                trafficSession = state.trafficSession,
             )
 
             Spacer(Modifier.weight(1f))

@@ -1,5 +1,9 @@
 package com.zackjp.devicedx.model
 
+import androidx.compose.runtime.Immutable
+
+
+@Immutable
 data class TrafficSession(
     val id: Long,
     val startTime: Long,

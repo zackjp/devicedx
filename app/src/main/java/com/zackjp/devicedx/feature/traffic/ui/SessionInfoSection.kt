@@ -24,6 +24,7 @@ import androidx.compose.ui.unit.dp
 import com.zackjp.devicedx.R
 import com.zackjp.devicedx.model.Bytes.Companion.asDataUnit
 import com.zackjp.devicedx.model.DataUnit
+import com.zackjp.devicedx.model.TrafficSession
 import com.zackjp.devicedx.shared.ui.AppCard
 import com.zackjp.devicedx.ui.theme.MediumGray
 import kotlinx.coroutines.delay
@@ -36,11 +37,14 @@ import kotlin.time.Instant
 internal fun SessionInfoCard(
     modifier: Modifier = Modifier,
     isActive: Boolean,
-    sessionId: Long?,
     sessionStartTime: Long?,
-    totalRxBytes: Long?,
-    totalTxBytes: Long?,
+    trafficSession: TrafficSession?,
 ) {
+    val sessionId = trafficSession?.id
+    val sessionStartTime = sessionStartTime
+    val totalRxBytes = trafficSession?.totalRxBytes
+    val totalTxBytes = trafficSession?.totalTxBytes
+
     var sessionDuration by remember { mutableStateOf(Duration.ZERO) }
     LaunchedEffect(isActive, sessionStartTime) {
         if (sessionStartTime != null) {
