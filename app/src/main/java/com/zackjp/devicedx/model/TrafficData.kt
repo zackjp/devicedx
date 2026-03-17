@@ -7,18 +7,22 @@ data class TrafficSession(
     val totalRxBytes: Long = 0,
     val totalTxBytes: Long = 0,
     val trafficMetrics: List<TrafficMetric>,
-)
+) {
+    companion object // used for test extensions
+}
 
 data class TrafficData(
     val timestamp: Long,
     val rxBytes: Long,
     val txBytes: Long,
 ) {
-    companion object
+    companion object // used for test extensions
 }
 
 data class TrafficMetric(
     val timestamp: Long,
     val rxBytesPerSec: Long,
     val txBytesPerSec: Long,
-)
+) {
+    companion object // used for test extensions
+}

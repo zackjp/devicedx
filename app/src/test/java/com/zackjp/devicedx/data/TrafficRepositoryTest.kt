@@ -5,6 +5,7 @@ import com.zackjp.devicedx.concurrency.TestDispatcherProvider
 import com.zackjp.devicedx.feature.traffic.util.TrafficGraphUtil
 import com.zackjp.devicedx.model.TrafficMetric
 import com.zackjp.devicedx.model.TrafficSession
+import com.zackjp.devicedx.model.fake
 import io.kotest.matchers.shouldBe
 import io.mockk.coEvery
 import io.mockk.coVerify
@@ -92,16 +93,8 @@ class TrafficRepositoryTest {
         trafficRepository.recordTrafficMetrics().launchIn(backgroundScope)
         runCurrent() // initialize the session
 
-        val metric1 = TrafficMetric(
-            timestamp = 11,
-            rxBytesPerSec = 13,
-            txBytesPerSec = 17,
-        )
-        val metric2 = TrafficMetric(
-            timestamp = 301,
-            rxBytesPerSec = 303,
-            txBytesPerSec = 305,
-        )
+        val metric1 = TrafficMetric.fake(11)
+        val metric2 = TrafficMetric.fake(301)
 
         trafficSessionWriteFlow.emit(metric1)
         runCurrent()

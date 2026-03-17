@@ -5,6 +5,7 @@ import com.zackjp.devicedx.concurrency.TestDispatcherProvider
 import com.zackjp.devicedx.data.TrafficRepository
 import com.zackjp.devicedx.model.TrafficMetric
 import com.zackjp.devicedx.model.TrafficSession
+import com.zackjp.devicedx.model.fake
 import io.kotest.matchers.nulls.beNull
 import io.kotest.matchers.should
 import io.kotest.matchers.shouldBe
@@ -39,22 +40,8 @@ class TrafficViewModelTest {
 
     private lateinit var viewModel: TrafficViewModel
 
-    val metricsSession1 = TrafficSession(
-        id = 100003,
-        startTime = 7L,
-        trafficMetrics = listOf(
-            TrafficMetric(timestamp = 11, rxBytesPerSec = 22, txBytesPerSec = 33),
-            TrafficMetric(timestamp = 44, rxBytesPerSec = 55, txBytesPerSec = 66),
-        ),
-    )
-    val metricsSession2 = TrafficSession(
-        id = 100007,
-        startTime = 500L,
-        trafficMetrics = listOf(
-            TrafficMetric(timestamp = 987, rxBytesPerSec = 876, txBytesPerSec = 765),
-            TrafficMetric(timestamp = 654, rxBytesPerSec = 543, txBytesPerSec = 432)
-        ),
-    )
+    val metricsSession1 = TrafficSession.fake(number = 100003, metricsCount = 2)
+    val metricsSession2 = TrafficSession.fake(number = 100007, metricsCount = 2)
 
     @BeforeEach
     fun setUp() {
