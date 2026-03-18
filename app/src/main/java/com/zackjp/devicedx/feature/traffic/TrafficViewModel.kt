@@ -2,6 +2,7 @@ package com.zackjp.devicedx.feature.traffic
 
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
+import com.zackjp.devicedx.concurrency.DispatcherProvider
 import com.zackjp.devicedx.data.TrafficRepository
 import com.zackjp.devicedx.model.TrafficSession
 import dagger.hilt.android.lifecycle.HiltViewModel
@@ -14,6 +15,7 @@ import kotlinx.coroutines.flow.combine
 import kotlinx.coroutines.flow.distinctUntilChanged
 import kotlinx.coroutines.flow.emptyFlow
 import kotlinx.coroutines.flow.flatMapLatest
+import kotlinx.coroutines.flow.flowOn
 import kotlinx.coroutines.flow.launchIn
 import kotlinx.coroutines.flow.map
 import kotlinx.coroutines.flow.onEach
@@ -26,6 +28,7 @@ import kotlin.time.Duration.Companion.seconds
 @HiltViewModel
 class TrafficViewModel @Inject constructor(
     private val clock: Clock,
+    dispatcherProvider: DispatcherProvider,
     private val trafficRepository: TrafficRepository,
 ) : ViewModel() {
 
@@ -46,6 +49,7 @@ class TrafficViewModel @Inject constructor(
         dataSourceProvider = { trafficRepository.recordTrafficMetrics() },
     )
         .onEach(::handleTrafficMetrics)
+        .flowOn(dispatcherProvider.default)
         .launchIn(viewModelScope)
 
 

@@ -26,14 +26,14 @@ import org.junit.jupiter.api.AfterEach
 import org.junit.jupiter.api.BeforeEach
 import org.junit.jupiter.api.Test
 import kotlin.time.Clock
+import kotlin.time.Duration.Companion.seconds
 import kotlin.time.Instant
 
 @OptIn(ExperimentalCoroutinesApi::class) // advanceUntilIdle()
 class TrafficViewModelTest {
 
-    private val testDispatcherProvider = TestDispatcherProvider()
-
     private val clock = mockk<Clock>()
+    private val testDispatcherProvider = TestDispatcherProvider()
     private val trafficRepository = mockk<TrafficRepository>()
 
     private val trafficSessionFlow = MutableSharedFlow<TrafficSession>()
@@ -52,6 +52,7 @@ class TrafficViewModelTest {
 
         viewModel = TrafficViewModel(
             clock = clock,
+            dispatcherProvider = testDispatcherProvider,
             trafficRepository = trafficRepository
         )
     }
@@ -161,6 +162,39 @@ class TrafficViewModelTest {
             advanceUntilIdle()
 
             expectMostRecentItem().trafficSession shouldBe expectedSession
+        }
+    }
+
+    @Test
+    fun startMonitor_WhenTrafficDataEmitted_FiltersLastXSeconds() = runTest {
+        initViewModel()
+
+        val expectedFilterWindow = 30_000L
+        val currentTime = 50_000L
+        every { clock.now() } returns Instant.fromEpochMilliseconds(currentTime)
+        val metric1 = TrafficMetric.fake(101)
+            .copy(timestamp = currentTime - expectedFilterWindow - 1000)
+        val metric2 = TrafficMetric.fake(201)
+            .copy(timestamp = currentTime - expectedFilterWindow)
+        val metric3 = TrafficMetric.fake(301)
+            .copy(timestamp = currentTime - expectedFilterWindow + 1000)
+        val session = TrafficSession.fake(number = 10003, metricsCount = 0).copy(
+            trafficMetrics = listOf(
+                metric1,
+                metric2,
+                metric3,
+            )
+        )
+        val expectedMetrics = listOf(metric2, metric3)
+
+        viewModel.screenState.test {
+            viewModel.startMonitor()
+            advanceUntilIdle()
+
+            trafficSessionFlow.emit(session)
+            advanceUntilIdle()
+
+            expectMostRecentItem().trafficSession?.trafficMetrics shouldBe expectedMetrics
         }
     }
 
