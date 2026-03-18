@@ -9,6 +9,9 @@ import androidx.room.RoomDatabase
         TrafficSessionEntity::class,
         TrafficMetricEntity::class,
     ],
+    views = [
+        TrafficMetricSortedDescView::class,
+    ],
     version = 1,
 )
 abstract class AppDatabase : RoomDatabase() {

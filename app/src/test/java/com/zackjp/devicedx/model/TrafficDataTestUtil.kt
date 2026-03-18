@@ -4,10 +4,13 @@ package com.zackjp.devicedx.model
 fun TrafficSession.Companion.fake(
     number: Long,
     metricsCount: Int,
+    sortDesc: Boolean = true,
 ) = TrafficSession(
     id = number,
     startTime = number * 1000L,
-    trafficMetrics = List(metricsCount) { TrafficMetric.fake(it.toLong()) }
+    trafficMetrics = List(metricsCount) { TrafficMetric.fake(it.toLong()) }.let {
+        if (sortDesc) it.reversed() else it
+    }
 )
 
 fun TrafficData.Companion.fake(number: Long): TrafficData = TrafficData(

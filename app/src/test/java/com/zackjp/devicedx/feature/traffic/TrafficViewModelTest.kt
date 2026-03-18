@@ -26,7 +26,6 @@ import org.junit.jupiter.api.AfterEach
 import org.junit.jupiter.api.BeforeEach
 import org.junit.jupiter.api.Test
 import kotlin.time.Clock
-import kotlin.time.Duration.Companion.seconds
 import kotlin.time.Instant
 
 @OptIn(ExperimentalCoroutinesApi::class) // advanceUntilIdle()
@@ -40,8 +39,8 @@ class TrafficViewModelTest {
 
     private lateinit var viewModel: TrafficViewModel
 
-    val metricsSession1 = TrafficSession.fake(number = 100003, metricsCount = 2)
-    val metricsSession2 = TrafficSession.fake(number = 100007, metricsCount = 2)
+    val repoSession1 = TrafficSession.fake(number = 100003, metricsCount = 2, sortDesc = true)
+    val repoSession2 = TrafficSession.fake(number = 100007, metricsCount = 2, sortDesc = true)
 
     @BeforeEach
     fun setUp() {
@@ -69,8 +68,8 @@ class TrafficViewModelTest {
         advanceUntilIdle()
         val expectedTimeoutMs = 5000L
 
-        val sessionThatShouldEmit = metricsSession1
-        val sessionThatShouldNotEmit = metricsSession2
+        val sessionThatShouldEmit = repoSession1
+        val sessionThatShouldNotEmit = repoSession2
 
         every { clock.now() } returns Instant.fromEpochMilliseconds(3333L)
 
@@ -85,7 +84,7 @@ class TrafficViewModelTest {
         // 2) Emit data that should still generate metrics
         trafficSessionFlow.emit(sessionThatShouldEmit)
         runCurrent() // use runCurrent so it doesn't advance the clock
-        viewModel.screenState.value.trafficSession shouldBe sessionThatShouldEmit
+        viewModel.screenState.value.trafficSession shouldBe sessionThatShouldEmit.asExpectedForView()
 
         // 3) Advance 1 more millisecond to force the WhileSubscribed timeout
         advanceTimeBy(1)
@@ -94,7 +93,7 @@ class TrafficViewModelTest {
         // 4) Try to emit new data, which should not work
         trafficSessionFlow.emit(sessionThatShouldNotEmit)
         runCurrent()
-        viewModel.screenState.value.trafficSession shouldBe sessionThatShouldEmit
+        viewModel.screenState.value.trafficSession shouldBe sessionThatShouldEmit.asExpectedForView()
     }
 
     @Test
@@ -148,8 +147,8 @@ class TrafficViewModelTest {
     fun startMonitor_WhenTrafficDataEmitted_UpdatesHistory() = runTest {
         initViewModel()
 
-        val expectedSession = metricsSession1
-        val expectedClockTime = expectedSession.maxTrafficTimestamp()
+        val repoSession = repoSession1
+        val expectedClockTime = repoSession.maxTrafficTimestamp()
         every { clock.now() } returns Instant.fromEpochMilliseconds(expectedClockTime)
 
         viewModel.screenState.test {
@@ -158,10 +157,10 @@ class TrafficViewModelTest {
             viewModel.startMonitor()
             advanceUntilIdle()
 
-            trafficSessionFlow.emit(expectedSession)
+            trafficSessionFlow.emit(repoSession)
             advanceUntilIdle()
 
-            expectMostRecentItem().trafficSession shouldBe expectedSession
+            expectMostRecentItem().trafficSession shouldBe repoSession.asExpectedForView()
         }
     }
 
@@ -179,12 +178,15 @@ class TrafficViewModelTest {
         val metric3 = TrafficMetric.fake(301)
             .copy(timestamp = currentTime - expectedFilterWindow + 1000)
         val session = TrafficSession.fake(number = 10003, metricsCount = 0).copy(
+            // Specify metrics ourselves here in descending order to match TrafficRepo's
+            // contract and to explicitly verify filtering in this unit test
             trafficMetrics = listOf(
-                metric1,
-                metric2,
                 metric3,
+                metric2,
+                metric1,
             )
         )
+        // Then ensure the filtered data is in ascending order for the View
         val expectedMetrics = listOf(metric2, metric3)
 
         viewModel.screenState.test {
@@ -202,8 +204,8 @@ class TrafficViewModelTest {
     fun stopMonitoring_WhenMonitorActive_StopsNewEmissions() = runTest {
         initViewModel()
 
-        val session1 = metricsSession1
-        val session2 = metricsSession2
+        val session1 = repoSession1
+        val session2 = repoSession2
 
         every { clock.now() } returns Instant.fromEpochMilliseconds(session1.maxTrafficTimestamp())
 
@@ -214,14 +216,14 @@ class TrafficViewModelTest {
 
             trafficSessionFlow.emit(session1)
             advanceUntilIdle()
-            expectMostRecentItem().trafficSession shouldBe session1
+            expectMostRecentItem().trafficSession shouldBe session1.asExpectedForView()
 
             viewModel.stopMonitor()
             advanceUntilIdle()
 
             trafficSessionFlow.emit(session2)
             advanceUntilIdle()
-            expectMostRecentItem().trafficSession shouldBe session1
+            expectMostRecentItem().trafficSession shouldBe session1.asExpectedForView()
         }
     }
 
@@ -247,6 +249,15 @@ class TrafficViewModelTest {
     }
 
 }
+
+/**
+ * Traffic metrics from [TrafficRepository] come in descending order of timestamp, but
+ * the Graph in the View layer expects ascending order, so the expected is a reversed list.
+ */
+private fun TrafficSession.asExpectedForView(): TrafficSession =
+    copy(
+        trafficMetrics = trafficMetrics.reversed()
+    )
 
 private fun TrafficSession.maxTrafficTimestamp(): Long =
     trafficMetrics.maxOf { it.timestamp }

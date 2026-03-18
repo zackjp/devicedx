@@ -1,6 +1,7 @@
 package com.zackjp.devicedx.data
 
 import androidx.room.Dao
+import androidx.room.DatabaseView
 import androidx.room.Embedded
 import androidx.room.Entity
 import androidx.room.ForeignKey
@@ -88,8 +89,18 @@ data class TrafficMetricEntity(
 data class TrafficSessionWithMetrics(
     @Embedded val session: TrafficSessionEntity,
     @Relation(
+        entity = TrafficMetricSortedDescView::class,
         parentColumn = "sessionId",
         entityColumn = "sessionId",
     )
     val metrics: List<TrafficMetricEntity>
+)
+
+@DatabaseView("SELECT * FROM traffic_metrics ORDER BY timestamp DESC")
+data class TrafficMetricSortedDescView(
+    val metricId: Long,
+    val sessionId: Long,
+    val timestamp: Long,
+    val rxBytesPerSec: Long,
+    val txBytesPerSec: Long
 )

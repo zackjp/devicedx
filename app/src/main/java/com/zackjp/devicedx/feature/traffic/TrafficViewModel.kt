@@ -74,9 +74,9 @@ class TrafficViewModel @Inject constructor(
             (now - TRAFFIC_METRICS_WINDOW_SECS.seconds).toEpochMilliseconds() / 1000 * 1000
 
         val filteredSession = trafficSession.copy(
-            trafficMetrics = trafficSession.trafficMetrics.filter {
+            trafficMetrics = trafficSession.trafficMetrics.takeWhile {
                 it.timestamp >= timeStart
-            }
+            }.reversed()
         )
 
         _screenState.update { it.copy(trafficSession = filteredSession) }
