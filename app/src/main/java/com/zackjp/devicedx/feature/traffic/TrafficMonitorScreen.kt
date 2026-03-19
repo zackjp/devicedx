@@ -65,7 +65,7 @@ fun TrafficMonitorScreenRoot(
     ) {
         TrafficMonitorScreen(
             isInPipMode = isInPipMode,
-            modifier = Modifier.fillMaxWidth(),
+            modifier = Modifier.fillMaxHeight(),
             onStartMonitor = viewModel::startMonitor,
             onStopMonitor = viewModel::stopMonitor,
             state = state,
@@ -73,7 +73,6 @@ fun TrafficMonitorScreenRoot(
     }
 }
 
-@OptIn(ExperimentalMaterial3Api::class) // BottomSheetScaffold
 @Composable
 private fun TrafficMonitorScreen(
     isInPipMode: Boolean,
@@ -82,46 +81,18 @@ private fun TrafficMonitorScreen(
     onStopMonitor: () -> Unit = {},
     state: TrafficScreenState,
 ) {
-    val scaffoldState = rememberBottomSheetScaffoldState()
-
     if (isInPipMode) {
         MainContentPipMode(
-            modifier = Modifier
-                .fillMaxSize(),
+            modifier = modifier,
             graphData = state.graphData,
         )
     } else {
-        val coroutineScope = rememberCoroutineScope()
-        BackHandler(enabled = scaffoldState.bottomSheetState.targetValue == SheetValue.Expanded) {
-            coroutineScope.launch {
-                scaffoldState.bottomSheetState.partialExpand()
-            }
-        }
-
-        BottomSheetScaffold(
+        MainContent(
             modifier = modifier,
-            scaffoldState = scaffoldState,
-            sheetContent = {
-                TrafficTimeline(
-                    modifier = Modifier
-                        .fillMaxHeight()
-                        .padding(16.dp),
-                    metrics = state.trafficSession?.trafficMetrics ?: emptyList(),
-                    rxColor = RxLineColor,
-                    txColor = TxLineColor,
-                )
-            },
-            sheetPeekHeight = SHEET_PEEK_HEIGHT
-        ) {
-            MainContent(
-                modifier = Modifier
-                    .fillMaxWidth()
-                    .padding(bottom = SHEET_PEEK_HEIGHT),
-                state = state,
-                onStartMonitor = onStartMonitor,
-                onStopMonitor = onStopMonitor,
-            )
-        }
+            state = state,
+            onStartMonitor = onStartMonitor,
+            onStopMonitor = onStopMonitor,
+        )
     }
 }
 
@@ -143,6 +114,7 @@ fun MainContentPipMode(
     }
 }
 
+@OptIn(ExperimentalMaterial3Api::class) // BottomSheetScaffold
 @Composable
 private fun MainContent(
     modifier: Modifier = Modifier,
@@ -150,12 +122,19 @@ private fun MainContent(
     onStartMonitor: () -> Unit,
     onStopMonitor: () -> Unit
 ) {
+    val scaffoldState = rememberBottomSheetScaffoldState()
+    val coroutineScope = rememberCoroutineScope()
+    BackHandler(enabled = scaffoldState.bottomSheetState.targetValue == SheetValue.Expanded) {
+        coroutineScope.launch {
+            scaffoldState.bottomSheetState.partialExpand()
+        }
+    }
+
+    val graphData = state.graphData
+
     Column(
-        horizontalAlignment = Alignment.CenterHorizontally,
         modifier = modifier,
     ) {
-        val graphData = state.graphData
-
         TrafficGraphCard(
             trafficMetrics = graphData,
             rxLineColor = RxLineColor,
@@ -167,33 +146,55 @@ private fun MainContent(
 
         Spacer(Modifier.height(12.dp))
 
-        val mostRecentStat = graphData.lastOrNull()
-        ThroughputRow(
-            modifier = Modifier.fillMaxWidth(),
-            mostRecentStat = mostRecentStat,
-            rxLineColor = RxLineColor,
-            txLineColor = TxLineColor,
-        )
+        BottomSheetScaffold(
+            modifier = Modifier.weight(1f),
+            scaffoldState = scaffoldState,
+            sheetContent = {
+                TrafficTimeline(
+                    modifier = Modifier
+                        .fillMaxHeight()
+                        .padding(16.dp),
+                    metrics = state.trafficSession?.trafficMetrics ?: emptyList(),
+                    rxColor = RxLineColor,
+                    txColor = TxLineColor,
+                )
+            },
+            sheetPeekHeight = SHEET_PEEK_HEIGHT
+        ) {
+            Column(
+                horizontalAlignment = Alignment.CenterHorizontally,
+                modifier = Modifier.padding(bottom = SHEET_PEEK_HEIGHT),
+            ) {
+                val mostRecentStat = graphData.lastOrNull()
+                ThroughputRow(
+                    modifier = Modifier
+                        .fillMaxWidth(),
+                    mostRecentStat = mostRecentStat,
+                    rxLineColor = RxLineColor,
+                    txLineColor = TxLineColor,
+                )
 
-        Spacer(Modifier.height(12.dp))
+                Spacer(Modifier.height(12.dp))
 
-        SessionInfoCard(
-            modifier = Modifier.fillMaxWidth(),
-            isActive = state.isMonitorActive,
-            sessionStartTime = state.sessionStartTime,
-            trafficSession = state.trafficSession,
-        )
+                SessionInfoCard(
+                    modifier = Modifier.fillMaxWidth(),
+                    isActive = state.isMonitorActive,
+                    sessionStartTime = state.sessionStartTime,
+                    trafficSession = state.trafficSession,
+                )
 
-        Spacer(Modifier.weight(1f))
+                Spacer(Modifier.weight(1f))
 
-        MonitorButton(
-            modifier = Modifier.fillMaxWidth(),
-            isMonitorActive = state.isMonitorActive,
-            onStartMonitor = onStartMonitor,
-            onStopMonitor = onStopMonitor,
-        )
+                MonitorButton(
+                    modifier = Modifier.fillMaxWidth(),
+                    isMonitorActive = state.isMonitorActive,
+                    onStartMonitor = onStartMonitor,
+                    onStopMonitor = onStopMonitor,
+                )
 
-        Spacer(Modifier.height(16.dp))
+                Spacer(Modifier.height(16.dp))
+            }
+        }
     }
 }
 
