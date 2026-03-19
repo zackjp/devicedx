@@ -1,6 +1,7 @@
 package com.zackjp.devicedx.feature.traffic.ui
 
 import androidx.compose.foundation.Canvas
+import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
@@ -21,6 +22,7 @@ import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.derivedStateOf
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.remember
+import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
@@ -32,6 +34,7 @@ import com.zackjp.devicedx.model.DataUnit
 import com.zackjp.devicedx.model.TrafficMetric
 import com.zackjp.devicedx.ui.theme.Jade
 import com.zackjp.devicedx.ui.theme.MediumGray
+import kotlinx.coroutines.launch
 import java.time.Instant
 import java.time.LocalDateTime
 import java.time.ZoneId
@@ -56,6 +59,7 @@ internal fun TrafficTimeline(
     rxColor: Color,
     txColor: Color,
 ) {
+    val coroutineScope = rememberCoroutineScope()
     val lazyListState = rememberLazyListState()
     val isNearTop by remember {
         derivedStateOf {
@@ -75,6 +79,7 @@ internal fun TrafficTimeline(
         Title(
             modifier = Modifier.fillMaxWidth(),
             isLive = isNearTop,
+            onLiveClicked = { coroutineScope.launch { lazyListState.scrollToItem(0) } },
         )
 
         Spacer(Modifier.height(8.dp))
@@ -96,6 +101,7 @@ internal fun TrafficTimeline(
 private fun Title(
     modifier: Modifier = Modifier,
     isLive: Boolean,
+    onLiveClicked: () -> Unit = {},
 ) {
     Row(
         modifier = modifier,
@@ -106,7 +112,8 @@ private fun Title(
             text = stringResource(R.string.traffic_timeline_title),
         )
         LiveStatus(
-            modifier = Modifier,
+            modifier = Modifier
+                .clickable(onClick = onLiveClicked),
             isLive = isLive,
         )
         Spacer(modifier = Modifier.width(8.dp))
