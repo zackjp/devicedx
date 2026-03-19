@@ -54,6 +54,7 @@ private val columnSpacing = 8.dp
 @Composable
 @OptIn(ExperimentalMaterial3Api::class)
 internal fun TrafficTimeline(
+    isSessionActive: Boolean,
     metrics: List<TrafficMetric>,
     modifier: Modifier = Modifier,
     rxColor: Color,
@@ -79,6 +80,7 @@ internal fun TrafficTimeline(
         Title(
             modifier = Modifier.fillMaxWidth(),
             isLive = isNearTop,
+            isSessionActive = isSessionActive,
             onLiveClicked = { coroutineScope.launch { lazyListState.scrollToItem(0) } },
         )
 
@@ -101,6 +103,7 @@ internal fun TrafficTimeline(
 private fun Title(
     modifier: Modifier = Modifier,
     isLive: Boolean,
+    isSessionActive: Boolean,
     onLiveClicked: () -> Unit = {},
 ) {
     Row(
@@ -111,12 +114,14 @@ private fun Title(
             style = MaterialTheme.typography.titleMedium,
             text = stringResource(R.string.traffic_timeline_title),
         )
-        LiveStatus(
-            modifier = Modifier
-                .clickable(onClick = onLiveClicked),
-            isLive = isLive,
-        )
-        Spacer(modifier = Modifier.width(8.dp))
+        if (isSessionActive) {
+            LiveStatus(
+                modifier = Modifier
+                    .clickable(onClick = onLiveClicked),
+                isLive = isLive,
+            )
+            Spacer(modifier = Modifier.width(8.dp))
+        }
     }
 }
 

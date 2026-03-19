@@ -155,6 +155,7 @@ private fun MainContent(
                         .fillMaxHeight()
                         .padding(16.dp),
                     metrics = state.trafficSession?.trafficMetrics ?: emptyList(),
+                    isSessionActive = state.isMonitorActive,
                     rxColor = RxLineColor,
                     txColor = TxLineColor,
                 )
