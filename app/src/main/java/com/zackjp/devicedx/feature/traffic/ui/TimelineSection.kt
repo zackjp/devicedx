@@ -1,11 +1,13 @@
 package com.zackjp.devicedx.feature.traffic.ui
 
+import androidx.compose.foundation.Canvas
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
+import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.LazyListState
@@ -19,6 +21,7 @@ import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.derivedStateOf
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.remember
+import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.res.stringResource
@@ -27,12 +30,16 @@ import com.zackjp.devicedx.R
 import com.zackjp.devicedx.model.Bytes.Companion.asDataUnit
 import com.zackjp.devicedx.model.DataUnit
 import com.zackjp.devicedx.model.TrafficMetric
+import com.zackjp.devicedx.ui.theme.Jade
 import com.zackjp.devicedx.ui.theme.MediumGray
 import java.time.Instant
 import java.time.LocalDateTime
 import java.time.ZoneId
 import java.time.format.DateTimeFormatter
 
+
+private val LIVE_COLOR = Jade
+private val NOT_LIVE_COLOR = MediumGray
 
 private val columnWeights = listOf(
     0.3f,
@@ -50,14 +57,14 @@ internal fun TrafficTimeline(
     txColor: Color,
 ) {
     val lazyListState = rememberLazyListState()
-    val isAtTop by remember {
+    val isNearTop by remember {
         derivedStateOf {
             lazyListState.firstVisibleItemIndex <= 1
         }
     }
 
     LaunchedEffect(metrics) {
-        if (isAtTop) {
+        if (isNearTop) {
             lazyListState.animateScrollToItem(0)
         }
     }
@@ -67,6 +74,7 @@ internal fun TrafficTimeline(
     ) {
         Title(
             modifier = Modifier.fillMaxWidth(),
+            isLive = isNearTop,
         )
 
         Spacer(Modifier.height(8.dp))
@@ -87,12 +95,46 @@ internal fun TrafficTimeline(
 @Composable
 private fun Title(
     modifier: Modifier = Modifier,
+    isLive: Boolean,
 ) {
-    Text(
+    Row(
         modifier = modifier,
-        style = MaterialTheme.typography.titleMedium,
-        text = stringResource(R.string.traffic_timeline_title),
-    )
+    ) {
+        Text(
+            modifier = Modifier.weight(1f),
+            style = MaterialTheme.typography.titleMedium,
+            text = stringResource(R.string.traffic_timeline_title),
+        )
+        LiveStatus(
+            modifier = Modifier,
+            isLive = isLive,
+        )
+        Spacer(modifier = Modifier.width(8.dp))
+    }
+}
+
+@Composable
+fun LiveStatus(
+    modifier: Modifier = Modifier,
+    isLive: Boolean,
+) {
+    val color = if (isLive) LIVE_COLOR else NOT_LIVE_COLOR
+
+    Row(
+        modifier = modifier,
+        verticalAlignment = Alignment.CenterVertically,
+    ) {
+        Canvas(
+            modifier = Modifier.size(6.dp)
+        ) {
+            drawCircle(color)
+        }
+        Spacer(modifier = Modifier.width(8.dp))
+        Text(
+            color = color,
+            text = "Live",
+        )
+    }
 }
 
 @Composable
