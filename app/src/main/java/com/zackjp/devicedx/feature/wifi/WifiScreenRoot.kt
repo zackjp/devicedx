@@ -28,7 +28,6 @@ import androidx.compose.foundation.pager.HorizontalPager
 import androidx.compose.foundation.pager.PagerState
 import androidx.compose.foundation.pager.rememberPagerState
 import androidx.compose.material3.Card
-import androidx.compose.material3.HorizontalDivider
 import androidx.compose.material3.Icon
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.PrimaryTabRow
@@ -64,6 +63,7 @@ import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import com.zackjp.devicedx.R
 import com.zackjp.devicedx.shared.ui.AppCard
 import com.zackjp.devicedx.system.WifiInfo
+import com.zackjp.devicedx.ui.theme.MediumGray
 import kotlinx.coroutines.launch
 
 
@@ -267,22 +267,17 @@ private fun ConnectionDetailsCard(
                 .padding(20.dp),
         ) {
             Text(
-                color = MaterialTheme.colorScheme.primary,
                 text = "Current Connection",
                 style = MaterialTheme.typography.titleMedium,
             )
 
-            HorizontalDivider(
-                modifier = Modifier
-                    .fillMaxWidth()
-                    .padding(vertical = 12.dp)
-            )
+            Spacer(Modifier.height(8.dp))
 
             stats.forEach { stat ->
                 ConnectionDetailStat(
                     modifier = Modifier
                         .fillMaxWidth()
-                        .padding(vertical = 4.dp),
+                        .padding(vertical = 2.dp),
                     stat = stat,
                 )
             }
@@ -299,11 +294,13 @@ private fun ConnectionDetailStat(
 
     Row(
         modifier = modifier,
+        verticalAlignment = Alignment.CenterVertically,
     ) {
-        val dimmedColor = MaterialTheme.colorScheme.primary.copy(0.75f)
+        val dimmedColor = MediumGray
         Text(
             color = dimmedColor,
             maxLines = 1,
+            style = MaterialTheme.typography.labelSmall,
             text = statTitle,
         )
 
