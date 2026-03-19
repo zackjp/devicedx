@@ -1,5 +1,6 @@
 package com.zackjp.devicedx.feature.traffic
 
+import androidx.activity.compose.BackHandler
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Spacer
@@ -11,10 +12,12 @@ import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
 import androidx.compose.material3.BottomSheetScaffold
 import androidx.compose.material3.ExperimentalMaterial3Api
+import androidx.compose.material3.SheetValue
 import androidx.compose.material3.Surface
 import androidx.compose.material3.rememberBottomSheetScaffoldState
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
+import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.res.stringResource
@@ -31,6 +34,7 @@ import com.zackjp.devicedx.shared.ui.PrimaryButton
 import com.zackjp.devicedx.shared.ui.rememberIsInPipMode
 import com.zackjp.devicedx.ui.theme.CyberAmber
 import com.zackjp.devicedx.ui.theme.Turquoise
+import kotlinx.coroutines.launch
 
 
 private const val ASPECT_RATIO_NUMERATOR = 16
@@ -87,6 +91,13 @@ private fun TrafficMonitorScreen(
             graphData = state.graphData,
         )
     } else {
+        val coroutineScope = rememberCoroutineScope()
+        BackHandler(enabled = scaffoldState.bottomSheetState.targetValue == SheetValue.Expanded) {
+            coroutineScope.launch {
+                scaffoldState.bottomSheetState.partialExpand()
+            }
+        }
+
         BottomSheetScaffold(
             modifier = modifier,
             scaffoldState = scaffoldState,
