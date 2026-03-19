@@ -107,6 +107,8 @@ private fun TrafficMonitorScreen(
                         .fillMaxHeight()
                         .padding(16.dp),
                     metrics = state.trafficSession?.trafficMetrics ?: emptyList(),
+                    rxColor = RxLineColor,
+                    txColor = TxLineColor,
                 )
             },
             sheetPeekHeight = SHEET_PEEK_HEIGHT

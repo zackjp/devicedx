@@ -20,6 +20,7 @@ import androidx.compose.runtime.derivedStateOf
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.remember
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.unit.dp
 import com.zackjp.devicedx.R
@@ -45,6 +46,8 @@ private val columnSpacing = 8.dp
 internal fun TrafficTimeline(
     metrics: List<TrafficMetric>,
     modifier: Modifier = Modifier,
+    rxColor: Color,
+    txColor: Color,
 ) {
     val lazyListState = rememberLazyListState()
     val isAtTop by remember {
@@ -75,6 +78,8 @@ internal fun TrafficTimeline(
             modifier = Modifier.fillMaxWidth(),
             lazyListState = lazyListState,
             metrics = metrics,
+            rxColor = rxColor,
+            txColor = txColor,
         )
     }
 }
@@ -124,7 +129,9 @@ private fun TimelineHeader(
 private fun TimelineList(
     modifier: Modifier = Modifier,
     lazyListState: LazyListState,
-    metrics: List<TrafficMetric>
+    metrics: List<TrafficMetric>,
+    rxColor: Color,
+    txColor: Color,
 ) {
     LazyColumn(
         modifier = modifier,
@@ -141,11 +148,13 @@ private fun TimelineList(
                 )
                 Spacer(modifier = Modifier.width(columnSpacing))
                 Text(
+                    color = rxColor,
                     modifier = Modifier.weight(columnWeights[1]),
                     text = formatBytes(metric.rxBytesPerSec),
                 )
                 Spacer(modifier = Modifier.width(columnSpacing))
                 Text(
+                    color = txColor,
                     modifier = Modifier.weight(columnWeights[2]),
                     text = formatBytes(metric.txBytesPerSec),
                 )
