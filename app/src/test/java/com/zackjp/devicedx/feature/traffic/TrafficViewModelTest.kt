@@ -84,7 +84,7 @@ class TrafficViewModelTest {
         // 2) Emit data that should still generate metrics
         trafficSessionFlow.emit(sessionThatShouldEmit)
         runCurrent() // use runCurrent so it doesn't advance the clock
-        viewModel.screenState.value.trafficSession shouldBe sessionThatShouldEmit.asExpectedForView()
+        viewModel.screenState.value.trafficSession shouldBe sessionThatShouldEmit
 
         // 3) Advance 1 more millisecond to force the WhileSubscribed timeout
         advanceTimeBy(1)
@@ -93,7 +93,7 @@ class TrafficViewModelTest {
         // 4) Try to emit new data, which should not work
         trafficSessionFlow.emit(sessionThatShouldNotEmit)
         runCurrent()
-        viewModel.screenState.value.trafficSession shouldBe sessionThatShouldEmit.asExpectedForView()
+        viewModel.screenState.value.trafficSession shouldBe sessionThatShouldEmit
     }
 
     @Test
@@ -144,7 +144,7 @@ class TrafficViewModelTest {
     }
 
     @Test
-    fun startMonitor_WhenTrafficDataEmitted_UpdatesHistory() = runTest {
+    fun startMonitor_WhenTrafficDataEmitted_UpdatesTrafficSession() = runTest {
         initViewModel()
 
         val repoSession = repoSession1
@@ -160,7 +160,7 @@ class TrafficViewModelTest {
             trafficSessionFlow.emit(repoSession)
             advanceUntilIdle()
 
-            expectMostRecentItem().trafficSession shouldBe repoSession.asExpectedForView()
+            expectMostRecentItem().trafficSession shouldBe repoSession
         }
     }
 
@@ -196,7 +196,7 @@ class TrafficViewModelTest {
             trafficSessionFlow.emit(session)
             advanceUntilIdle()
 
-            expectMostRecentItem().trafficSession?.trafficMetrics shouldBe expectedMetrics
+            expectMostRecentItem().graphData shouldBe expectedMetrics
         }
     }
 
@@ -216,14 +216,14 @@ class TrafficViewModelTest {
 
             trafficSessionFlow.emit(session1)
             advanceUntilIdle()
-            expectMostRecentItem().trafficSession shouldBe session1.asExpectedForView()
+            expectMostRecentItem().trafficSession shouldBe session1
 
             viewModel.stopMonitor()
             advanceUntilIdle()
 
             trafficSessionFlow.emit(session2)
             advanceUntilIdle()
-            expectMostRecentItem().trafficSession shouldBe session1.asExpectedForView()
+            expectMostRecentItem().trafficSession shouldBe session1
         }
     }
 
@@ -249,15 +249,6 @@ class TrafficViewModelTest {
     }
 
 }
-
-/**
- * Traffic metrics from [TrafficRepository] come in descending order of timestamp, but
- * the Graph in the View layer expects ascending order, so the expected is a reversed list.
- */
-private fun TrafficSession.asExpectedForView(): TrafficSession =
-    copy(
-        trafficMetrics = trafficMetrics.reversed()
-    )
 
 private fun TrafficSession.maxTrafficTimestamp(): Long =
     trafficMetrics.maxOf { it.timestamp }

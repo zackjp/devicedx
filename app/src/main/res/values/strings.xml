@@ -21,6 +21,10 @@
     <string name="traffic_session_info_label_total_outgoing">TOTAL OUTGOING</string>
     <string name="traffic_stat_label_rx">CURRENT INCOMING</string>
     <string name="traffic_stat_label_tx">CURRENT OUTGOING</string>
+    <string name="traffic_timeline_label_incoming">INCOMING</string>
+    <string name="traffic_timeline_label_outgoing">OUTGOING</string>
+    <string name="traffic_timeline_label_timestamp">TIMESTAMP</string>
+    <string name="traffic_timeline_title">Traffic Timeline</string>
     <string name="wifi_connection_quality_excellent">Excellent</string>
     <string name="wifi_connection_quality_fair">Fair</string>
     <string name="wifi_connection_quality_good">Good</string>

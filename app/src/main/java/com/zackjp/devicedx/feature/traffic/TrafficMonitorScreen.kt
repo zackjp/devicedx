@@ -3,10 +3,16 @@ package com.zackjp.devicedx.feature.traffic
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.aspectRatio
+import androidx.compose.foundation.layout.fillMaxHeight
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
+import androidx.compose.foundation.layout.padding
+import androidx.compose.material3.BottomSheetScaffold
+import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.Surface
+import androidx.compose.material3.rememberBottomSheetScaffoldState
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
@@ -18,6 +24,7 @@ import com.zackjp.devicedx.R
 import com.zackjp.devicedx.feature.traffic.ui.SessionInfoCard
 import com.zackjp.devicedx.feature.traffic.ui.ThroughputRow
 import com.zackjp.devicedx.feature.traffic.ui.TrafficGraphCard
+import com.zackjp.devicedx.feature.traffic.ui.TrafficTimeline
 import com.zackjp.devicedx.shared.ui.PrimaryButton
 import com.zackjp.devicedx.shared.ui.rememberIsInPipMode
 import com.zackjp.devicedx.ui.theme.CyberAmber
@@ -58,6 +65,7 @@ fun TrafficMonitorScreenRoot(
     }
 }
 
+@OptIn(ExperimentalMaterial3Api::class) // BottomSheetScaffold
 @Composable
 private fun TrafficMonitorScreen(
     isInPipMode: Boolean,
@@ -66,14 +74,56 @@ private fun TrafficMonitorScreen(
     onStopMonitor: () -> Unit = {},
     state: TrafficScreenState,
 ) {
+    val scaffoldState = rememberBottomSheetScaffoldState()
+    val sheetPeekHeight = if (isInPipMode) 0.dp else 48.dp
+
+    LaunchedEffect(isInPipMode) {
+        if (isInPipMode) {
+            scaffoldState.bottomSheetState.partialExpand()
+        }
+    }
+
+    BottomSheetScaffold(
+        modifier = modifier,
+        scaffoldState = scaffoldState,
+        sheetContent = {
+            TrafficTimeline(
+                modifier = Modifier
+                    .fillMaxHeight()
+                    .padding(16.dp),
+                metrics = state.trafficSession?.trafficMetrics ?: emptyList(),
+            )
+        },
+        sheetPeekHeight = sheetPeekHeight
+    ) {
+        MainContent(
+            modifier = Modifier
+                .fillMaxWidth()
+                .padding(bottom = sheetPeekHeight),
+            isInPipMode = isInPipMode,
+            state = state,
+            onStartMonitor = onStartMonitor,
+            onStopMonitor = onStopMonitor
+        )
+    }
+}
+
+@Composable
+private fun MainContent(
+    modifier: Modifier = Modifier,
+    isInPipMode: Boolean,
+    state: TrafficScreenState,
+    onStartMonitor: () -> Unit,
+    onStopMonitor: () -> Unit
+) {
     Column(
         horizontalAlignment = Alignment.CenterHorizontally,
         modifier = modifier,
     ) {
-        val trafficMetrics = state.trafficSession?.trafficMetrics ?: emptyList()
+        val graphData = state.graphData
 
         TrafficGraphCard(
-            trafficMetrics = trafficMetrics,
+            trafficMetrics = graphData,
             rxLineColor = RxLineColor,
             txLineColor = TxLineColor,
             modifier = Modifier
@@ -84,7 +134,7 @@ private fun TrafficMonitorScreen(
         if (!isInPipMode) {
             Spacer(Modifier.height(12.dp))
 
-            val mostRecentStat = trafficMetrics.lastOrNull()
+            val mostRecentStat = graphData.lastOrNull()
             ThroughputRow(
                 modifier = Modifier.fillMaxWidth(),
                 mostRecentStat = mostRecentStat,
@@ -113,7 +163,6 @@ private fun TrafficMonitorScreen(
             Spacer(Modifier.height(16.dp))
         }
     }
-
 }
 
 @Composable
