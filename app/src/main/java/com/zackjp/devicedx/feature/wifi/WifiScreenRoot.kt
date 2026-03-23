@@ -9,8 +9,10 @@ import androidx.activity.compose.rememberLauncherForActivityResult
 import androidx.activity.result.contract.ActivityResultContracts
 import androidx.compose.animation.core.Animatable
 import androidx.compose.foundation.clickable
+import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
+import androidx.compose.foundation.layout.FlowRow
 import androidx.compose.foundation.layout.PaddingValues
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
@@ -19,7 +21,6 @@ import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
-import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.layout.widthIn
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.LazyListScope
@@ -54,7 +55,6 @@ import androidx.compose.ui.text.SpanStyle
 import androidx.compose.ui.text.TextLinkStyles
 import androidx.compose.ui.text.buildAnnotatedString
 import androidx.compose.ui.text.fromHtml
-import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import androidx.core.app.ActivityCompat
@@ -271,15 +271,21 @@ private fun ConnectionDetailsCard(
                 style = MaterialTheme.typography.titleMedium,
             )
 
-            Spacer(Modifier.height(8.dp))
+            Spacer(Modifier.height(12.dp))
 
-            stats.forEach { stat ->
-                ConnectionDetailStat(
-                    modifier = Modifier
-                        .fillMaxWidth()
-                        .padding(vertical = 2.dp),
-                    stat = stat,
-                )
+
+            FlowRow(
+                modifier = Modifier.fillMaxWidth(),
+                maxItemsInEachRow = 2,
+                verticalArrangement = Arrangement.spacedBy(16.dp),
+                horizontalArrangement = Arrangement.spacedBy(8.dp),
+            ) {
+                stats.forEach { stat ->
+                    ConnectionDetailStat(
+                        modifier = Modifier.weight(1f),
+                        stat = stat,
+                    )
+                }
             }
         }
     }
@@ -290,28 +296,23 @@ private fun ConnectionDetailStat(
     modifier: Modifier = Modifier,
     stat: Pair<String, String>,
 ) {
-    val (statTitle, statInfo) = stat
+    val (statLabel, statValue) = stat
 
-    Row(
+    Column(
         modifier = modifier,
-        verticalAlignment = Alignment.CenterVertically,
     ) {
-        val dimmedColor = MediumGray
         Text(
-            color = dimmedColor,
+            color = MediumGray,
             maxLines = 1,
-            style = MaterialTheme.typography.labelSmall,
-            text = statTitle,
-        )
-
-        Spacer(modifier = Modifier.width(8.dp))
-
-        Text(
-            maxLines = 1,
-            modifier = Modifier.weight(1f),
             overflow = TextOverflow.MiddleEllipsis,
-            text = statInfo,
-            textAlign = TextAlign.End,
+            style = MaterialTheme.typography.labelSmall,
+            text = statLabel,
+        )
+        Text(
+            maxLines = 1,
+            overflow = TextOverflow.MiddleEllipsis,
+            style = MaterialTheme.typography.bodyLarge,
+            text = statValue,
         )
     }
 }
