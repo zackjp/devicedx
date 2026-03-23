@@ -55,7 +55,7 @@ fun TrafficMonitorScreenRoot(
     val state by viewModel.screenState.collectAsStateWithLifecycle()
 
     val isInPipMode = rememberIsInPipMode(
-        isAllowed = state.isMonitorActive,
+        isAllowedProvider = { state.isMonitorActive },
         aspectRatioNumerator = ASPECT_RATIO_NUMERATOR,
         aspectRatioDenominator = ASPECT_RATIO_DENOMINATOR,
     )
@@ -68,7 +68,7 @@ fun TrafficMonitorScreenRoot(
             modifier = Modifier.fillMaxHeight(),
             onStartMonitor = viewModel::startMonitor,
             onStopMonitor = viewModel::stopMonitor,
-            state = state,
+            stateProvider = { state },
         )
     }
 }
@@ -79,17 +79,17 @@ private fun TrafficMonitorScreen(
     modifier: Modifier = Modifier,
     onStartMonitor: () -> Unit = {},
     onStopMonitor: () -> Unit = {},
-    state: TrafficScreenState,
+    stateProvider: () -> TrafficScreenState,
 ) {
     if (isInPipMode) {
         MainContentPipMode(
             modifier = modifier,
-            graphData = state.graphData,
+            graphDataProvider = { stateProvider().graphData },
         )
     } else {
         MainContent(
             modifier = modifier,
-            state = state,
+            stateProvider = stateProvider,
             onStartMonitor = onStartMonitor,
             onStopMonitor = onStopMonitor,
         )
@@ -99,13 +99,13 @@ private fun TrafficMonitorScreen(
 @Composable
 fun MainContentPipMode(
     modifier: Modifier = Modifier,
-    graphData: List<TrafficMetric>,
+    graphDataProvider: () -> List<TrafficMetric>,
 ) {
     Box(
         modifier = modifier,
     ) {
         TrafficGraphCard(
-            trafficMetrics = graphData,
+            graphDataProvider = graphDataProvider,
             rxLineColor = RxLineColor,
             txLineColor = TxLineColor,
             modifier = Modifier
@@ -118,7 +118,7 @@ fun MainContentPipMode(
 @Composable
 private fun MainContent(
     modifier: Modifier = Modifier,
-    state: TrafficScreenState,
+    stateProvider: () -> TrafficScreenState,
     onStartMonitor: () -> Unit,
     onStopMonitor: () -> Unit
 ) {
@@ -130,13 +130,14 @@ private fun MainContent(
         }
     }
 
-    val graphData = state.graphData
+    val isMonitorActiveProvider = { stateProvider().isMonitorActive }
+    val trafficSessionProvider = { stateProvider().trafficSession }
 
     Column(
         modifier = modifier,
     ) {
         TrafficGraphCard(
-            trafficMetrics = graphData,
+            graphDataProvider = { stateProvider().graphData },
             rxLineColor = RxLineColor,
             txLineColor = TxLineColor,
             modifier = Modifier
@@ -154,8 +155,10 @@ private fun MainContent(
                     modifier = Modifier
                         .fillMaxHeight()
                         .padding(16.dp),
-                    metrics = state.trafficSession?.trafficMetrics ?: emptyList(),
-                    isSessionActive = state.isMonitorActive,
+                    metricsProvider = {
+                        trafficSessionProvider()?.trafficMetrics ?: emptyList()
+                    },
+                    isSessionActiveProvider = { stateProvider().isMonitorActive },
                     rxColor = RxLineColor,
                     txColor = TxLineColor,
                 )
@@ -166,11 +169,10 @@ private fun MainContent(
                 horizontalAlignment = Alignment.CenterHorizontally,
                 modifier = Modifier.padding(bottom = SHEET_PEEK_HEIGHT),
             ) {
-                val mostRecentStat = graphData.lastOrNull()
                 ThroughputRow(
                     modifier = Modifier
                         .fillMaxWidth(),
-                    mostRecentStat = mostRecentStat,
+                    statProvider = { stateProvider().graphData.lastOrNull() },
                     rxLineColor = RxLineColor,
                     txLineColor = TxLineColor,
                 )
@@ -179,16 +181,16 @@ private fun MainContent(
 
                 SessionInfoCard(
                     modifier = Modifier.fillMaxWidth(),
-                    isActive = state.isMonitorActive,
-                    sessionStartTime = state.sessionStartTime,
-                    trafficSession = state.trafficSession,
+                    isActiveProvider = isMonitorActiveProvider,
+                    sessionStartTimeProvider = { stateProvider().sessionStartTime },
+                    trafficSessionProvider = trafficSessionProvider,
                 )
 
                 Spacer(Modifier.weight(1f))
 
                 MonitorButton(
                     modifier = Modifier.fillMaxWidth(),
-                    isMonitorActive = state.isMonitorActive,
+                    isMonitorActiveProvider = isMonitorActiveProvider,
                     onStartMonitor = onStartMonitor,
                     onStopMonitor = onStopMonitor,
                 )
@@ -202,11 +204,11 @@ private fun MainContent(
 @Composable
 fun MonitorButton(
     modifier: Modifier = Modifier,
-    isMonitorActive: Boolean,
+    isMonitorActiveProvider: () -> Boolean,
     onStartMonitor: () -> Unit = {},
     onStopMonitor: () -> Unit = {},
 ) {
-    val (textResId, onClick) = if (isMonitorActive) {
+    val (textResId, onClick) = if (isMonitorActiveProvider()) {
         R.string.stop_traffic_monitor to onStopMonitor
     } else {
         R.string.start_traffic_monitor to onStartMonitor

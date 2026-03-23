@@ -20,11 +20,12 @@ import androidx.core.util.Consumer
 
 @Composable
 fun rememberIsInPipMode(
-    isAllowed: Boolean,
+    isAllowedProvider: () -> Boolean,
     aspectRatioNumerator: Int,
     aspectRatioDenominator: Int,
 ): Boolean {
     val activity = LocalContext.current.findActivity()
+    val isAllowed = isAllowedProvider()
     var pipMode by remember { mutableStateOf(activity.isInPictureInPictureMode) }
 
     DisposableEffect(

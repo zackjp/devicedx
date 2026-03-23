@@ -39,11 +39,13 @@ private val yTickMaxSteps = listOf(
 
 @Composable
 internal fun TrafficGraphCard(
-    trafficMetrics: List<TrafficMetric>,
+    graphDataProvider: () -> List<TrafficMetric>,
     rxLineColor: Color,
     txLineColor: Color,
     modifier: Modifier = Modifier,
 ) {
+    val trafficMetrics = graphDataProvider()
+
     var xMinValue = if (trafficMetrics.isEmpty()) 0L else trafficMetrics[0].timestamp
     var xMaxValue = 0L
     var yMaxValue = 0L

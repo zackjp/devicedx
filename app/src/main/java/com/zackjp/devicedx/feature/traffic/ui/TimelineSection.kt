@@ -54,12 +54,13 @@ private val columnSpacing = 8.dp
 @Composable
 @OptIn(ExperimentalMaterial3Api::class)
 internal fun TrafficTimeline(
-    isSessionActive: Boolean,
-    metrics: List<TrafficMetric>,
+    isSessionActiveProvider: () -> Boolean,
+    metricsProvider: () -> List<TrafficMetric>,
     modifier: Modifier = Modifier,
     rxColor: Color,
     txColor: Color,
 ) {
+    val metrics = metricsProvider()
     val coroutineScope = rememberCoroutineScope()
     val lazyListState = rememberLazyListState()
     val isNearTop by remember {
@@ -80,7 +81,7 @@ internal fun TrafficTimeline(
         Title(
             modifier = Modifier.fillMaxWidth(),
             isLive = isNearTop,
-            isSessionActive = isSessionActive,
+            isSessionActive = isSessionActiveProvider(),
             onLiveClicked = { coroutineScope.launch { lazyListState.scrollToItem(0) } },
         )
 

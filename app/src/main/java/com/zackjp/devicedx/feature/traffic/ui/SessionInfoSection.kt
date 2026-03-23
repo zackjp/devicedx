@@ -36,14 +36,15 @@ import kotlin.time.Instant
 @Composable
 internal fun SessionInfoCard(
     modifier: Modifier = Modifier,
-    isActive: Boolean,
-    sessionStartTime: Long?,
-    trafficSession: TrafficSession?,
+    isActiveProvider: () -> Boolean,
+    sessionStartTimeProvider: () -> Long?,
+    trafficSessionProvider: () -> TrafficSession?,
 ) {
-    val sessionId = trafficSession?.id
-    val sessionStartTime = sessionStartTime
-    val totalRxBytes = trafficSession?.totalRxBytes
-    val totalTxBytes = trafficSession?.totalTxBytes
+    val isActive = isActiveProvider()
+    val sessionId = trafficSessionProvider()?.id
+    val sessionStartTime = sessionStartTimeProvider()
+    val totalRxBytes = trafficSessionProvider()?.totalRxBytes
+    val totalTxBytes = trafficSessionProvider()?.totalTxBytes
 
     var sessionDuration by remember { mutableStateOf(Duration.ZERO) }
     LaunchedEffect(isActive, sessionStartTime) {

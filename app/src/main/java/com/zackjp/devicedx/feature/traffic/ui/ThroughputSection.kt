@@ -9,28 +9,27 @@ import androidx.compose.foundation.layout.width
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
+import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.res.stringResource
-import androidx.compose.ui.text.SpanStyle
-import androidx.compose.ui.text.buildAnnotatedString
-import androidx.compose.ui.text.withStyle
 import androidx.compose.ui.unit.dp
 import com.zackjp.devicedx.R
 import com.zackjp.devicedx.model.Bytes.Companion.asDataUnit
 import com.zackjp.devicedx.model.DataUnit
 import com.zackjp.devicedx.model.TrafficMetric
 import com.zackjp.devicedx.shared.ui.AppCard
-import com.zackjp.devicedx.ui.theme.Platinum
 
 
 @Composable
 internal fun ThroughputRow(
     modifier: Modifier = Modifier,
-    mostRecentStat: TrafficMetric?,
+    statProvider: () -> TrafficMetric?,
     rxLineColor: Color,
     txLineColor: Color,
 ) {
+    val mostRecentStat = statProvider()
+
     Row(modifier = modifier) {
         ThroughputCard(
             modifier = Modifier.weight(1f),
@@ -80,22 +79,23 @@ fun ThroughputCard(
                 unitText = displayStat.second.displayString + "/s"
             }
 
-            val formattedStat = buildAnnotatedString {
-                pushStyle(style = SpanStyle(color = cardColor))
-                withStyle(style = MaterialTheme.typography.headlineMedium.toSpanStyle()) {
-                    append(valueText)
-                }
-                append(" ")
-                withStyle(style = MaterialTheme.typography.headlineSmall.toSpanStyle()) {
-                    append(unitText)
-                }
+            Row(
+                modifier = Modifier.fillMaxWidth(),
+                verticalAlignment = Alignment.Bottom,
+            ) {
+                Text(
+                    modifier = Modifier,
+                    color = cardColor,
+                    style = MaterialTheme.typography.headlineMedium,
+                    text = "$valueText ",
+                )
+                Text(
+                    modifier = Modifier,
+                    color = cardColor,
+                    style = MaterialTheme.typography.headlineSmall,
+                    text = unitText,
+                )
             }
-
-            Text(
-                modifier = Modifier,
-                color = Platinum,
-                text = formattedStat,
-            )
         }
     }
 }
