@@ -18,6 +18,7 @@
         android:roundIcon="@mipmap/ic_launcher_round"
         android:supportsRtl="true"
         android:theme="@style/Theme.DeviceDx">
+        <profileable android:shell="true" />
         <activity
             android:configChanges="screenSize|smallestScreenSize|screenLayout|orientation"
             android:name=".MainActivity"
