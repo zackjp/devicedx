@@ -7,7 +7,10 @@ import android.provider.Settings
 import androidx.activity.compose.LocalActivity
 import androidx.activity.compose.rememberLauncherForActivityResult
 import androidx.activity.result.contract.ActivityResultContracts
+import androidx.annotation.DrawableRes
+import androidx.annotation.StringRes
 import androidx.compose.animation.core.Animatable
+import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
@@ -16,12 +19,11 @@ import androidx.compose.foundation.layout.FlowRow
 import androidx.compose.foundation.layout.PaddingValues
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
-import androidx.compose.foundation.layout.aspectRatio
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
-import androidx.compose.foundation.layout.widthIn
+import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.LazyListScope
 import androidx.compose.foundation.lazy.items
@@ -29,7 +31,6 @@ import androidx.compose.foundation.pager.HorizontalPager
 import androidx.compose.foundation.pager.PagerState
 import androidx.compose.foundation.pager.rememberPagerState
 import androidx.compose.material3.Card
-import androidx.compose.material3.Icon
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.PrimaryTabRow
 import androidx.compose.material3.Surface
@@ -45,9 +46,9 @@ import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.graphics.Shape
 import androidx.compose.ui.graphics.graphicsLayer
 import androidx.compose.ui.platform.LocalContext
-import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.AnnotatedString
 import androidx.compose.ui.text.LinkAnnotation
@@ -55,6 +56,7 @@ import androidx.compose.ui.text.SpanStyle
 import androidx.compose.ui.text.TextLinkStyles
 import androidx.compose.ui.text.buildAnnotatedString
 import androidx.compose.ui.text.fromHtml
+import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import androidx.core.app.ActivityCompat
@@ -69,6 +71,24 @@ import kotlinx.coroutines.launch
 
 private val LightBlueLink = Color(0xFF4BB2F9)
 
+private val WIFI_QUALITY_LEVELS = listOf(
+    WifiQuality(
+        qualityStringRes = R.string.wifi_connection_quality_poor,
+        qualityDrawableRes = R.drawable.ic_rounded_wifi_1_bar_24,
+    ),
+    WifiQuality(
+        qualityStringRes = R.string.wifi_connection_quality_fair,
+        qualityDrawableRes = R.drawable.ic_rounded_wifi_2_bar_24,
+    ),
+    WifiQuality(
+        qualityStringRes = R.string.wifi_connection_quality_good,
+        qualityDrawableRes = R.drawable.ic_rounded_android_wifi_3_bar_24,
+    ),
+    WifiQuality(
+        qualityStringRes = R.string.wifi_connection_quality_excellent,
+        qualityDrawableRes = R.drawable.ic_rounded_android_wifi_4_bar_24,
+    ),
+)
 
 @Composable
 fun WifiScreenRoot(
@@ -200,13 +220,14 @@ private fun WifiStatsPage(
     Column(
         modifier = modifier,
     ) {
-        WifiStrengthIcon(
+        WifiStrengthCard(
             modifier = Modifier
-                .widthIn(128.dp, 196.dp)
-                .aspectRatio(1f)
-                .align(Alignment.CenterHorizontally),
-            wifiInfo.wifiStrength,
+                .fillMaxWidth(),
+            wifiRssi = wifiInfo.rssi,
+            wifiPercent = wifiInfo.wifiStrengthPercent,
         )
+
+        Spacer(modifier = Modifier.height(16.dp))
 
         ConnectionDetailsCard(
             modifier = Modifier.fillMaxWidth(),
@@ -216,27 +237,89 @@ private fun WifiStatsPage(
 }
 
 @Composable
-private fun WifiStrengthIcon(
+private fun WifiStrengthCard(
     modifier: Modifier,
-    wifiStrength: Int,
+    wifiRssi: Int,
+    wifiPercent: Float,
 ) {
-    val wifiIconId = when (wifiStrength) {
-        2 -> R.drawable.ic_rounded_wifi_2_bar_24
-        3 -> R.drawable.ic_rounded_android_wifi_3_bar_24
-        4 -> R.drawable.ic_rounded_android_wifi_4_bar_24
-        else -> R.drawable.ic_rounded_wifi_1_bar_24
-    }
+    AppCard(
+        modifier = modifier,
+    ) {
+        Column(
+            modifier = Modifier.padding(16.dp),
+        ) {
+            Text(
+                style = MaterialTheme.typography.titleMedium,
+                text = stringResource(R.string.wifi_title_signal_strength),
+            )
 
+            Spacer(modifier = Modifier.height(16.dp))
+
+            Row(
+                modifier = Modifier.fillMaxWidth(),
+                verticalAlignment = Alignment.Bottom,
+            ) {
+                Text(
+                    color = MaterialTheme.colorScheme.primary,
+                    style = MaterialTheme.typography.displayMedium,
+                    text = wifiRssi.toString(),
+                )
+                Spacer(modifier = Modifier.width(8.dp))
+                Text(
+                    style = MaterialTheme.typography.displaySmall,
+                    text = stringResource(R.string.wifi_unit_decibel_milliwatts),
+                )
+            }
+
+            SignalQualityIndicator(
+                modifier = Modifier.fillMaxWidth(),
+                shape = MaterialTheme.shapes.medium,
+                signalPercent = wifiPercent,
+            )
+
+        }
+    }
+}
+
+@Composable
+fun SignalQualityIndicator(
+    modifier: Modifier = Modifier,
+    shape: Shape,
+    signalPercent: Float,
+) {
     Column(
         modifier = modifier,
     ) {
-        Icon(
-            contentDescription = null,
-            modifier = Modifier
-                .widthIn(128.dp, 196.dp)
-                .aspectRatio(1f),
-            painter = painterResource(wifiIconId),
-        )
+        Row(
+            modifier = modifier.background(
+                color = MaterialTheme.colorScheme.surface,
+                shape = shape
+            )
+        ) {
+            Spacer(
+                modifier = Modifier
+                    .fillMaxWidth(signalPercent)
+                    .height(16.dp)
+                    .background(
+                        color = MaterialTheme.colorScheme.primary,
+                        shape = shape,
+                    )
+            )
+        }
+
+        Spacer(modifier = Modifier.height(16.dp))
+
+        Row(
+            modifier = Modifier.fillMaxWidth(),
+        ) {
+            WIFI_QUALITY_LEVELS.forEach {
+                Text(
+                    modifier = Modifier.weight(1f),
+                    text = stringResource(it.qualityStringRes),
+                    textAlign = TextAlign.Center,
+                )
+            }
+        }
     }
 }
 
@@ -245,15 +328,12 @@ private fun ConnectionDetailsCard(
     modifier: Modifier = Modifier,
     wifiInfo: WifiInfo,
 ) {
-    val connectionQuality = when {
-        wifiInfo.wifiStrength >= 3 -> stringResource(R.string.wifi_connection_quality_excellent)
-        wifiInfo.wifiStrength == 2 -> stringResource(R.string.wifi_connection_quality_good)
-        wifiInfo.wifiStrength == 1 -> stringResource(R.string.wifi_connection_quality_fair)
-        else -> stringResource(R.string.wifi_connection_quality_poor)
-    }
+    val connectionQualityInfo = connectionQualityInfo(wifiInfo.wifiStrength)
+    val connectionQualityText = stringResource(connectionQualityInfo.qualityStringRes)
+
     val stats = listOf(
         stringResource(R.string.wifi_info_grid_label_network) to wifiInfo.ssid,
-        stringResource(R.string.wifi_info_grid_label_connection_quality) to connectionQuality,
+        stringResource(R.string.wifi_info_grid_label_connection_quality) to connectionQualityText,
         stringResource(R.string.wifi_info_grid_label_ip_address) to wifiInfo.ipAddress,
         stringResource(R.string.wifi_info_grid_label_link_speed) to "${wifiInfo.linkSpeedMbps} Mbps",
     )
@@ -451,6 +531,11 @@ private fun LazyListScope.scanPermissionDeniedMessage(
     }
 }
 
+private fun connectionQualityInfo(wifiStrength: Int): WifiQuality {
+    val adjustedIndex = (wifiStrength - 1).coerceIn(0, WIFI_QUALITY_LEVELS.lastIndex)
+    return WIFI_QUALITY_LEVELS[adjustedIndex]
+}
+
 private fun LazyListScope.wifiScanResults(
     rowModifier: Modifier = Modifier,
     wifiNames: List<String>,
@@ -471,3 +556,8 @@ private fun LazyListScope.wifiScanResults(
         Spacer(modifier = Modifier.height(12.dp))
     }
 }
+
+private data class WifiQuality(
+    @param:StringRes val qualityStringRes: Int,
+    @param:DrawableRes val qualityDrawableRes: Int
+)

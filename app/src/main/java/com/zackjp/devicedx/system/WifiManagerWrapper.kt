@@ -9,6 +9,13 @@ import java.util.Locale
 import javax.inject.Inject
 import javax.inject.Singleton
 
+private val WIFI_LEVELS = listOf(
+    -80, // very weak: unusable
+    -70, // weak: dropped packets
+    -65, // fair: minimum recommended signal
+    -50, // good: reliable for most apps
+    // else = excellent: max data rates
+)
 
 @Singleton
 class WifiManagerWrapper @Inject constructor(
@@ -25,17 +32,16 @@ class WifiManagerWrapper @Inject constructor(
             return WifiInfo()
         } else {
             val rssi = connectionInfo.rssi
+            val qualityLevel = calculateSignalLevelInternal(rssi)
+            val qualityPercent = qualityLevel.toFloat() / WIFI_LEVELS.size
+
             return WifiInfo(
                 ipAddress = convertIntToIp(connectionInfo.ipAddress),
                 linkSpeedMbps = connectionInfo.linkSpeed,
                 ssid = connectionInfo.ssid,
-                wifiStrength = when {
-                    rssi >= -60 -> 3 // excellent: max data rates
-                    rssi >= -70 -> 2 // good: reliable for most apps
-                    rssi >= -80 -> 1 // weak: dropped packets
-                    rssi >= -90 -> 0 // extremely weak: unusable
-                    else -> 0 // else: less than -90; unusable
-                },
+                rssi = rssi,
+                wifiStrength = qualityLevel,
+                wifiStrengthPercent = qualityPercent,
             )
         }
     }
@@ -51,6 +57,11 @@ class WifiManagerWrapper @Inject constructor(
         } catch (e: SecurityException) {
             Result.failure(e)
         }
+    }
+
+    private fun calculateSignalLevelInternal(rssi: Int): Int {
+        val level = WIFI_LEVELS.indexOfFirst { rssi < it }
+        return if (level < 0) WIFI_LEVELS.size else level
     }
 
 }
@@ -70,5 +81,7 @@ data class WifiInfo(
     val ipAddress: String = "",
     val linkSpeedMbps: Int = 0,
     val ssid: String = "",
+    val rssi: Int = -100,
     val wifiStrength: Int = 0,
+    val wifiStrengthPercent: Float = 0f,
 )

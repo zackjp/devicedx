@@ -40,4 +40,6 @@
     <string name="wifi_fine_location_permission_rationale">To show Wifi networks, this app needs Fine Location permission. Try again to request permission.</string>
     <string name="wifi_tab_stats">Wifi Stats</string>
     <string name="wifi_tab_scan">Wifi Scan</string>
+    <string name="wifi_title_signal_strength">Signal Strength</string>
+    <string name="wifi_unit_decibel_milliwatts">dBm</string>
 </resources>
