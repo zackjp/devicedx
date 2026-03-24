@@ -12,7 +12,6 @@
     <string name="latency_monitor_stop">Stop Latency Monitor</string>
     <string name="start_traffic_monitor">Start Data Monitor</string>
     <string name="stop_traffic_monitor">Stop Data Monitor</string>
-    <string name="coming_soon_here">Coming soon here.</string>
     <string name="traffic_session_card_label">Session Info</string>
     <string name="traffic_session_id_name">Session %1$d</string>
     <string name="traffic_session_info_label_duration">DURATION</string>
