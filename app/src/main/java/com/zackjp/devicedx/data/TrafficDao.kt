@@ -63,7 +63,9 @@ data class TrafficSessionEntity(
     val endTime: Long? = null,
     val totalRxBytes: Long = 0L,
     val totalTxBytes: Long = 0L,
-)
+) {
+    companion object // for test extensions
+}
 
 @Entity(
     tableName = "traffic_metrics",
@@ -84,7 +86,9 @@ data class TrafficMetricEntity(
     val timestamp: Long,
     val rxBytesPerSec: Long,
     val txBytesPerSec: Long,
-)
+) {
+    companion object // for test extensions
+}
 
 data class TrafficSessionWithMetrics(
     @Embedded val session: TrafficSessionEntity,
@@ -94,7 +98,9 @@ data class TrafficSessionWithMetrics(
         entityColumn = "sessionId",
     )
     val metrics: List<TrafficMetricEntity>
-)
+) {
+    companion object // for test extensions
+}
 
 @DatabaseView("SELECT * FROM traffic_metrics ORDER BY timestamp DESC")
 data class TrafficMetricSortedDescView(
