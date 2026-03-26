@@ -1,7 +1,9 @@
 package com.zackjp.devicedx.feature.wifi
 
+import androidx.compose.runtime.Immutable
 import com.zackjp.devicedx.system.WifiInfo
 
+@Immutable
 data class WifiScreenState(
     val isMonitorActive: Boolean,
     val permissionStatus: PermissionStatus,
