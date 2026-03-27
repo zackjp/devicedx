@@ -220,6 +220,37 @@ class TrafficViewModelTest {
     }
 
     @Test
+    fun startMonitor_WhenFlowExceptionThrown_CanBeRestarted() = runTest {
+        initViewModel()
+
+        viewModel.startMonitor()
+        runCurrent()
+
+        viewModel.screenState.test {
+            forceSessionFlowException = { Exception("Fake session exception") }
+            trafficSessionFlow.emit(TrafficSession.fake(number = 123, metricsCount = 2))
+            runCurrent()
+
+            expectMostRecentItem().error shouldBe TrafficScreenError.SessionError
+
+            viewModel.stopMonitor()
+            runCurrent()
+
+            // Allow future emissions
+            forceSessionFlowException = null
+            viewModel.startMonitor()
+            runCurrent()
+
+            val expectedTrafficSession = TrafficSession.fake(number = 456, metricsCount = 2)
+            trafficSessionFlow.emit(expectedTrafficSession)
+            runCurrent()
+
+            expectMostRecentItem().trafficSession shouldBe expectedTrafficSession
+        }
+
+    }
+
+    @Test
     fun stopMonitor_WhenMonitorActive_StopsNewEmissions() = runTest {
         initViewModel()
 

@@ -29,7 +29,7 @@ import kotlin.time.Duration.Companion.seconds
 @HiltViewModel
 class TrafficViewModel @Inject constructor(
     private val clock: Clock,
-    dispatcherProvider: DispatcherProvider,
+    private val dispatcherProvider: DispatcherProvider,
     private val trafficRepository: TrafficRepository,
 ) : ViewModel() {
 
@@ -47,13 +47,7 @@ class TrafficViewModel @Inject constructor(
     private val uiActiveFlow = _screenState.subscriptionCount.map { it > 0 }.distinctUntilChanged()
     private val isMonitorActive = MutableStateFlow(false)
 
-    private val activatableTrafficMonitor: Job = uiActivatedFlow(
-        dataSourceProvider = { trafficRepository.recordTrafficMetrics() },
-    )
-        .onEach(::handleTrafficMetrics)
-        .catch { handleTrafficError() }
-        .flowOn(dispatcherProvider.default)
-        .launchIn(viewModelScope)
+    private var activatableTrafficMonitor: Job? = null
 
     fun startMonitor() {
         _screenState.update {
@@ -63,11 +57,20 @@ class TrafficViewModel @Inject constructor(
             )
         }
         isMonitorActive.value = true
+
+        activatableTrafficMonitor = uiActivatedFlow(
+            dataSourceProvider = { trafficRepository.recordTrafficMetrics() },
+        )
+            .onEach(::handleTrafficMetrics)
+            .catch { handleTrafficError() }
+            .flowOn(dispatcherProvider.default)
+            .launchIn(viewModelScope)
     }
 
     fun stopMonitor() {
         _screenState.update { it.copy(isMonitorActive = false) }
         isMonitorActive.value = false
+        activatableTrafficMonitor?.cancel()
     }
 
     fun consumeErrorState() {
