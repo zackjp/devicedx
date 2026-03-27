@@ -12,6 +12,7 @@
     <string name="latency_monitor_stop">Stop Latency Monitor</string>
     <string name="start_traffic_monitor">Start Data Monitor</string>
     <string name="stop_traffic_monitor">Stop Data Monitor</string>
+    <string name="traffic_error_message_generic">Encountered a session error.</string>
     <string name="traffic_session_card_label">Session Info</string>
     <string name="traffic_session_id_name">Session %1$d</string>
     <string name="traffic_session_info_label_duration">DURATION</string>
@@ -23,6 +24,7 @@
     <string name="traffic_timeline_label_incoming">INCOMING</string>
     <string name="traffic_timeline_label_outgoing">OUTGOING</string>
     <string name="traffic_timeline_label_timestamp">TIMESTAMP</string>
+    <string name="traffic_timeline_live">Live</string>
     <string name="traffic_timeline_title">Data Timeline</string>
     <string name="wifi_connection_quality_excellent">Excellent</string>
     <string name="wifi_connection_quality_fair">Fair</string>
@@ -41,5 +43,4 @@
     <string name="wifi_tab_scan">Wifi Scan</string>
     <string name="wifi_title_signal_strength">Signal Strength</string>
     <string name="wifi_unit_decibel_milliwatts">dBm</string>
-    <string name="traffic_error_message_generic">Encountered a session error.</string>
 </resources>

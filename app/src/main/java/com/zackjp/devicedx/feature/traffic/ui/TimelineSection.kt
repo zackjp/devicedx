@@ -145,7 +145,7 @@ fun LiveStatus(
         Spacer(modifier = Modifier.width(8.dp))
         Text(
             color = color,
-            text = "Live",
+            text = stringResource(R.string.traffic_timeline_live),
         )
     }
 }
@@ -221,7 +221,7 @@ private fun TimelineList(
 
 private fun formatBytes(bytes: Long?): String =
     if (bytes == null) {
-        "- MB"
+        "-"
     } else {
         val displayStat = bytes.asDataUnit(DataUnit.BYTE).bestDisplayableUnit
         val valueText = displayStat.first.toPlainString()

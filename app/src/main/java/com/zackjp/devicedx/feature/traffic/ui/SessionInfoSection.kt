@@ -146,7 +146,7 @@ private fun formatDuration(sessionDuration: Duration): String =
 
 private fun formatBytes(bytes: Long?): String =
     if (bytes == null) {
-        "- MB"
+        "-"
     } else {
         val displayStat = bytes.asDataUnit(DataUnit.BYTE).bestDisplayableUnit
         val valueText = displayStat.first.toPlainString()

@@ -72,7 +72,7 @@ fun ThroughputCard(
             val unitText: String
             if (bytes == null) {
                 valueText = "-"
-                unitText = "MB/s"
+                unitText = ""
             } else {
                 val displayStat = bytes.asDataUnit(DataUnit.BYTE).bestDisplayableUnit
                 valueText = displayStat.first.toPlainString()

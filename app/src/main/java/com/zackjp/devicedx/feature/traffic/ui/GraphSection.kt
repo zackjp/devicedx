@@ -3,8 +3,10 @@ package com.zackjp.devicedx.feature.traffic.ui
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.padding
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.remember
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.text.intl.Locale
 import androidx.compose.ui.unit.dp
 import com.zackjp.devicedx.model.Bytes.Companion.asDataUnit
 import com.zackjp.devicedx.model.DataUnit
@@ -13,12 +15,10 @@ import com.zackjp.devicedx.shared.ui.AppCard
 import com.zackjp.devicedx.shared.ui.Graph
 import com.zackjp.devicedx.shared.ui.GraphEntry
 import com.zackjp.devicedx.shared.ui.LineConfig
-import java.math.BigDecimal
 import java.text.DecimalFormat
 import java.text.DecimalFormatSymbols
 import kotlin.math.max
 import kotlin.math.min
-
 
 
 private val yTickMaxSteps = listOf(
@@ -62,6 +62,8 @@ internal fun TrafficGraphCard(
     } ?: yTickMaxDisplayableValue
     val yTickMaxValue = yTickSteppedMax.toLong().asDataUnit(yTickMaxDisplayableUnit)
 
+    val decimalFormat = getDecimalFormat()
+
     AppCard(
         modifier = modifier,
     ) {
@@ -90,7 +92,7 @@ internal fun TrafficGraphCard(
                 bytesValue.bestDisplayableUnit.run {
                     val number = first
                     val unitString = second.displayString
-                    "${formatBigDecimal(number)}$unitString"
+                    "${decimalFormat.format(number)}$unitString"
                 }
             },
             modifier = Modifier
@@ -100,9 +102,12 @@ internal fun TrafficGraphCard(
     }
 }
 
-private fun formatBigDecimal(number: BigDecimal): String {
-    val decimalFormat = DecimalFormat("#.##", DecimalFormatSymbols(java.util.Locale.US)).apply {
-        isGroupingUsed = false
+@Composable
+private fun getDecimalFormat(): DecimalFormat {
+    val platformLocale = Locale.current.platformLocale
+    return remember(platformLocale) {
+        DecimalFormat("#.##", DecimalFormatSymbols()).apply {
+            isGroupingUsed = false
+        }
     }
-    return decimalFormat.format(number)
 }
