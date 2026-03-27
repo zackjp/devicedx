@@ -11,6 +11,7 @@ import kotlinx.coroutines.Job
 import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.SharingStarted
+import kotlinx.coroutines.flow.catch
 import kotlinx.coroutines.flow.combine
 import kotlinx.coroutines.flow.distinctUntilChanged
 import kotlinx.coroutines.flow.emptyFlow
@@ -50,9 +51,9 @@ class TrafficViewModel @Inject constructor(
         dataSourceProvider = { trafficRepository.recordTrafficMetrics() },
     )
         .onEach(::handleTrafficMetrics)
+        .catch { handleTrafficError() }
         .flowOn(dispatcherProvider.default)
         .launchIn(viewModelScope)
-
 
     fun startMonitor() {
         _screenState.update {
@@ -69,6 +70,12 @@ class TrafficViewModel @Inject constructor(
         isMonitorActive.value = false
     }
 
+    fun consumeErrorState() {
+        _screenState.update {
+            it.copy(error = null)
+        }
+    }
+
     private fun handleTrafficMetrics(trafficSession: TrafficSession) {
         val now = clock.now()
         val timeStart =
@@ -83,6 +90,12 @@ class TrafficViewModel @Inject constructor(
                 graphData = filteredGraphData,
                 trafficSession = trafficSession,
             )
+        }
+    }
+
+    private fun handleTrafficError() {
+        _screenState.update {
+            it.copy(error = TrafficScreenError.SessionError)
         }
     }
 

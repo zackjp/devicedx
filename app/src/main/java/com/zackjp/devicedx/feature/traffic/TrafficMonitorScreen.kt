@@ -4,6 +4,7 @@ import androidx.activity.compose.BackHandler
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Spacer
+import androidx.compose.foundation.layout.WindowInsets
 import androidx.compose.foundation.layout.aspectRatio
 import androidx.compose.foundation.layout.fillMaxHeight
 import androidx.compose.foundation.layout.fillMaxSize
@@ -12,11 +13,17 @@ import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
 import androidx.compose.material3.BottomSheetScaffold
 import androidx.compose.material3.ExperimentalMaterial3Api
+import androidx.compose.material3.Scaffold
 import androidx.compose.material3.SheetValue
+import androidx.compose.material3.SnackbarDuration
+import androidx.compose.material3.SnackbarHost
+import androidx.compose.material3.SnackbarHostState
 import androidx.compose.material3.Surface
 import androidx.compose.material3.rememberBottomSheetScaffoldState
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
+import androidx.compose.runtime.remember
 import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
@@ -53,6 +60,7 @@ fun TrafficMonitorScreenRoot(
     viewModel: TrafficViewModel = hiltViewModel()
 ) {
     val state by viewModel.screenState.collectAsStateWithLifecycle()
+    val snackbarHostState = remember { SnackbarHostState() }
 
     val isInPipMode = rememberIsInPipMode(
         isAllowedProvider = { state.isMonitorActive },
@@ -64,10 +72,12 @@ fun TrafficMonitorScreenRoot(
         if (isInPipMode) Modifier else modifier // excludes any padding when in PiP mode
     ) {
         TrafficMonitorScreen(
+            consumeErrorAction = { viewModel.consumeErrorState() },
             isInPipMode = isInPipMode,
-            modifier = Modifier.fillMaxHeight(),
+            modifier = Modifier.fillMaxSize(),
             onStartMonitor = viewModel::startMonitor,
             onStopMonitor = viewModel::stopMonitor,
+            snackbarHostState = snackbarHostState,
             stateProvider = { state },
         )
     }
@@ -75,10 +85,12 @@ fun TrafficMonitorScreenRoot(
 
 @Composable
 private fun TrafficMonitorScreen(
+    consumeErrorAction: () -> Unit,
     isInPipMode: Boolean,
     modifier: Modifier = Modifier,
     onStartMonitor: () -> Unit = {},
     onStopMonitor: () -> Unit = {},
+    snackbarHostState: SnackbarHostState,
     stateProvider: () -> TrafficScreenState,
 ) {
     if (isInPipMode) {
@@ -87,12 +99,26 @@ private fun TrafficMonitorScreen(
             graphDataProvider = { stateProvider().graphData },
         )
     } else {
-        MainContent(
-            modifier = modifier,
-            stateProvider = stateProvider,
-            onStartMonitor = onStartMonitor,
-            onStopMonitor = onStopMonitor,
+        TrafficErrorHandler(
+            errorStatusProvider = { stateProvider().error },
+            consumeErrorAction = consumeErrorAction,
+            snackbarHostState = snackbarHostState,
         )
+
+        Scaffold(
+            contentWindowInsets = WindowInsets(), // zero padding since main app scaffold already applies it
+            modifier = modifier,
+            snackbarHost = { SnackbarHost(snackbarHostState) },
+        ) { localPadding ->
+            MainContent(
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .padding(localPadding),
+                stateProvider = stateProvider,
+                onStartMonitor = onStartMonitor,
+                onStopMonitor = onStopMonitor,
+            )
+        }
     }
 }
 
@@ -111,6 +137,27 @@ fun MainContentPipMode(
             modifier = Modifier
                 .fillMaxSize(), // Fill size. We already asked the OS to use a specific aspect ratio
         )
+    }
+}
+
+@Composable
+private fun TrafficErrorHandler(
+    snackbarHostState: SnackbarHostState,
+    errorStatusProvider: () -> TrafficScreenError?,
+    consumeErrorAction: () -> Unit,
+) {
+    val error = errorStatusProvider()
+    val errorMessageString = stringResource(R.string.traffic_error_message_generic)
+
+    LaunchedEffect(error) {
+        if (error == TrafficScreenError.SessionError) {
+            snackbarHostState.showSnackbar(
+                message = errorMessageString,
+                withDismissAction = true,
+                duration = SnackbarDuration.Long,
+            )
+            consumeErrorAction()
+        }
     }
 }
 
@@ -202,7 +249,7 @@ private fun MainContent(
 }
 
 @Composable
-fun MonitorButton(
+private fun MonitorButton(
     modifier: Modifier = Modifier,
     isMonitorActiveProvider: () -> Boolean,
     onStartMonitor: () -> Unit = {},

@@ -15,6 +15,7 @@ import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.ExperimentalCoroutinesApi
 import kotlinx.coroutines.flow.MutableSharedFlow
 import kotlinx.coroutines.flow.launchIn
+import kotlinx.coroutines.flow.map
 import kotlinx.coroutines.test.TestScope
 import kotlinx.coroutines.test.advanceTimeBy
 import kotlinx.coroutines.test.advanceUntilIdle
@@ -35,6 +36,7 @@ class TrafficViewModelTest {
     private val testDispatcherProvider = TestDispatcherProvider()
     private val trafficRepository = mockk<TrafficRepository>()
 
+    private var forceSessionFlowException: (() -> Throwable)? = null
     private val trafficSessionFlow = MutableSharedFlow<TrafficSession>()
 
     private lateinit var viewModel: TrafficViewModel
@@ -48,6 +50,7 @@ class TrafficViewModelTest {
 
         every { clock.now() } returns Instant.fromEpochMilliseconds(10)
         every { trafficRepository.recordTrafficMetrics() } returns trafficSessionFlow
+            .map { forceSessionFlowException?.let { errorProvider -> throw errorProvider() } ?: it }
 
         viewModel = TrafficViewModel(
             clock = clock,
@@ -201,7 +204,23 @@ class TrafficViewModelTest {
     }
 
     @Test
-    fun stopMonitoring_WhenMonitorActive_StopsNewEmissions() = runTest {
+    fun startMonitor_WhenThrowsException_UpdatesErrorState() = runTest {
+        initViewModel()
+
+        viewModel.screenState.test {
+            viewModel.startMonitor()
+            runCurrent()
+
+            forceSessionFlowException = { Exception("Fake session exception") }
+            trafficSessionFlow.emit(TrafficSession.fake(number = 1, metricsCount = 2))
+            runCurrent()
+
+            expectMostRecentItem().error shouldBe TrafficScreenError.SessionError
+        }
+    }
+
+    @Test
+    fun stopMonitor_WhenMonitorActive_StopsNewEmissions() = runTest {
         initViewModel()
 
         val session1 = repoSession1
@@ -242,6 +261,25 @@ class TrafficViewModelTest {
             advanceUntilIdle()
             expectMostRecentItem().sessionStartTime shouldBe 19
         }
+    }
+
+    @Test
+    fun consumeErrorState_ClearsErrorState() = runTest {
+        initViewModel()
+
+        viewModel.startMonitor()
+        runCurrent()
+
+        forceSessionFlowException = { Exception("Fake session error") }
+        trafficSessionFlow.emit(TrafficSession.fake(number = 1, metricsCount = 2))
+        runCurrent()
+
+        viewModel.screenState.value.error shouldBe TrafficScreenError.SessionError
+
+        viewModel.consumeErrorState()
+        runCurrent()
+
+        viewModel.screenState.value.error should beNull()
     }
 
     private fun TestScope.initViewModel() {

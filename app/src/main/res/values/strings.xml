@@ -41,4 +41,5 @@
     <string name="wifi_tab_scan">Wifi Scan</string>
     <string name="wifi_title_signal_strength">Signal Strength</string>
     <string name="wifi_unit_decibel_milliwatts">dBm</string>
+    <string name="traffic_error_message_generic">Encountered a session error.</string>
 </resources>
