@@ -30,6 +30,7 @@
     <string name="wifi_connection_quality_fair">Fair</string>
     <string name="wifi_connection_quality_good">Good</string>
     <string name="wifi_connection_quality_poor">Poor</string>
+    <string name="wifi_current_connection">Current Connection</string>
     <string name="wifi_info_grid_label_connection_quality">CONNECTION QUALITY</string>
     <string name="wifi_info_grid_label_ip_address">IP ADDRESS</string>
     <string name="wifi_info_grid_label_link_speed">LINK SPEED</string>
@@ -39,6 +40,7 @@
     <string name="wifi_stop_monitor">Stop Wifi Monitor</string>
     <string name="wifi_fine_location_permission_denied">To show Wifi networks, this app needs Fine Location permission. Try again or change permission in &lt;a href="#app-permissions"&gt;System Settings&lt;/a&gt;.</string>
     <string name="wifi_fine_location_permission_rationale">To show Wifi networks, this app needs Fine Location permission. Try again to request permission.</string>
+    <string name="wifi_show_networks">Show Networks</string>
     <string name="wifi_tab_stats">Wifi Stats</string>
     <string name="wifi_tab_scan">Wifi Scan</string>
     <string name="wifi_title_signal_strength">Signal Strength</string>

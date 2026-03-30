@@ -71,6 +71,12 @@ import kotlinx.coroutines.launch
 
 private val LightBlueLink = Color(0xFF4BB2F9)
 
+private val TAB_TITLES = listOf(
+    R.string.wifi_tab_stats,
+    R.string.wifi_tab_scan,
+)
+
+
 private val WIFI_QUALITY_LEVELS = listOf(
     WifiQuality(
         qualityStringRes = R.string.wifi_connection_quality_poor,
@@ -137,11 +143,8 @@ private fun ReadyContent(
     Column(
         modifier = modifier,
     ) {
-        val pagerState = rememberPagerState { 2 }
-        val tabNames = listOf(
-            stringResource(R.string.wifi_tab_stats),
-            stringResource(R.string.wifi_tab_scan),
-        )
+        val pagerState = rememberPagerState { TAB_TITLES.size }
+        val tabNames = TAB_TITLES.map { stringResource(it) }
 
         TabRow(
             pagerState = pagerState,
@@ -347,7 +350,7 @@ private fun ConnectionDetailsCard(
                 .padding(20.dp),
         ) {
             Text(
-                text = "Current Connection",
+                text = stringResource(R.string.wifi_current_connection),
                 style = MaterialTheme.typography.titleMedium,
             )
 
@@ -426,7 +429,7 @@ private fun WifiScanPage(
                     }
                     .padding(vertical = 8.dp)
                     .fillMaxWidth(),
-                text = "Show Networks",
+                text = stringResource(R.string.wifi_show_networks),
             )
             Spacer(Modifier.height(8.dp))
         }
