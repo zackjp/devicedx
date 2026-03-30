@@ -8,6 +8,7 @@ import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.SharingStarted
+import kotlinx.coroutines.flow.filter
 import kotlinx.coroutines.flow.flow
 import kotlinx.coroutines.flow.shareIn
 import javax.inject.Inject
@@ -28,7 +29,9 @@ class RealTimeNetworkDataSource @Inject constructor(
             emit(networkUtility.calculateLatency())
             delay(2000)
         }
-    }.shareIn(appScope, SharingStarted.WhileSubscribed(5000), replay = 0)
+    }
+        .filter { it >= 0 }
+        .shareIn(appScope, SharingStarted.WhileSubscribed(5000), replay = 0)
 
     private val trafficStats = flow {
         while (true) {
