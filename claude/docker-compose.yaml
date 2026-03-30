@@ -1,0 +1,13 @@
+services:
+  claude-sandbox:
+    build: .
+    container_name: android-claude-sandbox
+    volumes:
+      # Mount to parent project folder
+      - ..:/workspace
+    # Keeps container running to interact with the terminal
+    stdin_open: true
+    tty: true
+    # Allows container to use the internet for AI requests
+    network_mode: bridge
+
