@@ -17,11 +17,14 @@ import io.mockk.every
 import io.mockk.just
 import io.mockk.mockk
 import io.mockk.runs
+import kotlinx.coroutines.CoroutineExceptionHandler
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.ExperimentalCoroutinesApi
 import kotlinx.coroutines.flow.MutableSharedFlow
 import kotlinx.coroutines.flow.catch
 import kotlinx.coroutines.flow.launchIn
+import kotlinx.coroutines.launch
+import kotlinx.coroutines.supervisorScope
 import kotlinx.coroutines.test.resetMain
 import kotlinx.coroutines.test.runCurrent
 import kotlinx.coroutines.test.runTest
@@ -172,16 +175,22 @@ class TrafficRepositoryTest {
 
     @Test
     fun recordTrafficMetrics_WhenFlowCompletesExceptionally_AttemptsSessionEndUpdate() = runTest {
-        trafficRepository.recordTrafficMetrics()
-            .catch { /* don't crash the test */ }
-            .launchIn(backgroundScope)
+        val noOpExceptionHandler = CoroutineExceptionHandler { _, _ -> /* no-op */ }
+
+        backgroundScope.launch(noOpExceptionHandler) {
+            supervisorScope {
+                trafficRepository.recordTrafficMetrics()
+                    .launchIn(this@supervisorScope)
+                runCurrent()
+
+                every { clock.now() } returns Instant.fromEpochMilliseconds(9876543210L)
+
+                trafficSessionWriteFlow.emit(FlowCommand.Throw(CustomException("Fake db write exception")))
+                runCurrent()
+            }
+        }
+
         runCurrent()
-
-        every { clock.now() } returns Instant.fromEpochMilliseconds(9876543210L)
-
-        trafficSessionWriteFlow.emit(FlowCommand.Throw(CustomException("Fake db write exception")))
-        runCurrent()
-
         coVerify { trafficDao.updateSessionEndTime(sessionId = SESSION_ID, endTime = 9876543210L) }
     }
 
@@ -198,30 +207,44 @@ class TrafficRepositoryTest {
     @Test
     fun recordTrafficMetrics_WhenPhase2ReadDbFlowErrs_PropagatesException() = runTest {
         var capturedException: Throwable? = null
+        val noOpExceptionHandler = CoroutineExceptionHandler { _, throwable ->
+            capturedException = throwable
+        }
 
-        trafficRepository.recordTrafficMetrics()
-            .catch { capturedException = it }
-            .launchIn(backgroundScope)
+        backgroundScope.launch(noOpExceptionHandler) {
+            supervisorScope {
+                trafficRepository.recordTrafficMetrics()
+                    .launchIn(this@supervisorScope)
+                runCurrent()
+
+                trafficSessionReadFlow.emit(FlowCommand.Throw(CustomException("Fake db read exception")))
+                runCurrent()
+            }
+        }
+
         runCurrent()
-
-        trafficSessionReadFlow.emit(FlowCommand.Throw(CustomException("Fake db read exception")))
-        runCurrent()
-
         capturedException.shouldBeInstanceOf<CustomException>()
     }
 
     @Test
     fun recordTrafficMetrics_WhenPhase2WriteDbFlowErrs_PropagatesException() = runTest {
         var capturedException: Throwable? = null
+        val noOpExceptionHandler = CoroutineExceptionHandler { _, throwable ->
+            capturedException = throwable
+        }
 
-        trafficRepository.recordTrafficMetrics()
-            .catch { capturedException = it }
-            .launchIn(backgroundScope)
+        backgroundScope.launch(noOpExceptionHandler) {
+            supervisorScope {
+                trafficRepository.recordTrafficMetrics()
+                    .launchIn(this@supervisorScope)
+                runCurrent()
+
+                trafficSessionWriteFlow.emit(FlowCommand.Throw(CustomException("Fake db write exception")))
+                runCurrent()
+            }
+        }
+
         runCurrent()
-
-        trafficSessionWriteFlow.emit(FlowCommand.Throw(CustomException("Fake db write exception")))
-        runCurrent()
-
         capturedException.shouldBeInstanceOf<CustomException>()
     }
 
