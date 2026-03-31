@@ -3,6 +3,8 @@ package com.zackjp.devicedx.data
 import app.cash.turbine.test
 import com.zackjp.devicedx.concurrency.TestDispatcherProvider
 import com.zackjp.devicedx.feature.traffic.util.TrafficGraphUtil
+import com.zackjp.devicedx.flow.FlowCommand
+import com.zackjp.devicedx.flow.unwrap
 import com.zackjp.devicedx.model.TrafficMetric
 import com.zackjp.devicedx.model.TrafficSession
 import com.zackjp.devicedx.model.fake
@@ -20,7 +22,6 @@ import kotlinx.coroutines.ExperimentalCoroutinesApi
 import kotlinx.coroutines.flow.MutableSharedFlow
 import kotlinx.coroutines.flow.catch
 import kotlinx.coroutines.flow.launchIn
-import kotlinx.coroutines.flow.map
 import kotlinx.coroutines.test.resetMain
 import kotlinx.coroutines.test.runCurrent
 import kotlinx.coroutines.test.runTest
@@ -45,10 +46,8 @@ class TrafficRepositoryTest {
     private val trafficDao = mockk<TrafficDao>()
     private val trafficGraphUtil = mockk<TrafficGraphUtil>()
 
-    private var forceDbReadFlowException = false
-    private var forceDbWriteFlowException = false
-    private val trafficSessionReadFlow = MutableSharedFlow<TrafficSessionWithMetrics>()
-    private val trafficSessionWriteFlow = MutableSharedFlow<TrafficMetric>()
+    private val trafficSessionReadFlow = MutableSharedFlow<FlowCommand<TrafficSessionWithMetrics>>()
+    private val trafficSessionWriteFlow = MutableSharedFlow<FlowCommand<TrafficMetric>>()
 
     lateinit var trafficRepository: TrafficRepository
 
@@ -61,10 +60,8 @@ class TrafficRepositoryTest {
         coEvery { trafficDao.addMetricAndSync(any()) } just runs
         coEvery { trafficDao.createSession(any()) } returns SESSION_ID
         coEvery { trafficDao.updateSessionEndTime(any(), any()) } just runs
-        coEvery { trafficDao.getSessionWithTrafficMetrics(SESSION_ID) } returns trafficSessionReadFlow
-            .map { if (forceDbReadFlowException) throw CustomException("Fake db read exception") else it }
-        every { trafficGraphUtil.runningMetricsCalculation(any()) } returns trafficSessionWriteFlow
-            .map { if (forceDbWriteFlowException) throw CustomException("Fake db write exception") else it }
+        coEvery { trafficDao.getSessionWithTrafficMetrics(SESSION_ID) } returns trafficSessionReadFlow.unwrap()
+        every { trafficGraphUtil.runningMetricsCalculation(any()) } returns trafficSessionWriteFlow.unwrap()
 
         trafficRepository = TrafficRepository(
             clock = clock,
@@ -104,11 +101,11 @@ class TrafficRepositoryTest {
         val metric1 = TrafficMetric.fake(11)
         val metric2 = TrafficMetric.fake(301)
 
-        trafficSessionWriteFlow.emit(metric1)
+        trafficSessionWriteFlow.emit(FlowCommand.Emit(metric1))
         runCurrent()
         coVerify { trafficDao.addMetricAndSync(metric1.toEntity(SESSION_ID)) }
 
-        trafficSessionWriteFlow.emit(metric2)
+        trafficSessionWriteFlow.emit(FlowCommand.Emit(metric2))
         runCurrent()
         coVerify { trafficDao.addMetricAndSync(metric2.toEntity(SESSION_ID)) }
     }
@@ -153,7 +150,7 @@ class TrafficRepositoryTest {
         trafficRepository.recordTrafficMetrics().test {
             runCurrent() // initiate the flow with session creation and db observable
 
-            trafficSessionReadFlow.emit(metricsEntity)
+            trafficSessionReadFlow.emit(FlowCommand.Emit(metricsEntity))
             runCurrent()
 
             awaitItem() shouldBe expectedDomain
@@ -175,8 +172,6 @@ class TrafficRepositoryTest {
 
     @Test
     fun recordTrafficMetrics_WhenFlowCompletesExceptionally_AttemptsSessionEndUpdate() = runTest {
-        forceDbWriteFlowException = true
-
         trafficRepository.recordTrafficMetrics()
             .catch { /* don't crash the test */ }
             .launchIn(backgroundScope)
@@ -184,7 +179,7 @@ class TrafficRepositoryTest {
 
         every { clock.now() } returns Instant.fromEpochMilliseconds(9876543210L)
 
-        trafficSessionWriteFlow.emit(TrafficMetric.fake(number = 3))
+        trafficSessionWriteFlow.emit(FlowCommand.Throw(CustomException("Fake db write exception")))
         runCurrent()
 
         coVerify { trafficDao.updateSessionEndTime(sessionId = SESSION_ID, endTime = 9876543210L) }
@@ -202,7 +197,6 @@ class TrafficRepositoryTest {
 
     @Test
     fun recordTrafficMetrics_WhenPhase2ReadDbFlowErrs_PropagatesException() = runTest {
-        forceDbReadFlowException = true
         var capturedException: Throwable? = null
 
         trafficRepository.recordTrafficMetrics()
@@ -210,7 +204,7 @@ class TrafficRepositoryTest {
             .launchIn(backgroundScope)
         runCurrent()
 
-        trafficSessionReadFlow.emit(TrafficSessionWithMetrics.fake(number = 11, metricsCount = 3))
+        trafficSessionReadFlow.emit(FlowCommand.Throw(CustomException("Fake db read exception")))
         runCurrent()
 
         capturedException.shouldBeInstanceOf<CustomException>()
@@ -218,7 +212,6 @@ class TrafficRepositoryTest {
 
     @Test
     fun recordTrafficMetrics_WhenPhase2WriteDbFlowErrs_PropagatesException() = runTest {
-        forceDbWriteFlowException = true
         var capturedException: Throwable? = null
 
         trafficRepository.recordTrafficMetrics()
@@ -226,7 +219,7 @@ class TrafficRepositoryTest {
             .launchIn(backgroundScope)
         runCurrent()
 
-        trafficSessionWriteFlow.emit(TrafficMetric.fake(number = 3))
+        trafficSessionWriteFlow.emit(FlowCommand.Throw(CustomException("Fake db write exception")))
         runCurrent()
 
         capturedException.shouldBeInstanceOf<CustomException>()

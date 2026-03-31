@@ -3,6 +3,8 @@ package com.zackjp.devicedx.feature.traffic
 import app.cash.turbine.test
 import com.zackjp.devicedx.concurrency.TestDispatcherProvider
 import com.zackjp.devicedx.data.TrafficRepository
+import com.zackjp.devicedx.flow.FlowCommand
+import com.zackjp.devicedx.flow.unwrap
 import com.zackjp.devicedx.model.TrafficMetric
 import com.zackjp.devicedx.model.TrafficSession
 import com.zackjp.devicedx.model.fake
@@ -15,7 +17,6 @@ import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.ExperimentalCoroutinesApi
 import kotlinx.coroutines.flow.MutableSharedFlow
 import kotlinx.coroutines.flow.launchIn
-import kotlinx.coroutines.flow.map
 import kotlinx.coroutines.test.TestScope
 import kotlinx.coroutines.test.advanceTimeBy
 import kotlinx.coroutines.test.advanceUntilIdle
@@ -36,8 +37,7 @@ class TrafficViewModelTest {
     private val testDispatcherProvider = TestDispatcherProvider()
     private val trafficRepository = mockk<TrafficRepository>()
 
-    private var forceSessionFlowException: (() -> Throwable)? = null
-    private val trafficSessionFlow = MutableSharedFlow<TrafficSession>()
+    private val trafficSessionFlow = MutableSharedFlow<FlowCommand<TrafficSession>>()
 
     private lateinit var viewModel: TrafficViewModel
 
@@ -49,8 +49,7 @@ class TrafficViewModelTest {
         Dispatchers.setMain(testDispatcherProvider.default)
 
         every { clock.now() } returns Instant.fromEpochMilliseconds(10)
-        every { trafficRepository.recordTrafficMetrics() } returns trafficSessionFlow
-            .map { forceSessionFlowException?.let { errorProvider -> throw errorProvider() } ?: it }
+        every { trafficRepository.recordTrafficMetrics() } returns trafficSessionFlow.unwrap()
 
         viewModel = TrafficViewModel(
             clock = clock,
@@ -85,7 +84,7 @@ class TrafficViewModelTest {
         advanceTimeBy(expectedTimeoutMs - 1)
 
         // 2) Emit data that should still generate metrics
-        trafficSessionFlow.emit(sessionThatShouldEmit)
+        trafficSessionFlow.emit(FlowCommand.Emit(sessionThatShouldEmit))
         runCurrent() // use runCurrent so it doesn't advance the clock
         viewModel.screenState.value.trafficSession shouldBe sessionThatShouldEmit
 
@@ -94,7 +93,7 @@ class TrafficViewModelTest {
         runCurrent()
 
         // 4) Try to emit new data, which should not work
-        trafficSessionFlow.emit(sessionThatShouldNotEmit)
+        trafficSessionFlow.emit(FlowCommand.Emit(sessionThatShouldNotEmit))
         runCurrent()
         viewModel.screenState.value.trafficSession shouldBe sessionThatShouldEmit
     }
@@ -160,7 +159,7 @@ class TrafficViewModelTest {
             viewModel.startMonitor()
             advanceUntilIdle()
 
-            trafficSessionFlow.emit(repoSession)
+            trafficSessionFlow.emit(FlowCommand.Emit(repoSession))
             advanceUntilIdle()
 
             expectMostRecentItem().trafficSession shouldBe repoSession
@@ -196,7 +195,7 @@ class TrafficViewModelTest {
             viewModel.startMonitor()
             advanceUntilIdle()
 
-            trafficSessionFlow.emit(session)
+            trafficSessionFlow.emit(FlowCommand.Emit(session))
             advanceUntilIdle()
 
             expectMostRecentItem().graphData shouldBe expectedMetrics
@@ -211,8 +210,7 @@ class TrafficViewModelTest {
             viewModel.startMonitor()
             runCurrent()
 
-            forceSessionFlowException = { Exception("Fake session exception") }
-            trafficSessionFlow.emit(TrafficSession.fake(number = 1, metricsCount = 2))
+            trafficSessionFlow.emit(FlowCommand.Throw(Exception("Fake session exception")))
             runCurrent()
 
             expectMostRecentItem().error shouldBe TrafficScreenError.SessionError
@@ -227,8 +225,7 @@ class TrafficViewModelTest {
         runCurrent()
 
         viewModel.screenState.test {
-            forceSessionFlowException = { Exception("Fake session exception") }
-            trafficSessionFlow.emit(TrafficSession.fake(number = 123, metricsCount = 2))
+            trafficSessionFlow.emit(FlowCommand.Throw(Exception("Fake session exception")))
             runCurrent()
 
             expectMostRecentItem().error shouldBe TrafficScreenError.SessionError
@@ -236,13 +233,12 @@ class TrafficViewModelTest {
             viewModel.stopMonitor()
             runCurrent()
 
-            // Allow future emissions
-            forceSessionFlowException = null
+            // Restart and send actual values
             viewModel.startMonitor()
             runCurrent()
 
             val expectedTrafficSession = TrafficSession.fake(number = 456, metricsCount = 2)
-            trafficSessionFlow.emit(expectedTrafficSession)
+            trafficSessionFlow.emit(FlowCommand.Emit(expectedTrafficSession))
             runCurrent()
 
             expectMostRecentItem().trafficSession shouldBe expectedTrafficSession
@@ -264,14 +260,14 @@ class TrafficViewModelTest {
             advanceUntilIdle()
             expectMostRecentItem().trafficSession should beNull()
 
-            trafficSessionFlow.emit(session1)
+            trafficSessionFlow.emit(FlowCommand.Emit(session1))
             advanceUntilIdle()
             expectMostRecentItem().trafficSession shouldBe session1
 
             viewModel.stopMonitor()
             advanceUntilIdle()
 
-            trafficSessionFlow.emit(session2)
+            trafficSessionFlow.emit(FlowCommand.Emit(session2))
             advanceUntilIdle()
             expectMostRecentItem().trafficSession shouldBe session1
         }
@@ -301,8 +297,7 @@ class TrafficViewModelTest {
         viewModel.startMonitor()
         runCurrent()
 
-        forceSessionFlowException = { Exception("Fake session error") }
-        trafficSessionFlow.emit(TrafficSession.fake(number = 1, metricsCount = 2))
+        trafficSessionFlow.emit(FlowCommand.Throw(Exception("Fake session error")))
         runCurrent()
 
         viewModel.screenState.value.error shouldBe TrafficScreenError.SessionError
