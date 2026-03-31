@@ -12,9 +12,12 @@ import kotlinx.coroutines.CoroutineExceptionHandler
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.ExperimentalCoroutinesApi
 import kotlinx.coroutines.flow.launchIn
+import kotlinx.coroutines.launch
+import kotlinx.coroutines.supervisorScope
 import kotlinx.coroutines.test.StandardTestDispatcher
 import kotlinx.coroutines.test.TestScope
 import kotlinx.coroutines.test.advanceUntilIdle
+import kotlinx.coroutines.test.runCurrent
 import kotlinx.coroutines.test.runTest
 import org.junit.jupiter.api.Test
 import kotlin.time.Clock
@@ -28,10 +31,12 @@ class RealTimeNetworkDataSourceTest {
     private val trafficStatsWrapper = mockk<TrafficStatsWrapper>()
     private val clock = mockk<Clock>()
 
-    private fun TestScope.buildDataSource() = RealTimeNetworkDataSource(
+    private fun TestScope.buildDataSource(
+        appScope: CoroutineScope = backgroundScope,
+    ) = RealTimeNetworkDataSource(
         networkUtility = networkUtility,
         clock = clock,
-        appScope = backgroundScope,
+        appScope = appScope,
         trafficStatsWrapper = trafficStatsWrapper,
     )
 
@@ -77,23 +82,24 @@ class RealTimeNetworkDataSourceTest {
 
     @Test
     fun getTrafficStats_WhenWrapperThrows_ExceptionPropagatesToAppScope() = runTest(testDispatcher) {
-        val expectedException = RuntimeException("TrafficStats unavailable")
+        val expectedException = Exception("TrafficStats unavailable")
         every { clock.now() } returns Instant.fromEpochMilliseconds(0L)
         every { trafficStatsWrapper.getTotalRxBytes() } throws expectedException
 
         var caughtException: Throwable? = null
-        val exceptionHandler = CoroutineExceptionHandler { _, throwable -> caughtException = throwable }
-        val appScope = CoroutineScope(testDispatcher + exceptionHandler)
-        val dataSource = RealTimeNetworkDataSource(
-            networkUtility = networkUtility,
-            clock = clock,
-            appScope = appScope,
-            trafficStatsWrapper = trafficStatsWrapper,
-        )
+        val exceptionHandler = CoroutineExceptionHandler { _, throwable ->
+            caughtException = throwable
+        }
 
-        dataSource.getTrafficStats().launchIn(appScope)
-        advanceUntilIdle()
+        backgroundScope.launch(exceptionHandler) {
+            // supervisor scope to prevent the exception from bubbling up & exiting + failing the test scope
+            supervisorScope {
+                val dataSource = buildDataSource(appScope = this)
+                dataSource.getTrafficStats().launchIn(backgroundScope)
+            }
+        }
 
+        runCurrent()
         caughtException shouldBe expectedException
     }
 }
