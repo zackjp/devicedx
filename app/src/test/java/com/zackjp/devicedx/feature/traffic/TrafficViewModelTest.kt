@@ -2,9 +2,8 @@ package com.zackjp.devicedx.feature.traffic
 
 import app.cash.turbine.test
 import com.zackjp.devicedx.concurrency.TestDispatcherProvider
+import com.zackjp.devicedx.data.RecordingState
 import com.zackjp.devicedx.data.TrafficRepository
-import com.zackjp.devicedx.flow.FlowCommand
-import com.zackjp.devicedx.flow.unwrap
 import com.zackjp.devicedx.model.TrafficMetric
 import com.zackjp.devicedx.model.TrafficSession
 import com.zackjp.devicedx.model.fake
@@ -12,13 +11,15 @@ import io.kotest.matchers.nulls.beNull
 import io.kotest.matchers.should
 import io.kotest.matchers.shouldBe
 import io.mockk.every
+import io.mockk.just
 import io.mockk.mockk
+import io.mockk.runs
+import io.mockk.verify
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.ExperimentalCoroutinesApi
-import kotlinx.coroutines.flow.MutableSharedFlow
+import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.launchIn
 import kotlinx.coroutines.test.TestScope
-import kotlinx.coroutines.test.advanceTimeBy
 import kotlinx.coroutines.test.advanceUntilIdle
 import kotlinx.coroutines.test.resetMain
 import kotlinx.coroutines.test.runCurrent
@@ -37,7 +38,7 @@ class TrafficViewModelTest {
     private val testDispatcherProvider = TestDispatcherProvider()
     private val trafficRepository = mockk<TrafficRepository>()
 
-    private val trafficSessionFlow = MutableSharedFlow<FlowCommand<TrafficSession>>()
+    private val recordingStateFlow = MutableStateFlow<RecordingState>(RecordingState.Idle)
 
     private lateinit var viewModel: TrafficViewModel
 
@@ -49,12 +50,13 @@ class TrafficViewModelTest {
         Dispatchers.setMain(testDispatcherProvider.default)
 
         every { clock.now() } returns Instant.fromEpochMilliseconds(10)
-        every { trafficRepository.recordTrafficMetrics() } returns trafficSessionFlow.unwrap()
+        every { trafficRepository.recordingState } returns recordingStateFlow
+        every { trafficRepository.startRecording() } just runs
+        every { trafficRepository.stopRecording() } answers { recordingStateFlow.value = RecordingState.Idle }
 
         viewModel = TrafficViewModel(
             clock = clock,
-            dispatcherProvider = testDispatcherProvider,
-            trafficRepository = trafficRepository
+            trafficRepository = trafficRepository,
         )
     }
 
@@ -64,85 +66,30 @@ class TrafficViewModelTest {
     }
 
     @Test
-    fun startMonitor_WhenScreenStateReachesZeroSubscribers_AutoPausesEmissions() = runTest {
-        // Manually subscribe and don't use Turbine, which would also count as a subscriber
-        val uiEmulatedSubscription = viewModel.screenState.launchIn(backgroundScope)
-        advanceUntilIdle()
-        val expectedTimeoutMs = 5000L
-
-        val sessionThatShouldEmit = repoSession1
-        val sessionThatShouldNotEmit = repoSession2
-
-        every { clock.now() } returns Instant.fromEpochMilliseconds(3333L)
-
-        viewModel.startMonitor()
-        advanceUntilIdle()
-        viewModel.screenState.value.trafficSession should beNull()
-
-        // 1) Cancel "ui" subscription and move time up until 1ms before WhileSubscribed times out
-        uiEmulatedSubscription.cancel()
-        advanceTimeBy(expectedTimeoutMs - 1)
-
-        // 2) Emit data that should still generate metrics
-        trafficSessionFlow.emit(FlowCommand.Emit(sessionThatShouldEmit))
-        runCurrent() // use runCurrent so it doesn't advance the clock
-        viewModel.screenState.value.trafficSession shouldBe sessionThatShouldEmit
-
-        // 3) Advance 1 more millisecond to force the WhileSubscribed timeout
-        advanceTimeBy(1)
-        runCurrent()
-
-        // 4) Try to emit new data, which should not work
-        trafficSessionFlow.emit(FlowCommand.Emit(sessionThatShouldNotEmit))
-        runCurrent()
-        viewModel.screenState.value.trafficSession shouldBe sessionThatShouldEmit
-    }
-
-    @Test
-    fun startMonitor_SetsActiveToTrue() = runTest {
+    fun stopMonitor_ClearsTheSession() = runTest {
         initViewModel()
 
         viewModel.screenState.test {
-            expectMostRecentItem().isMonitorActive shouldBe false
-
-            viewModel.startMonitor()
+            recordingStateFlow.value = RecordingState.Active(repoSession1)
             advanceUntilIdle()
 
-            expectMostRecentItem().isMonitorActive shouldBe true
-        }
-    }
-
-    @Test
-    fun stopMonitor_SetsActiveToFalse() = runTest {
-        initViewModel()
-
-        viewModel.screenState.test {
-            viewModel.startMonitor()
-            advanceUntilIdle()
-
-            expectMostRecentItem().isMonitorActive shouldBe true
+            expectMostRecentItem().trafficSession shouldBe repoSession1
 
             viewModel.stopMonitor()
             advanceUntilIdle()
 
-            expectMostRecentItem().isMonitorActive shouldBe false
+            expectMostRecentItem().trafficSession should beNull()
         }
     }
 
     @Test
-    fun startMonitor_SetsSessionStartTimeToCurrentTime() = runTest {
+    fun stopMonitor_CallsRepositoryStopRecording() = runTest {
         initViewModel()
 
-        every { clock.now() } returns Instant.fromEpochMilliseconds(27)
+        viewModel.startMonitor()
+        viewModel.stopMonitor()
 
-        viewModel.screenState.test {
-            expectMostRecentItem().sessionStartTime shouldBe null
-
-            viewModel.startMonitor()
-            advanceUntilIdle()
-
-            expectMostRecentItem().sessionStartTime shouldBe 27
-        }
+        verify { trafficRepository.stopRecording() }
     }
 
     @Test
@@ -159,10 +106,38 @@ class TrafficViewModelTest {
             viewModel.startMonitor()
             advanceUntilIdle()
 
-            trafficSessionFlow.emit(FlowCommand.Emit(repoSession))
+            recordingStateFlow.value = RecordingState.Active(repoSession)
             advanceUntilIdle()
 
             expectMostRecentItem().trafficSession shouldBe repoSession
+        }
+    }
+
+    @Test
+    fun init_WhenRepositoryEmitsActiveSession_StartTimeMatchesSessionStartTime() = runTest {
+        initViewModel()
+
+        val session = repoSession1
+
+        viewModel.screenState.test {
+            recordingStateFlow.value = RecordingState.Active(session)
+            advanceUntilIdle()
+
+            expectMostRecentItem().trafficSession?.startTime shouldBe session.startTime
+        }
+    }
+
+    @Test
+    fun init_WhenSessionAlreadyActive_ReflectsActiveSession() = runTest {
+        val session = TrafficSession.fake(number = 777, metricsCount = 0)
+        recordingStateFlow.value = RecordingState.Active(session)
+
+        initViewModel()
+
+        viewModel.screenState.test {
+            advanceUntilIdle()
+
+            expectMostRecentItem().trafficSession shouldBe session
         }
     }
 
@@ -195,7 +170,7 @@ class TrafficViewModelTest {
             viewModel.startMonitor()
             advanceUntilIdle()
 
-            trafficSessionFlow.emit(FlowCommand.Emit(session))
+            recordingStateFlow.value = RecordingState.Active(session)
             advanceUntilIdle()
 
             expectMostRecentItem().graphData shouldBe expectedMetrics
@@ -210,7 +185,7 @@ class TrafficViewModelTest {
             viewModel.startMonitor()
             runCurrent()
 
-            trafficSessionFlow.emit(FlowCommand.Throw(Exception("Fake session exception")))
+            recordingStateFlow.value = RecordingState.Error
             runCurrent()
 
             expectMostRecentItem().error shouldBe TrafficScreenError.SessionError
@@ -225,7 +200,7 @@ class TrafficViewModelTest {
         runCurrent()
 
         viewModel.screenState.test {
-            trafficSessionFlow.emit(FlowCommand.Throw(Exception("Fake session exception")))
+            recordingStateFlow.value = RecordingState.Error
             runCurrent()
 
             expectMostRecentItem().error shouldBe TrafficScreenError.SessionError
@@ -233,60 +208,14 @@ class TrafficViewModelTest {
             viewModel.stopMonitor()
             runCurrent()
 
-            // Restart and send actual values
             viewModel.startMonitor()
             runCurrent()
 
             val expectedTrafficSession = TrafficSession.fake(number = 456, metricsCount = 2)
-            trafficSessionFlow.emit(FlowCommand.Emit(expectedTrafficSession))
+            recordingStateFlow.value = RecordingState.Active(expectedTrafficSession)
             runCurrent()
 
             expectMostRecentItem().trafficSession shouldBe expectedTrafficSession
-        }
-
-    }
-
-    @Test
-    fun stopMonitor_WhenMonitorActive_StopsNewEmissions() = runTest {
-        initViewModel()
-
-        val session1 = repoSession1
-        val session2 = repoSession2
-
-        every { clock.now() } returns Instant.fromEpochMilliseconds(session1.maxTrafficTimestamp())
-
-        viewModel.screenState.test {
-            viewModel.startMonitor()
-            advanceUntilIdle()
-            expectMostRecentItem().trafficSession should beNull()
-
-            trafficSessionFlow.emit(FlowCommand.Emit(session1))
-            advanceUntilIdle()
-            expectMostRecentItem().trafficSession shouldBe session1
-
-            viewModel.stopMonitor()
-            advanceUntilIdle()
-
-            trafficSessionFlow.emit(FlowCommand.Emit(session2))
-            advanceUntilIdle()
-            expectMostRecentItem().trafficSession shouldBe session1
-        }
-    }
-
-    @Test
-    fun stopMonitor_WhenSessionStartTimeIsNonNull_ShouldNotResetTheStartTime() = runTest {
-        initViewModel()
-
-        viewModel.screenState.test {
-            every { clock.now() } returns Instant.fromEpochMilliseconds(19)
-            viewModel.startMonitor()
-            advanceUntilIdle()
-            expectMostRecentItem().sessionStartTime shouldBe 19
-
-            every { clock.now() } returns Instant.fromEpochMilliseconds(51)
-            viewModel.stopMonitor()
-            advanceUntilIdle()
-            expectMostRecentItem().sessionStartTime shouldBe 19
         }
     }
 
@@ -297,7 +226,7 @@ class TrafficViewModelTest {
         viewModel.startMonitor()
         runCurrent()
 
-        trafficSessionFlow.emit(FlowCommand.Throw(Exception("Fake session error")))
+        recordingStateFlow.value = RecordingState.Error
         runCurrent()
 
         viewModel.screenState.value.error shouldBe TrafficScreenError.SessionError

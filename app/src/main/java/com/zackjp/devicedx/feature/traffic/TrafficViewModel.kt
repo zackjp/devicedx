@@ -2,26 +2,14 @@ package com.zackjp.devicedx.feature.traffic
 
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
-import com.zackjp.devicedx.concurrency.DispatcherProvider
+import com.zackjp.devicedx.data.RecordingState
 import com.zackjp.devicedx.data.TrafficRepository
+import com.zackjp.devicedx.model.TrafficMetric
 import com.zackjp.devicedx.model.TrafficSession
 import dagger.hilt.android.lifecycle.HiltViewModel
-import kotlinx.coroutines.ExperimentalCoroutinesApi
-import kotlinx.coroutines.Job
-import kotlinx.coroutines.flow.Flow
-import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.SharingStarted
-import kotlinx.coroutines.flow.catch
-import kotlinx.coroutines.flow.combine
-import kotlinx.coroutines.flow.distinctUntilChanged
-import kotlinx.coroutines.flow.emptyFlow
-import kotlinx.coroutines.flow.flatMapLatest
-import kotlinx.coroutines.flow.flowOn
-import kotlinx.coroutines.flow.launchIn
 import kotlinx.coroutines.flow.map
-import kotlinx.coroutines.flow.onEach
 import kotlinx.coroutines.flow.stateIn
-import kotlinx.coroutines.flow.update
 import javax.inject.Inject
 import kotlin.time.Clock
 import kotlin.time.Duration.Companion.seconds
@@ -29,90 +17,41 @@ import kotlin.time.Duration.Companion.seconds
 @HiltViewModel
 class TrafficViewModel @Inject constructor(
     private val clock: Clock,
-    private val dispatcherProvider: DispatcherProvider,
     private val trafficRepository: TrafficRepository,
 ) : ViewModel() {
 
-    private val _screenState = MutableStateFlow(
-        TrafficScreenState(
-            graphData = emptyList(),
-            isMonitorActive = false,
-            sessionStartTime = null,
-            trafficSession = null,
-        )
-    )
-    val screenState = _screenState
-        .stateIn(viewModelScope, SharingStarted.WhileSubscribed(5000), _screenState.value)
-
-    private val uiActiveFlow = _screenState.subscriptionCount.map { it > 0 }.distinctUntilChanged()
-    private val isMonitorActive = MutableStateFlow(false)
-
-    private var activatableTrafficMonitor: Job? = null
-
-    fun startMonitor() {
-        _screenState.update {
-            it.copy(
-                isMonitorActive = true,
-                sessionStartTime = clock.now().toEpochMilliseconds(),
+    val screenState = trafficRepository.recordingState
+        .map { recording ->
+            val session = (recording as? RecordingState.Active)?.session
+            val error = if (recording as? RecordingState.Error != null) TrafficScreenError.SessionError else null
+            TrafficScreenState(
+                trafficSession = session,
+                graphData = session?.computeFilteredGraphData() ?: emptyList(),
+                error = error,
             )
         }
-        isMonitorActive.value = true
-
-        activatableTrafficMonitor = uiActivatedFlow(
-            dataSourceProvider = { trafficRepository.recordTrafficMetrics() },
+        .stateIn(
+            viewModelScope,
+            SharingStarted.WhileSubscribed(5000),
+            TrafficScreenState(graphData = emptyList(), trafficSession = null),
         )
-            .onEach(::handleTrafficMetrics)
-            .catch { handleTrafficError() }
-            .flowOn(dispatcherProvider.default)
-            .launchIn(viewModelScope)
+
+    fun startMonitor() {
+        trafficRepository.startRecording()
     }
 
     fun stopMonitor() {
-        _screenState.update { it.copy(isMonitorActive = false) }
-        isMonitorActive.value = false
-        activatableTrafficMonitor?.cancel()
+        trafficRepository.stopRecording()
     }
 
     fun consumeErrorState() {
-        _screenState.update {
-            it.copy(error = null)
-        }
+        trafficRepository.stopRecording()
     }
 
-    private fun handleTrafficMetrics(trafficSession: TrafficSession) {
-        val now = clock.now()
+    private fun TrafficSession.computeFilteredGraphData(): List<TrafficMetric> {
         val timeStart =
-            (now - TRAFFIC_METRICS_WINDOW_SECS.seconds).toEpochMilliseconds() / 1000 * 1000
-
-        val filteredGraphData = trafficSession.trafficMetrics.takeWhile {
-            it.timestamp >= timeStart
-        }.reversed()
-
-        _screenState.update {
-            it.copy(
-                graphData = filteredGraphData,
-                trafficSession = trafficSession,
-            )
-        }
-    }
-
-    private fun handleTrafficError() {
-        _screenState.update {
-            it.copy(error = TrafficScreenError.SessionError)
-        }
-    }
-
-    @OptIn(ExperimentalCoroutinesApi::class)
-    private fun <T> uiActivatedFlow(
-        dataSourceProvider: () -> Flow<T>,
-    ): Flow<T> = combine(
-        uiActiveFlow,
-        isMonitorActive,
-    ) { uiActive, isMonitorActive ->
-        uiActive && isMonitorActive
-    }.distinctUntilChanged(
-    ).flatMapLatest { isMonitorActive ->
-        if (isMonitorActive) dataSourceProvider() else emptyFlow()
+            (clock.now() - TRAFFIC_METRICS_WINDOW_SECS.seconds).toEpochMilliseconds() / 1000 * 1000
+        return trafficMetrics.takeWhile { it.timestamp >= timeStart }.reversed()
     }
 
     companion object {

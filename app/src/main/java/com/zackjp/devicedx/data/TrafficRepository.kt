@@ -1,17 +1,27 @@
 package com.zackjp.devicedx.data
 
 import com.zackjp.devicedx.concurrency.DispatcherProvider
+import com.zackjp.devicedx.di.ApplicationScope
 import com.zackjp.devicedx.feature.traffic.util.TrafficGraphUtil
 import com.zackjp.devicedx.model.TrafficMetric
 import com.zackjp.devicedx.model.TrafficSession
+import kotlinx.coroutines.CancellationException
+import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.ExperimentalCoroutinesApi
+import kotlinx.coroutines.Job
 import kotlinx.coroutines.NonCancellable
 import kotlinx.coroutines.flow.Flow
+import kotlinx.coroutines.flow.MutableStateFlow
+import kotlinx.coroutines.flow.StateFlow
+import kotlinx.coroutines.flow.asStateFlow
+import kotlinx.coroutines.flow.catch
 import kotlinx.coroutines.flow.filter
 import kotlinx.coroutines.flow.flatMapLatest
 import kotlinx.coroutines.flow.flow
 import kotlinx.coroutines.flow.flowOn
+import kotlinx.coroutines.flow.launchIn
 import kotlinx.coroutines.flow.map
+import kotlinx.coroutines.flow.onStart
 import kotlinx.coroutines.flow.mapNotNull
 import kotlinx.coroutines.flow.merge
 import kotlinx.coroutines.flow.onCompletion
@@ -21,15 +31,27 @@ import javax.inject.Inject
 import javax.inject.Singleton
 import kotlin.time.Clock
 
+sealed interface RecordingState {
+    data object Idle : RecordingState
+    data class Active(val session: TrafficSession) : RecordingState
+    data object Error : RecordingState
+}
+
 @OptIn(ExperimentalCoroutinesApi::class) // flatMapLatest
 @Singleton
 class TrafficRepository @Inject constructor(
+    @ApplicationScope private val appScope: CoroutineScope,
     private val clock: Clock,
     private val dispatcherProvider: DispatcherProvider,
     private val realTimeNetworkDataSource: RealTimeNetworkDataSource,
     private val trafficDao: TrafficDao,
     private val trafficGraphUtil: TrafficGraphUtil,
 ) {
+
+    private val _recordingState = MutableStateFlow<RecordingState>(RecordingState.Idle)
+    val recordingState: StateFlow<RecordingState> = _recordingState.asStateFlow()
+
+    private var recordingJob: Job? = null
 
     private val recordAndObserveTrafficMetricsSession: Flow<TrafficSession> =
         flow {
@@ -57,7 +79,25 @@ class TrafficRepository @Inject constructor(
             sessionWithMetrics.toDomain()
         }.flowOn(dispatcherProvider.io)
 
-    fun recordTrafficMetrics(): Flow<TrafficSession> = recordAndObserveTrafficMetricsSession
+    fun startRecording() {
+        recordingJob?.cancel()
+        recordingJob = recordAndObserveTrafficMetricsSession
+            .onStart { _recordingState.value = RecordingState.Idle }
+            .onEach { session -> _recordingState.value = RecordingState.Active(session) }
+            .onCompletion { cause ->
+                _recordingState.value = when {
+                    cause == null || cause is CancellationException -> RecordingState.Idle
+                    else -> RecordingState.Error
+                }
+            }
+            .catch { }
+            .launchIn(appScope)
+    }
+
+    fun stopRecording() {
+        recordingJob?.cancel()
+        recordingJob = null
+    }
 
     private fun recordMetricsToDbFlow(sessionId: Long) =
         trafficGraphUtil.runningMetricsCalculation(realTimeNetworkDataSource.getTrafficStats())

@@ -8,23 +8,17 @@ import com.zackjp.devicedx.flow.unwrap
 import com.zackjp.devicedx.model.TrafficMetric
 import com.zackjp.devicedx.model.TrafficSession
 import com.zackjp.devicedx.model.fake
-import io.kotest.assertions.throwables.shouldThrow
 import io.kotest.matchers.shouldBe
-import io.kotest.matchers.types.shouldBeInstanceOf
 import io.mockk.coEvery
 import io.mockk.coVerify
 import io.mockk.every
 import io.mockk.just
 import io.mockk.mockk
 import io.mockk.runs
-import kotlinx.coroutines.CoroutineExceptionHandler
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.ExperimentalCoroutinesApi
 import kotlinx.coroutines.flow.MutableSharedFlow
-import kotlinx.coroutines.flow.catch
-import kotlinx.coroutines.flow.launchIn
-import kotlinx.coroutines.launch
-import kotlinx.coroutines.supervisorScope
+import kotlinx.coroutines.test.TestScope
 import kotlinx.coroutines.test.resetMain
 import kotlinx.coroutines.test.runCurrent
 import kotlinx.coroutines.test.runTest
@@ -52,8 +46,6 @@ class TrafficRepositoryTest {
     private val trafficSessionReadFlow = MutableSharedFlow<FlowCommand<TrafficSessionWithMetrics>>()
     private val trafficSessionWriteFlow = MutableSharedFlow<FlowCommand<TrafficMetric>>()
 
-    lateinit var trafficRepository: TrafficRepository
-
     @BeforeEach
     fun setUp() {
         Dispatchers.setMain(testDispatcherProvider.default)
@@ -65,14 +57,6 @@ class TrafficRepositoryTest {
         coEvery { trafficDao.updateSessionEndTime(any(), any()) } just runs
         coEvery { trafficDao.getSessionWithTrafficMetrics(SESSION_ID) } returns trafficSessionReadFlow.unwrap()
         every { trafficGraphUtil.runningMetricsCalculation(any()) } returns trafficSessionWriteFlow.unwrap()
-
-        trafficRepository = TrafficRepository(
-            clock = clock,
-            dispatcherProvider = testDispatcherProvider,
-            realTimeNetworkDataSource = realTimeNetworkDataSource,
-            trafficDao = trafficDao,
-            trafficGraphUtil = trafficGraphUtil
-        )
     }
 
     @AfterEach
@@ -81,9 +65,9 @@ class TrafficRepositoryTest {
     }
 
     @Test
-    fun recordTrafficMetrics_InsertsTrafficSessionToDb() = runTest {
-        trafficRepository.recordTrafficMetrics().launchIn(backgroundScope)
-        runCurrent() // initialize the session
+    fun startRecording_InsertsTrafficSessionToDb() = runTest {
+        buildRepository().startRecording()
+        runCurrent()
 
         coVerify {
             trafficDao.createSession(
@@ -97,9 +81,9 @@ class TrafficRepositoryTest {
     }
 
     @Test
-    fun recordTrafficMetrics_WritesEachMetricItemToDb() = runTest {
-        trafficRepository.recordTrafficMetrics().launchIn(backgroundScope)
-        runCurrent() // initialize the session
+    fun startRecording_WritesEachMetricItemToDb() = runTest {
+        buildRepository().startRecording()
+        runCurrent()
 
         val metric1 = TrafficMetric.fake(11)
         val metric2 = TrafficMetric.fake(301)
@@ -114,7 +98,7 @@ class TrafficRepositoryTest {
     }
 
     @Test
-    fun recordTrafficMetrics_EmitsTrafficMetricItemsFromDb() = runTest {
+    fun startRecording_UpdatesRecordingStateFromDbEmissions() = runTest {
         val sessionStartTime = 12345L
         val expectedTotalRxBytes = 8888L
         val expectedTotalTxBytes = 9999L
@@ -150,103 +134,123 @@ class TrafficRepositoryTest {
             ),
         )
 
-        trafficRepository.recordTrafficMetrics().test {
-            runCurrent() // initiate the flow with session creation and db observable
+        val repository = buildRepository()
+        repository.recordingState.test {
+            awaitItem() shouldBe RecordingState.Idle
+
+            repository.startRecording()
+            runCurrent()
 
             trafficSessionReadFlow.emit(FlowCommand.Emit(metricsEntity))
             runCurrent()
 
-            awaitItem() shouldBe expectedDomain
+            awaitItem() shouldBe RecordingState.Active(expectedDomain)
         }
     }
 
     @Test
-    fun recordTrafficMetrics_WhenFlowCompletesNormally_UpdatesSessionEndTime() = runTest {
-        val job = trafficRepository.recordTrafficMetrics().launchIn(backgroundScope)
-        runCurrent() // initialize the session
+    fun stopRecording_UpdatesSessionEndTime() = runTest {
+        val repository = buildRepository()
+        repository.startRecording()
+        runCurrent()
 
         every { clock.now() } returns Instant.fromEpochMilliseconds(9876543210L)
 
-        job.cancel()
+        repository.stopRecording()
         runCurrent()
 
         coVerify { trafficDao.updateSessionEndTime(sessionId = SESSION_ID, endTime = 9876543210L) }
     }
 
     @Test
-    fun recordTrafficMetrics_WhenFlowCompletesExceptionally_AttemptsSessionEndUpdate() = runTest {
-        val noOpExceptionHandler = CoroutineExceptionHandler { _, _ -> /* no-op */ }
-
-        backgroundScope.launch(noOpExceptionHandler) {
-            supervisorScope {
-                trafficRepository.recordTrafficMetrics()
-                    .launchIn(this@supervisorScope)
-                runCurrent()
-
-                every { clock.now() } returns Instant.fromEpochMilliseconds(9876543210L)
-
-                trafficSessionWriteFlow.emit(FlowCommand.Throw(CustomException("Fake db write exception")))
-                runCurrent()
-            }
-        }
-
+    fun stopRecording_ResetsRecordingStateToIdle() = runTest {
+        val repository = buildRepository()
+        repository.startRecording()
         runCurrent()
+
+        trafficSessionReadFlow.emit(FlowCommand.Emit(TrafficSessionWithMetrics(
+            TrafficSessionEntity(SESSION_ID, CLOCK_TIME), emptyList()
+        )))
+        runCurrent()
+
+        repository.stopRecording()
+        runCurrent()
+
+        repository.recordingState.value shouldBe RecordingState.Idle
+    }
+
+    @Test
+    fun startRecording_WhenFlowThrows_AttemptsSessionEndTimeUpdate() = runTest {
+        val repository = buildRepository()
+        repository.startRecording()
+        runCurrent()
+
+        every { clock.now() } returns Instant.fromEpochMilliseconds(9876543210L)
+
+        trafficSessionWriteFlow.emit(FlowCommand.Throw(CustomException("Fake exception")))
+        runCurrent()
+
         coVerify { trafficDao.updateSessionEndTime(sessionId = SESSION_ID, endTime = 9876543210L) }
     }
 
     @Test
-    fun recordTrafficMetrics_WhenPhase1SessionDbCreationFails_PropagatesException() = runTest {
+    fun startRecording_WhenPhase1SessionDbCreationFails_SetsErrorState() = runTest {
         coEvery { trafficDao.createSession(any()) } throws CustomException("Create session fails")
 
-        shouldThrow<CustomException> {
-            trafficRepository.recordTrafficMetrics().collect { }
-            runCurrent()
-        }
+        val repository = buildRepository()
+        repository.startRecording()
+        runCurrent()
+
+        repository.recordingState.value shouldBe RecordingState.Error
     }
 
     @Test
-    fun recordTrafficMetrics_WhenPhase2ReadDbFlowErrs_PropagatesException() = runTest {
-        var capturedException: Throwable? = null
-        val noOpExceptionHandler = CoroutineExceptionHandler { _, throwable ->
-            capturedException = throwable
-        }
-
-        backgroundScope.launch(noOpExceptionHandler) {
-            supervisorScope {
-                trafficRepository.recordTrafficMetrics()
-                    .launchIn(this@supervisorScope)
-                runCurrent()
-
-                trafficSessionReadFlow.emit(FlowCommand.Throw(CustomException("Fake db read exception")))
-                runCurrent()
-            }
-        }
-
+    fun startRecording_WhenPhase2ReadDbFlowErrs_SetsErrorState() = runTest {
+        val repository = buildRepository()
+        repository.startRecording()
         runCurrent()
-        capturedException.shouldBeInstanceOf<CustomException>()
+
+        trafficSessionReadFlow.emit(FlowCommand.Throw(CustomException("Fake db read exception")))
+        runCurrent()
+
+        repository.recordingState.value shouldBe RecordingState.Error
     }
 
     @Test
-    fun recordTrafficMetrics_WhenPhase2WriteDbFlowErrs_PropagatesException() = runTest {
-        var capturedException: Throwable? = null
-        val noOpExceptionHandler = CoroutineExceptionHandler { _, throwable ->
-            capturedException = throwable
-        }
-
-        backgroundScope.launch(noOpExceptionHandler) {
-            supervisorScope {
-                trafficRepository.recordTrafficMetrics()
-                    .launchIn(this@supervisorScope)
-                runCurrent()
-
-                trafficSessionWriteFlow.emit(FlowCommand.Throw(CustomException("Fake db write exception")))
-                runCurrent()
-            }
-        }
-
+    fun startRecording_WhenPhase2WriteDbFlowErrs_SetsErrorState() = runTest {
+        val repository = buildRepository()
+        repository.startRecording()
         runCurrent()
-        capturedException.shouldBeInstanceOf<CustomException>()
+
+        trafficSessionWriteFlow.emit(FlowCommand.Throw(CustomException("Fake db write exception")))
+        runCurrent()
+
+        repository.recordingState.value shouldBe RecordingState.Error
     }
+
+    @Test
+    fun startRecording_WhenCalledTwice_CancelsFirstJob() = runTest {
+        val repository = buildRepository()
+        repository.startRecording()
+        runCurrent()
+
+        every { clock.now() } returns Instant.fromEpochMilliseconds(5678L)
+
+        repository.startRecording()
+        runCurrent()
+
+        coVerify(exactly = 2) { trafficDao.createSession(any()) }
+        coVerify { trafficDao.updateSessionEndTime(SESSION_ID, 5678L) }
+    }
+
+    private fun TestScope.buildRepository() = TrafficRepository(
+        appScope = backgroundScope,
+        clock = clock,
+        dispatcherProvider = testDispatcherProvider,
+        realTimeNetworkDataSource = realTimeNetworkDataSource,
+        trafficDao = trafficDao,
+        trafficGraphUtil = trafficGraphUtil,
+    )
 
 }
 

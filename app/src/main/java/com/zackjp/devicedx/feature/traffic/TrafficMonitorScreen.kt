@@ -63,7 +63,7 @@ fun TrafficMonitorScreenRoot(
     val snackbarHostState = remember { SnackbarHostState() }
 
     val isInPipMode = rememberIsInPipMode(
-        isAllowedProvider = { state.isMonitorActive },
+        isAllowedProvider = { state.trafficSession != null },
         aspectRatioNumerator = ASPECT_RATIO_NUMERATOR,
         aspectRatioDenominator = ASPECT_RATIO_DENOMINATOR,
     )
@@ -177,7 +177,7 @@ private fun MainContent(
         }
     }
 
-    val isMonitorActiveProvider = { stateProvider().isMonitorActive }
+    val isSessionActiveProvider = { stateProvider().trafficSession != null }
     val trafficSessionProvider = { stateProvider().trafficSession }
 
     Column(
@@ -205,7 +205,7 @@ private fun MainContent(
                     metricsProvider = {
                         trafficSessionProvider()?.trafficMetrics ?: emptyList()
                     },
-                    isSessionActiveProvider = { stateProvider().isMonitorActive },
+                    isSessionActiveProvider = isSessionActiveProvider,
                     rxColor = RxLineColor,
                     txColor = TxLineColor,
                 )
@@ -228,8 +228,8 @@ private fun MainContent(
 
                 SessionInfoCard(
                     modifier = Modifier.fillMaxWidth(),
-                    isActiveProvider = isMonitorActiveProvider,
-                    sessionStartTimeProvider = { stateProvider().sessionStartTime },
+                    isActiveProvider = isSessionActiveProvider,
+                    sessionStartTimeProvider = { stateProvider().trafficSession?.startTime },
                     trafficSessionProvider = trafficSessionProvider,
                 )
 
@@ -237,7 +237,7 @@ private fun MainContent(
 
                 MonitorButton(
                     modifier = Modifier.fillMaxWidth(),
-                    isMonitorActiveProvider = isMonitorActiveProvider,
+                    isMonitorActiveProvider = isSessionActiveProvider,
                     onStartMonitor = onStartMonitor,
                     onStopMonitor = onStopMonitor,
                 )

@@ -9,8 +9,6 @@ import com.zackjp.devicedx.model.TrafficSession
 data class TrafficScreenState(
     val error: TrafficScreenError? = null,
     val graphData: List<TrafficMetric>,
-    val isMonitorActive: Boolean,
-    val sessionStartTime: Long?,
     val trafficSession: TrafficSession?,
 )
 
