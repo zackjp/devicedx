@@ -8,6 +8,7 @@ import androidx.compose.animation.slideOutHorizontally
 import androidx.compose.animation.togetherWith
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.remember
 import androidx.compose.ui.Modifier
 import androidx.lifecycle.viewmodel.navigation3.rememberViewModelStoreNavEntryDecorator
 import androidx.navigation3.runtime.entryProvider
@@ -32,12 +33,14 @@ fun DeviceDxNav3Graph(
     modifier: Modifier = Modifier,
 ) {
     val backStack = rememberNavBackStack(Route.Dashboard)
-    val navActions = NavActions(
-        toDashboard = { backStack.add(Route.Dashboard) },
-        toLatencyMonitor = { backStack.add(Route.LatencyMonitor) },
-        toTrafficMonitor = { backStack.add(Route.TrafficMonitor) },
-        toWifiMonitor = { backStack.add(Route.WifiMonitor) }
-    )
+    val navActions = remember {
+        NavActions(
+            toDashboard = { backStack.add(Route.Dashboard) },
+            toLatencyMonitor = { backStack.add(Route.LatencyMonitor) },
+            toTrafficMonitor = { backStack.add(Route.TrafficMonitor) },
+            toWifiMonitor = { backStack.add(Route.WifiMonitor) }
+        )
+    }
 
     NavDisplay(
         modifier = modifier,
