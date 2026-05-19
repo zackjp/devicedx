@@ -9,6 +9,8 @@ interface Route {
     @Serializable
     data object TrafficMonitor : Route, NavKey
     @Serializable
+    data object TrafficHistory : Route, NavKey
+    @Serializable
     data object LatencyMonitor : Route, NavKey
     @Serializable
     data object WifiMonitor : Route, NavKey

@@ -18,6 +18,7 @@ import androidx.navigation3.scene.Scene
 import androidx.navigation3.ui.NavDisplay
 import com.zackjp.devicedx.feature.dashboard.DashboardScreen
 import com.zackjp.devicedx.feature.latency.LatencyScreenRoot
+import com.zackjp.devicedx.feature.traffic.TrafficHistoryScreenRoot
 import com.zackjp.devicedx.feature.traffic.TrafficMonitorScreenRoot
 import com.zackjp.devicedx.feature.wifi.WifiScreenRoot
 
@@ -38,6 +39,7 @@ fun DeviceDxNav3Graph(
             toDashboard = { backStack.add(Route.Dashboard) },
             toLatencyMonitor = { backStack.add(Route.LatencyMonitor) },
             toTrafficMonitor = { backStack.add(Route.TrafficMonitor) },
+            toTrafficHistory = { backStack.add(Route.TrafficHistory) },
             toWifiMonitor = { backStack.add(Route.WifiMonitor) }
         )
     }
@@ -70,6 +72,14 @@ fun DeviceDxNav3Graph(
 
             entry<Route.TrafficMonitor> {
                 TrafficMonitorScreenRoot(
+                    modifier = Modifier
+                        .fillMaxWidth(),
+                    navActions = navActions,
+                )
+            }
+
+            entry<Route.TrafficHistory> {
+                TrafficHistoryScreenRoot(
                     modifier = Modifier
                         .fillMaxWidth(),
                 )

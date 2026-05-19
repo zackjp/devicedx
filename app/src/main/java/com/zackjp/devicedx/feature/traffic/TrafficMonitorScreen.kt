@@ -13,6 +13,8 @@ import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
 import androidx.compose.material3.BottomSheetScaffold
 import androidx.compose.material3.ExperimentalMaterial3Api
+import androidx.compose.material3.Icon
+import androidx.compose.material3.IconButton
 import androidx.compose.material3.Scaffold
 import androidx.compose.material3.SheetValue
 import androidx.compose.material3.SnackbarDuration
@@ -26,6 +28,7 @@ import androidx.compose.runtime.remember
 import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.unit.dp
 import androidx.hilt.lifecycle.viewmodel.compose.hiltViewModel
@@ -36,6 +39,7 @@ import com.zackjp.devicedx.feature.traffic.ui.ThroughputRow
 import com.zackjp.devicedx.feature.traffic.ui.TrafficGraphCard
 import com.zackjp.devicedx.feature.traffic.ui.TrafficTimeline
 import com.zackjp.devicedx.model.TrafficMetric
+import com.zackjp.devicedx.navigation.NavActions
 import com.zackjp.devicedx.shared.ui.PrimaryButton
 import com.zackjp.devicedx.shared.ui.ScreenScaffold
 import com.zackjp.devicedx.shared.ui.rememberIsInPipMode
@@ -58,6 +62,7 @@ private val TxLineColor = CyberAmber
 @Composable
 fun TrafficMonitorScreenRoot(
     modifier: Modifier = Modifier,
+    navActions: NavActions,
     viewModel: TrafficViewModel = hiltViewModel()
 ) {
     val state by viewModel.screenState.collectAsStateWithLifecycle()
@@ -72,6 +77,16 @@ fun TrafficMonitorScreenRoot(
     ScreenScaffold(
         modifier = if (isInPipMode) Modifier else modifier, // excludes any padding when in PiP mode
         hideBars = isInPipMode,
+        topBarActions = {
+            IconButton(
+                onClick = navActions.toTrafficHistory,
+            ) {
+                Icon(
+                    contentDescription = null,
+                    painter = painterResource(R.drawable.ic_rounded_history_24),
+                )
+            }
+        }
     ) {
         TrafficMonitorScreen(
             consumeErrorAction = { viewModel.consumeErrorState() },
