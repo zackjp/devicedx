@@ -1,24 +1,34 @@
 package com.zackjp.devicedx.navigation
 
-import androidx.compose.foundation.layout.PaddingValues
+import androidx.compose.animation.AnimatedContentTransitionScope
+import androidx.compose.animation.ContentTransform
+import androidx.compose.animation.EnterTransition
+import androidx.compose.animation.ExitTransition
+import androidx.compose.animation.slideOutHorizontally
+import androidx.compose.animation.togetherWith
 import androidx.compose.foundation.layout.fillMaxWidth
-import androidx.compose.foundation.layout.padding
 import androidx.compose.runtime.Composable
 import androidx.compose.ui.Modifier
-import androidx.compose.ui.unit.dp
 import androidx.lifecycle.viewmodel.navigation3.rememberViewModelStoreNavEntryDecorator
 import androidx.navigation3.runtime.entryProvider
 import androidx.navigation3.runtime.rememberNavBackStack
 import androidx.navigation3.runtime.rememberSaveableStateHolderNavEntryDecorator
+import androidx.navigation3.scene.Scene
 import androidx.navigation3.ui.NavDisplay
 import com.zackjp.devicedx.feature.dashboard.DashboardScreen
 import com.zackjp.devicedx.feature.latency.LatencyScreenRoot
 import com.zackjp.devicedx.feature.traffic.TrafficMonitorScreenRoot
 import com.zackjp.devicedx.feature.wifi.WifiScreenRoot
 
+val TRANSITION_ANIM_FORWARD: AnimatedContentTransitionScope<Scene<Any>>.() -> ContentTransform =
+    { EnterTransition.None togetherWith ExitTransition.None }
+val TRANSITION_ANIM_POP: AnimatedContentTransitionScope<Scene<Any>>.() -> ContentTransform =
+    { EnterTransition.None togetherWith slideOutHorizontally { it } }
+val TRANSITION_ANIM_PREDICTIVE_POP: AnimatedContentTransitionScope<Scene<Any>>.(Int) -> ContentTransform =
+    { EnterTransition.None togetherWith slideOutHorizontally { it } }
+
 @Composable
 fun DeviceDxNav3Graph(
-    innerPadding: PaddingValues,
     modifier: Modifier = Modifier,
 ) {
     val backStack = rememberNavBackStack(Route.Dashboard)
@@ -32,6 +42,9 @@ fun DeviceDxNav3Graph(
     NavDisplay(
         modifier = modifier,
         backStack = backStack,
+        transitionSpec = TRANSITION_ANIM_FORWARD,
+        popTransitionSpec = TRANSITION_ANIM_POP,
+        predictivePopTransitionSpec = TRANSITION_ANIM_PREDICTIVE_POP,
         entryDecorators = listOf(
             rememberSaveableStateHolderNavEntryDecorator(),
             rememberViewModelStoreNavEntryDecorator(),
@@ -41,7 +54,6 @@ fun DeviceDxNav3Graph(
                 DashboardScreen(
                     modifier = Modifier
                         .fillMaxWidth(),
-                    innerPadding = innerPadding,
                     navActions = navActions,
                 )
             }
@@ -49,8 +61,6 @@ fun DeviceDxNav3Graph(
             entry<Route.LatencyMonitor> {
                 LatencyScreenRoot(
                     modifier = Modifier
-                        .padding(horizontal = 12.dp)
-                        .padding(innerPadding)
                         .fillMaxWidth(),
                 )
             }
@@ -58,8 +68,6 @@ fun DeviceDxNav3Graph(
             entry<Route.TrafficMonitor> {
                 TrafficMonitorScreenRoot(
                     modifier = Modifier
-                        .padding(horizontal = 12.dp)
-                        .padding(innerPadding)
                         .fillMaxWidth(),
                 )
             }
@@ -67,7 +75,6 @@ fun DeviceDxNav3Graph(
             entry<Route.WifiMonitor> {
                 WifiScreenRoot(
                     modifier = Modifier
-                        .padding(innerPadding)
                         .fillMaxWidth(),
                 )
             }

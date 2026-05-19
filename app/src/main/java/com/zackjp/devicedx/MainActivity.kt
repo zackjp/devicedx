@@ -37,34 +37,18 @@ class MainActivity : ComponentActivity() {
         )
         setContent {
             DeviceDxTheme {
-                var isInPipMode by remember { mutableStateOf(isInPictureInPictureMode) }
-                DisposableEffect(Unit) {
-                    val listener: Consumer<PictureInPictureModeChangedInfo> = { info ->
-                        isInPipMode = info.isInPictureInPictureMode
-                    }
-                    addOnPictureInPictureModeChangedListener(listener)
-                    onDispose { removeOnPictureInPictureModeChangedListener(listener) }
-                }
+//                var isInPipMode by remember { mutableStateOf(isInPictureInPictureMode) }
+//                DisposableEffect(Unit) {
+//                    val listener: Consumer<PictureInPictureModeChangedInfo> = { info ->
+//                        isInPipMode = info.isInPictureInPictureMode
+//                    }
+//                    addOnPictureInPictureModeChangedListener(listener)
+//                    onDispose { removeOnPictureInPictureModeChangedListener(listener) }
+//                }
 
-                Scaffold(
-                    modifier = Modifier.fillMaxWidth(),
-                    topBar = {
-                        if (!isInPipMode) {
-                            TopAppBar(
-                                title = { Text(getString(R.string.app_name)) },
-                                modifier = Modifier.fillMaxWidth(),
-                                colors = TopAppBarDefaults.topAppBarColors().copy(
-                                    containerColor = Color.Transparent,
-                                )
-                            )
-                        }
-                    }
-                ) { innerPadding ->
-                    DeviceDxNav3Graph(
-                        innerPadding = innerPadding,
-                        modifier = Modifier.fillMaxSize(),
-                    )
-                }
+                DeviceDxNav3Graph(
+                    modifier = Modifier.fillMaxSize(),
+                )
             }
         }
     }

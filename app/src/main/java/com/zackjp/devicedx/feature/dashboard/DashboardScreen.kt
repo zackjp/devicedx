@@ -17,7 +17,6 @@ import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
 import androidx.compose.material3.Icon
 import androidx.compose.material3.MaterialTheme
-import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.Immutable
@@ -34,27 +33,29 @@ import com.zackjp.devicedx.R
 import com.zackjp.devicedx.navigation.NavActions
 import com.zackjp.devicedx.shared.ui.AppCard
 import com.zackjp.devicedx.shared.ui.PrimaryButton
+import com.zackjp.devicedx.shared.ui.ScreenScaffold
 import com.zackjp.devicedx.ui.theme.Turquoise
 
 
 @Composable
 fun DashboardScreen(
     modifier: Modifier = Modifier,
-    innerPadding: PaddingValues,
     navActions: NavActions,
     viewModel: DashboardViewModel = hiltViewModel(),
 ) {
-    Surface(modifier) {
+    ScreenScaffold(
+        modifier = modifier,
+    ) {
         val cardInfoList = rememberDashboardCards(navActions)
 
         Box(
+            modifier = Modifier,
             contentAlignment = Alignment.TopCenter,
         ) {
             LazyColumn(
                 contentPadding = PaddingValues(16.dp),
                 modifier = Modifier
-                    .fillMaxWidth()
-                    .padding(innerPadding),
+                    .fillMaxWidth(),
                 verticalArrangement = Arrangement.spacedBy(24.dp),
             ) {
                 items(cardInfoList) { cardInfo ->

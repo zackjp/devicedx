@@ -18,7 +18,6 @@ import androidx.compose.material3.SheetValue
 import androidx.compose.material3.SnackbarDuration
 import androidx.compose.material3.SnackbarHost
 import androidx.compose.material3.SnackbarHostState
-import androidx.compose.material3.Surface
 import androidx.compose.material3.rememberBottomSheetScaffoldState
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
@@ -38,6 +37,7 @@ import com.zackjp.devicedx.feature.traffic.ui.TrafficGraphCard
 import com.zackjp.devicedx.feature.traffic.ui.TrafficTimeline
 import com.zackjp.devicedx.model.TrafficMetric
 import com.zackjp.devicedx.shared.ui.PrimaryButton
+import com.zackjp.devicedx.shared.ui.ScreenScaffold
 import com.zackjp.devicedx.shared.ui.rememberIsInPipMode
 import com.zackjp.devicedx.ui.theme.CyberAmber
 import com.zackjp.devicedx.ui.theme.Turquoise
@@ -54,6 +54,7 @@ private val RxLineColor = Turquoise
 private val TxLineColor = CyberAmber
 
 
+@OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun TrafficMonitorScreenRoot(
     modifier: Modifier = Modifier,
@@ -68,13 +69,18 @@ fun TrafficMonitorScreenRoot(
         aspectRatioDenominator = ASPECT_RATIO_DENOMINATOR,
     )
 
-    Surface(
-        if (isInPipMode) Modifier else modifier // excludes any padding when in PiP mode
+    ScreenScaffold(
+        modifier = if (isInPipMode) Modifier else modifier, // excludes any padding when in PiP mode
+        hideBars = isInPipMode,
     ) {
         TrafficMonitorScreen(
             consumeErrorAction = { viewModel.consumeErrorState() },
             isInPipMode = isInPipMode,
-            modifier = Modifier.fillMaxSize(),
+            modifier = Modifier
+                .fillMaxSize()
+                .then(
+                    if (isInPipMode) Modifier else Modifier.padding(horizontal = 12.dp)
+                ),
             onStartMonitor = viewModel::startMonitor,
             onStopMonitor = viewModel::stopMonitor,
             snackbarHostState = snackbarHostState,

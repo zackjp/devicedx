@@ -33,7 +33,6 @@ import androidx.compose.foundation.pager.rememberPagerState
 import androidx.compose.material3.Card
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.PrimaryTabRow
-import androidx.compose.material3.Surface
 import androidx.compose.material3.Tab
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
@@ -64,6 +63,7 @@ import androidx.hilt.lifecycle.viewmodel.compose.hiltViewModel
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import com.zackjp.devicedx.R
 import com.zackjp.devicedx.shared.ui.AppCard
+import com.zackjp.devicedx.shared.ui.ScreenScaffold
 import com.zackjp.devicedx.system.WifiInfo
 import com.zackjp.devicedx.ui.theme.MediumGray
 import kotlinx.coroutines.launch
@@ -123,7 +123,9 @@ fun WifiScreenRoot(
         }
     }
 
-    Surface(modifier) {
+    ScreenScaffold(
+        modifier = modifier,
+    ) {
         ReadyContent(
             modifier = Modifier.fillMaxWidth(),
             onStartMonitor = viewModel::startMonitor,

@@ -8,7 +8,6 @@ import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.LazyListScope
-import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
@@ -23,6 +22,7 @@ import com.zackjp.devicedx.shared.ui.Graph
 import com.zackjp.devicedx.shared.ui.GraphEntry
 import com.zackjp.devicedx.shared.ui.LineConfig
 import com.zackjp.devicedx.shared.ui.PrimaryButton
+import com.zackjp.devicedx.shared.ui.ScreenScaffold
 import com.zackjp.devicedx.shared.ui.getScaleCount
 import com.zackjp.devicedx.ui.theme.Turquoise
 import kotlin.math.max
@@ -38,8 +38,12 @@ fun LatencyScreenRoot(
 ) {
     val state by viewModel.screenState.collectAsStateWithLifecycle()
 
-    Surface(modifier) {
-        LazyColumn {
+    ScreenScaffold(
+        modifier = modifier,
+    ) {
+        LazyColumn(
+            modifier = Modifier.padding(horizontal = 12.dp)
+        ) {
             latencyGraph(
                 latencyHistory = state.latencyHistory,
                 modifier = Modifier.fillMaxWidth(),
