@@ -51,6 +51,10 @@ abstract class TrafficDao {
     @Transaction // composite objects perform multiple queries
     @Query("SELECT * FROM traffic_sessions WHERE traffic_sessions.sessionId = :sessionId")
     abstract fun getSessionWithTrafficMetrics(sessionId: Long): Flow<TrafficSessionWithMetrics>
+
+    @Query("SELECT * FROM traffic_sessions")
+    abstract fun getSessions(): Flow<List<TrafficSessionEntity>>
+
 }
 
 @Entity(

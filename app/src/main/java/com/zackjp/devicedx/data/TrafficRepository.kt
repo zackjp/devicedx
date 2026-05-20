@@ -21,11 +21,11 @@ import kotlinx.coroutines.flow.flow
 import kotlinx.coroutines.flow.flowOn
 import kotlinx.coroutines.flow.launchIn
 import kotlinx.coroutines.flow.map
-import kotlinx.coroutines.flow.onStart
 import kotlinx.coroutines.flow.mapNotNull
 import kotlinx.coroutines.flow.merge
 import kotlinx.coroutines.flow.onCompletion
 import kotlinx.coroutines.flow.onEach
+import kotlinx.coroutines.flow.onStart
 import kotlinx.coroutines.withContext
 import javax.inject.Inject
 import javax.inject.Singleton
@@ -99,6 +99,13 @@ class TrafficRepository @Inject constructor(
         recordingJob = null
     }
 
+    fun getSessions(): Flow<List<TrafficSession>> =
+        trafficDao.getSessions().map { sessionEntitiesList ->
+            sessionEntitiesList.map { entity ->
+                entity.toDomain()
+            }
+        }
+
     private fun recordMetricsToDbFlow(sessionId: Long) =
         trafficGraphUtil.runningMetricsCalculation(realTimeNetworkDataSource.getTrafficStats())
             .onEach { trafficMetric ->
@@ -130,4 +137,14 @@ private fun TrafficSessionWithMetrics.toDomain(): TrafficSession =
                 txBytesPerSec = it.txBytesPerSec,
             )
         }
+    )
+
+private fun TrafficSessionEntity.toDomain(): TrafficSession =
+    TrafficSession(
+        id = this.sessionId,
+        startTime = this.startTime,
+        endTime = this.endTime,
+        totalRxBytes = this.totalRxBytes,
+        totalTxBytes = this.totalTxBytes,
+        trafficMetrics = emptyList(),
     )

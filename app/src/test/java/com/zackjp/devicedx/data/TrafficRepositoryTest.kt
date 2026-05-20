@@ -45,6 +45,7 @@ class TrafficRepositoryTest {
 
     private val trafficSessionReadFlow = MutableSharedFlow<FlowCommand<TrafficSessionWithMetrics>>()
     private val trafficSessionWriteFlow = MutableSharedFlow<FlowCommand<TrafficMetric>>()
+    private val trafficSessionsFlow = MutableSharedFlow<FlowCommand<List<TrafficSessionEntity>>>()
 
     @BeforeEach
     fun setUp() {
@@ -56,6 +57,7 @@ class TrafficRepositoryTest {
         coEvery { trafficDao.createSession(any()) } returns SESSION_ID
         coEvery { trafficDao.updateSessionEndTime(any(), any()) } just runs
         coEvery { trafficDao.getSessionWithTrafficMetrics(SESSION_ID) } returns trafficSessionReadFlow.unwrap()
+        every { trafficDao.getSessions() } returns trafficSessionsFlow.unwrap()
         every { trafficGraphUtil.runningMetricsCalculation(any()) } returns trafficSessionWriteFlow.unwrap()
     }
 
@@ -168,9 +170,13 @@ class TrafficRepositoryTest {
         repository.startRecording()
         runCurrent()
 
-        trafficSessionReadFlow.emit(FlowCommand.Emit(TrafficSessionWithMetrics(
-            TrafficSessionEntity(SESSION_ID, CLOCK_TIME), emptyList()
-        )))
+        trafficSessionReadFlow.emit(
+            FlowCommand.Emit(
+                TrafficSessionWithMetrics(
+                    TrafficSessionEntity(SESSION_ID, CLOCK_TIME), emptyList()
+                )
+            )
+        )
         runCurrent()
 
         repository.stopRecording()
@@ -241,6 +247,39 @@ class TrafficRepositoryTest {
 
         coVerify(exactly = 2) { trafficDao.createSession(any()) }
         coVerify { trafficDao.updateSessionEndTime(SESSION_ID, 5678L) }
+    }
+
+    @Test
+    fun getSessions_WhenEmitsEntity_MapsToDomainModel() = runTest {
+        val repository = buildRepository()
+
+        val sessionDomainsFlow = repository.getSessions()
+
+        val entityModels = listOf(
+            TrafficSessionEntity(
+                sessionId = 123L,
+                startTime = 456L,
+                endTime = 789L,
+                totalRxBytes = 111L,
+                totalTxBytes = 333L,
+            ),
+        )
+        val domainModels = listOf(
+            TrafficSession(
+                id = 123L,
+                startTime = 456L,
+                endTime = 789L,
+                totalRxBytes = 111L,
+                totalTxBytes = 333L,
+                trafficMetrics = emptyList(),
+            ),
+        )
+
+        sessionDomainsFlow.test {
+            trafficSessionsFlow.emit(FlowCommand.Emit(entityModels))
+
+            awaitItem() shouldBe domainModels
+        }
     }
 
     private fun TestScope.buildRepository() = TrafficRepository(
