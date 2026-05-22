@@ -2,8 +2,9 @@ package com.zackjp.devicedx.feature.traffic
 
 import com.zackjp.devicedx.concurrency.TestDispatcherProvider
 import com.zackjp.devicedx.data.TrafficRepository
+import com.zackjp.devicedx.model.Bytes.Companion.asDataUnit
+import com.zackjp.devicedx.model.DataUnit
 import com.zackjp.devicedx.model.TrafficSession
-import com.zackjp.devicedx.model.fake
 import io.kotest.matchers.shouldBe
 import io.mockk.every
 import io.mockk.mockk
@@ -23,14 +24,36 @@ import org.junit.jupiter.api.Test
 class TrafficHistoryViewModelTest {
 
     private companion object {
-        private val EXISTING_SESSIONS = listOf(
-            TrafficSession.fake(
-                number = 1,
-                metricsCount = 2,
+        private val REPOSITORY_SESSIONS = listOf(
+            TrafficSession(
+                id = 7L,
+                startTime = 1234L,
+                totalTxBytes = 111111L,
+                totalRxBytes = 333333L,
+                trafficMetrics = emptyList(),
             ),
-            TrafficSession.fake(
-                number = 2,
-                metricsCount = 3,
+            TrafficSession(
+                id = 13L,
+                startTime = 3456L,
+                totalTxBytes = 555555L,
+                totalRxBytes = 777777L,
+                trafficMetrics = emptyList(),
+            ),
+        )
+        private val SESSION_ITEMS = listOf(
+            TrafficSessionInfo(
+                sessionId = 7L,
+                txValue = 111111L.asDataUnit(DataUnit.BYTE).bestDisplayableUnit.first.toFloat(),
+                txUnit = 111111L.asDataUnit(DataUnit.BYTE).bestDisplayableUnit.second,
+                rxValue = 333333L.asDataUnit(DataUnit.BYTE).bestDisplayableUnit.first.toFloat(),
+                rxUnit = 333333L.asDataUnit(DataUnit.BYTE).bestDisplayableUnit.second,
+            ),
+            TrafficSessionInfo(
+                sessionId = 13L,
+                txValue = 555555L.asDataUnit(DataUnit.BYTE).bestDisplayableUnit.first.toFloat(),
+                txUnit = 555555L.asDataUnit(DataUnit.BYTE).bestDisplayableUnit.second,
+                rxValue = 777777L.asDataUnit(DataUnit.BYTE).bestDisplayableUnit.first.toFloat(),
+                rxUnit = 777777L.asDataUnit(DataUnit.BYTE).bestDisplayableUnit.second,
             ),
         )
     }
@@ -43,7 +66,7 @@ class TrafficHistoryViewModelTest {
     fun setUp() {
         Dispatchers.setMain(dispatcherProvider.default)
 
-        every { trafficRepository.getSessions() } returns flowOf(EXISTING_SESSIONS)
+        every { trafficRepository.getSessions() } returns flowOf(REPOSITORY_SESSIONS)
     }
 
     @AfterEach
@@ -60,7 +83,7 @@ class TrafficHistoryViewModelTest {
         viewModel.state.launchIn(backgroundScope)
         runCurrent()
 
-        viewModel.state.value.sessions shouldBe EXISTING_SESSIONS
+        viewModel.state.value.sessions shouldBe SESSION_ITEMS
     }
 
     private fun buildViewModel(): TrafficHistoryViewModel =

@@ -21,7 +21,6 @@ import androidx.compose.ui.unit.dp
 import androidx.hilt.lifecycle.viewmodel.compose.hiltViewModel
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import com.zackjp.devicedx.R
-import com.zackjp.devicedx.model.TrafficSession
 import com.zackjp.devicedx.shared.ui.ScreenScaffold
 import com.zackjp.devicedx.ui.theme.CyberAmber
 import com.zackjp.devicedx.ui.theme.Turquoise
@@ -50,12 +49,12 @@ fun TrafficHistoryScreenRoot(
 @Composable
 private fun ReadyContent(
     modifier: Modifier = Modifier,
-    sessions: List<TrafficSession>
+    sessions: List<TrafficSessionInfo>
 ) {
     LazyColumn(
         modifier = modifier,
     ) {
-        items(sessions, key = { it.id }) { session ->
+        items(sessions, key = { it.sessionId }) { session ->
             TrafficSessionRow(
                 modifier = Modifier.fillMaxWidth(),
                 session = session,
@@ -67,7 +66,7 @@ private fun ReadyContent(
 @Composable
 private fun TrafficSessionRow(
     modifier: Modifier = Modifier,
-    session: TrafficSession,
+    session: TrafficSessionInfo,
 ) {
     Row(
         modifier = modifier,
@@ -75,20 +74,20 @@ private fun TrafficSessionRow(
     ) {
         Text(
             modifier = Modifier.weight(1f),
-            text = stringResource(R.string.traffic_session_id_name, session.id),
+            text = stringResource(R.string.traffic_session_id_name, session.sessionId),
             overflow = TextOverflow.MiddleEllipsis,
         )
         TrafficRowStat(
             modifier = Modifier.width(108.dp),
             iconId = R.drawable.ic_outline_arrow_downward_alt_24,
             tint = RxLineColor,
-            text = session.totalRxBytes.toString(),
+            text = "${session.rxValue} ${session.rxUnit.displayString}",
         )
         TrafficRowStat(
             modifier = Modifier.width(108.dp),
             iconId = R.drawable.ic_outline_arrow_upward_alt_24,
             tint = TxLineColor,
-            text = session.totalTxBytes.toString(),
+            text = "${session.txValue} ${session.txUnit.displayString}",
         )
     }
 }
