@@ -21,12 +21,12 @@ import androidx.compose.ui.text.intl.Locale
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import com.zackjp.devicedx.R
-import com.zackjp.devicedx.model.Bytes.Companion.asDataUnit
+import com.zackjp.devicedx.feature.traffic.model.TrafficDisplayInfo
 import com.zackjp.devicedx.model.DataUnit
-import com.zackjp.devicedx.model.TrafficSession
 import com.zackjp.devicedx.shared.ui.AppCard
 import com.zackjp.devicedx.ui.theme.MediumGray
 import kotlinx.coroutines.delay
+import java.math.BigDecimal
 import kotlin.time.Clock
 import kotlin.time.Duration
 import kotlin.time.Instant
@@ -36,14 +36,17 @@ import kotlin.time.Instant
 internal fun SessionInfoCard(
     modifier: Modifier = Modifier,
     isActiveProvider: () -> Boolean,
-    sessionStartTimeProvider: () -> Long?,
-    trafficSessionProvider: () -> TrafficSession?,
+    trafficDisplayInfoProvider: () -> TrafficDisplayInfo?,
 ) {
     val isActive = isActiveProvider()
-    val sessionId = trafficSessionProvider()?.id
-    val sessionStartTime = sessionStartTimeProvider()
-    val totalRxBytes = trafficSessionProvider()?.totalRxBytes
-    val totalTxBytes = trafficSessionProvider()?.totalTxBytes
+    val displayData = trafficDisplayInfoProvider()
+
+    val sessionId = displayData?.session?.id
+    val sessionStartTime = displayData?.session?.startTime
+    val rxValue = displayData?.totalRxValue
+    val txValue = displayData?.totalTxValue
+    val rxUnit = displayData?.totalRxUnit
+    val txUnit = displayData?.totalTxUnit
 
     var sessionDuration by remember { mutableStateOf(Duration.ZERO) }
     LaunchedEffect(isActive, sessionStartTime) {
@@ -77,8 +80,8 @@ internal fun SessionInfoCard(
                     stringResource(R.string.traffic_session_id_name, it)
                 } ?: "-"),
                 stringResource(R.string.traffic_session_info_label_duration) to formatDuration(sessionDuration),
-                stringResource(R.string.traffic_session_info_label_total_incoming) to formatBytes(totalRxBytes),
-                stringResource(R.string.traffic_session_info_label_total_outgoing) to formatBytes(totalTxBytes),
+                stringResource(R.string.traffic_session_info_label_total_incoming) to formatBytes(rxValue, rxUnit),
+                stringResource(R.string.traffic_session_info_label_total_outgoing) to formatBytes(txValue, txUnit),
             )
 
             FlowRow(
@@ -144,12 +147,9 @@ private fun formatDuration(sessionDuration: Duration): String =
         }
     }
 
-private fun formatBytes(bytes: Long?): String =
-    if (bytes == null) {
+private fun formatBytes(valueText: BigDecimal?, unit: DataUnit?): String =
+    if (valueText == null || unit == null) {
         "-"
     } else {
-        val displayStat = bytes.asDataUnit(DataUnit.BYTE).bestDisplayableUnit
-        val valueText = displayStat.first.toPlainString()
-        val unitText = displayStat.second.displayString
-        "$valueText $unitText"
+        "$valueText ${unit.displayString}"
     }

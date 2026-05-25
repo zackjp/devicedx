@@ -4,12 +4,15 @@ import app.cash.turbine.test
 import com.zackjp.devicedx.concurrency.TestDispatcherProvider
 import com.zackjp.devicedx.data.RecordingState
 import com.zackjp.devicedx.data.TrafficRepository
+import com.zackjp.devicedx.feature.traffic.model.computeDisplayInfo
 import com.zackjp.devicedx.model.TrafficMetric
 import com.zackjp.devicedx.model.TrafficSession
 import com.zackjp.devicedx.model.fake
 import io.kotest.matchers.nulls.beNull
 import io.kotest.matchers.should
 import io.kotest.matchers.shouldBe
+import io.kotest.matchers.shouldNot
+import io.kotest.matchers.shouldNotBe
 import io.mockk.every
 import io.mockk.just
 import io.mockk.mockk
@@ -73,12 +76,12 @@ class TrafficViewModelTest {
             recordingStateFlow.value = RecordingState.Active(repoSession1)
             advanceUntilIdle()
 
-            expectMostRecentItem().trafficSession shouldBe repoSession1
+            expectMostRecentItem().trafficDisplayInfo?.session shouldBe repoSession1
 
             viewModel.stopMonitor()
             advanceUntilIdle()
 
-            expectMostRecentItem().trafficSession should beNull()
+            expectMostRecentItem().trafficDisplayInfo?.session should beNull()
         }
     }
 
@@ -101,7 +104,7 @@ class TrafficViewModelTest {
         every { clock.now() } returns Instant.fromEpochMilliseconds(expectedClockTime)
 
         viewModel.screenState.test {
-            expectMostRecentItem().trafficSession should beNull()
+            expectMostRecentItem().trafficDisplayInfo?.session should beNull()
 
             viewModel.startMonitor()
             advanceUntilIdle()
@@ -109,7 +112,38 @@ class TrafficViewModelTest {
             recordingStateFlow.value = RecordingState.Active(repoSession)
             advanceUntilIdle()
 
-            expectMostRecentItem().trafficSession shouldBe repoSession
+            expectMostRecentItem().trafficDisplayInfo?.session shouldBe repoSession
+        }
+    }
+
+    @Test
+    fun startMonitor_WhenTrafficDataEmitted_ComputesTrafficDisplayInfo() = runTest {
+        initViewModel()
+
+        val repoSession = repoSession1
+        val expectedClockTime = repoSession.maxTrafficTimestamp()
+        every { clock.now() } returns Instant.fromEpochMilliseconds(expectedClockTime)
+
+        viewModel.screenState.test {
+            expectMostRecentItem().trafficDisplayInfo?.session should beNull()
+
+            viewModel.startMonitor()
+            advanceUntilIdle()
+
+            recordingStateFlow.value = RecordingState.Active(repoSession)
+            advanceUntilIdle()
+
+            val expected = expectMostRecentItem().trafficDisplayInfo
+            expected shouldNot beNull()
+
+            val session = expected!!.session
+            val expectedCalculation = session.computeDisplayInfo()
+            expected.totalTxValue shouldNotBe 0
+            expected.totalTxValue shouldBe expectedCalculation.totalTxValue
+            expected.totalTxUnit shouldBe expectedCalculation.totalTxUnit
+            expected.totalRxValue shouldNotBe 0
+            expected.totalRxValue shouldBe expectedCalculation.totalRxValue
+            expected.totalRxUnit shouldBe expectedCalculation.totalRxUnit
         }
     }
 
@@ -123,7 +157,7 @@ class TrafficViewModelTest {
             recordingStateFlow.value = RecordingState.Active(session)
             advanceUntilIdle()
 
-            expectMostRecentItem().trafficSession?.startTime shouldBe session.startTime
+            expectMostRecentItem().trafficDisplayInfo?.session?.startTime shouldBe session.startTime
         }
     }
 
@@ -137,7 +171,7 @@ class TrafficViewModelTest {
         viewModel.screenState.test {
             advanceUntilIdle()
 
-            expectMostRecentItem().trafficSession shouldBe session
+            expectMostRecentItem().trafficDisplayInfo?.session shouldBe session
         }
     }
 
@@ -215,7 +249,7 @@ class TrafficViewModelTest {
             recordingStateFlow.value = RecordingState.Active(expectedTrafficSession)
             runCurrent()
 
-            expectMostRecentItem().trafficSession shouldBe expectedTrafficSession
+            expectMostRecentItem().trafficDisplayInfo?.session shouldBe expectedTrafficSession
         }
     }
 

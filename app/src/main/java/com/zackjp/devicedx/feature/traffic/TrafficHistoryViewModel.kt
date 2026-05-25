@@ -4,9 +4,7 @@ import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import com.zackjp.devicedx.concurrency.DispatcherProvider
 import com.zackjp.devicedx.data.TrafficRepository
-import com.zackjp.devicedx.model.Bytes.Companion.asDataUnit
-import com.zackjp.devicedx.model.DataUnit
-import com.zackjp.devicedx.model.TrafficSession
+import com.zackjp.devicedx.feature.traffic.model.computeDisplayInfo
 import dagger.hilt.android.lifecycle.HiltViewModel
 import kotlinx.coroutines.ExperimentalCoroutinesApi
 import kotlinx.coroutines.flow.MutableStateFlow
@@ -32,22 +30,9 @@ class TrafficHistoryViewModel @Inject constructor(
 
     val state = _state.asStateFlow()
         .combine(trafficRepository.getSessions()) { state, sessions ->
-            state.copy(sessions = sessions.map { it.toSessionInfo() })
+            state.copy(sessions = sessions.map { it.computeDisplayInfo() })
         }
         .flowOn(dispatcherProvider.default)
         .stateIn(viewModelScope, SharingStarted.WhileSubscribed(1_000), _state.value)
-
-    private fun TrafficSession.toSessionInfo(): TrafficSessionInfo {
-        val rxCalculationResult = this.totalRxBytes.asDataUnit(DataUnit.BYTE).bestDisplayableUnit
-        val txCalculationResult = this.totalTxBytes.asDataUnit(DataUnit.BYTE).bestDisplayableUnit
-
-        return TrafficSessionInfo(
-            sessionId = this.id,
-            rxValue = rxCalculationResult.first.toFloat(),
-            rxUnit = rxCalculationResult.second,
-            txValue = txCalculationResult.first.toFloat(),
-            txUnit = txCalculationResult.second,
-        )
-    }
 
 }

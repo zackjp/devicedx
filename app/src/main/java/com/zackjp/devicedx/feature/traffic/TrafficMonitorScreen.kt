@@ -69,7 +69,7 @@ fun TrafficMonitorScreenRoot(
     val snackbarHostState = remember { SnackbarHostState() }
 
     val isInPipMode = rememberIsInPipMode(
-        isAllowedProvider = { state.trafficSession != null },
+        isAllowedProvider = { state.trafficDisplayInfo != null },
         aspectRatioNumerator = ASPECT_RATIO_NUMERATOR,
         aspectRatioDenominator = ASPECT_RATIO_DENOMINATOR,
     )
@@ -198,8 +198,8 @@ private fun MainContent(
         }
     }
 
-    val isSessionActiveProvider = { stateProvider().trafficSession != null }
-    val trafficSessionProvider = { stateProvider().trafficSession }
+    val isSessionActiveProvider = { stateProvider().trafficDisplayInfo != null }
+    val trafficDisplayInfoProvider = { stateProvider().trafficDisplayInfo }
 
     Column(
         modifier = modifier,
@@ -224,7 +224,7 @@ private fun MainContent(
                         .fillMaxHeight()
                         .padding(16.dp),
                     metricsProvider = {
-                        trafficSessionProvider()?.trafficMetrics ?: emptyList()
+                        trafficDisplayInfoProvider()?.session?.trafficMetrics ?: emptyList()
                     },
                     isSessionActiveProvider = isSessionActiveProvider,
                     rxColor = RxLineColor,
@@ -250,8 +250,7 @@ private fun MainContent(
                 SessionInfoCard(
                     modifier = Modifier.fillMaxWidth(),
                     isActiveProvider = isSessionActiveProvider,
-                    sessionStartTimeProvider = { stateProvider().trafficSession?.startTime },
-                    trafficSessionProvider = trafficSessionProvider,
+                    trafficDisplayInfoProvider = trafficDisplayInfoProvider,
                 )
 
                 Spacer(Modifier.weight(1f))

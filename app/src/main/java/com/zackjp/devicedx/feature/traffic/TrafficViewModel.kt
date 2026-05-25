@@ -4,6 +4,7 @@ import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import com.zackjp.devicedx.data.RecordingState
 import com.zackjp.devicedx.data.TrafficRepository
+import com.zackjp.devicedx.feature.traffic.model.computeDisplayInfo
 import com.zackjp.devicedx.model.TrafficMetric
 import com.zackjp.devicedx.model.TrafficSession
 import dagger.hilt.android.lifecycle.HiltViewModel
@@ -25,7 +26,7 @@ class TrafficViewModel @Inject constructor(
             val session = (recording as? RecordingState.Active)?.session
             val error = if (recording as? RecordingState.Error != null) TrafficScreenError.SessionError else null
             TrafficScreenState(
-                trafficSession = session,
+                trafficDisplayInfo = session?.computeDisplayInfo(),
                 graphData = session?.computeFilteredGraphData() ?: emptyList(),
                 error = error,
             )
@@ -33,7 +34,7 @@ class TrafficViewModel @Inject constructor(
         .stateIn(
             viewModelScope,
             SharingStarted.WhileSubscribed(5000),
-            TrafficScreenState(graphData = emptyList(), trafficSession = null),
+            TrafficScreenState(graphData = emptyList(), trafficDisplayInfo = null),
         )
 
     fun startMonitor() {

@@ -8,9 +8,11 @@ fun TrafficSession.Companion.fake(
 ) = TrafficSession(
     id = number,
     startTime = number * 1000L,
+    totalRxBytes = number * 100_000,
+    totalTxBytes = number * 10_000,
     trafficMetrics = List(metricsCount) { TrafficMetric.fake(it.toLong()) }.let {
         if (sortDesc) it.reversed() else it
-    }
+    },
 )
 
 fun TrafficData.Companion.fake(number: Long): TrafficData = TrafficData(

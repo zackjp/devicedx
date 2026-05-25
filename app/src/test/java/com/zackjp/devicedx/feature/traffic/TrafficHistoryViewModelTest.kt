@@ -2,6 +2,7 @@ package com.zackjp.devicedx.feature.traffic
 
 import com.zackjp.devicedx.concurrency.TestDispatcherProvider
 import com.zackjp.devicedx.data.TrafficRepository
+import com.zackjp.devicedx.feature.traffic.model.TrafficDisplayInfo
 import com.zackjp.devicedx.model.Bytes.Companion.asDataUnit
 import com.zackjp.devicedx.model.DataUnit
 import com.zackjp.devicedx.model.TrafficSession
@@ -41,19 +42,19 @@ class TrafficHistoryViewModelTest {
             ),
         )
         private val SESSION_ITEMS = listOf(
-            TrafficSessionInfo(
-                sessionId = 7L,
-                txValue = 111111L.asDataUnit(DataUnit.BYTE).bestDisplayableUnit.first.toFloat(),
-                txUnit = 111111L.asDataUnit(DataUnit.BYTE).bestDisplayableUnit.second,
-                rxValue = 333333L.asDataUnit(DataUnit.BYTE).bestDisplayableUnit.first.toFloat(),
-                rxUnit = 333333L.asDataUnit(DataUnit.BYTE).bestDisplayableUnit.second,
+            TrafficDisplayInfo(
+                session = REPOSITORY_SESSIONS[0],
+                totalTxValue = REPOSITORY_SESSIONS[0].totalTxBytes.asDataUnit(DataUnit.BYTE).bestDisplayableUnit.first,
+                totalTxUnit = REPOSITORY_SESSIONS[0].totalTxBytes.asDataUnit(DataUnit.BYTE).bestDisplayableUnit.second,
+                totalRxValue = REPOSITORY_SESSIONS[0].totalRxBytes.asDataUnit(DataUnit.BYTE).bestDisplayableUnit.first,
+                totalRxUnit = REPOSITORY_SESSIONS[0].totalRxBytes.asDataUnit(DataUnit.BYTE).bestDisplayableUnit.second,
             ),
-            TrafficSessionInfo(
-                sessionId = 13L,
-                txValue = 555555L.asDataUnit(DataUnit.BYTE).bestDisplayableUnit.first.toFloat(),
-                txUnit = 555555L.asDataUnit(DataUnit.BYTE).bestDisplayableUnit.second,
-                rxValue = 777777L.asDataUnit(DataUnit.BYTE).bestDisplayableUnit.first.toFloat(),
-                rxUnit = 777777L.asDataUnit(DataUnit.BYTE).bestDisplayableUnit.second,
+            TrafficDisplayInfo(
+                session = REPOSITORY_SESSIONS[1],
+                totalTxValue = REPOSITORY_SESSIONS[1].totalTxBytes.asDataUnit(DataUnit.BYTE).bestDisplayableUnit.first,
+                totalTxUnit = REPOSITORY_SESSIONS[1].totalTxBytes.asDataUnit(DataUnit.BYTE).bestDisplayableUnit.second,
+                totalRxValue = REPOSITORY_SESSIONS[1].totalRxBytes.asDataUnit(DataUnit.BYTE).bestDisplayableUnit.first,
+                totalRxUnit = REPOSITORY_SESSIONS[1].totalRxBytes.asDataUnit(DataUnit.BYTE).bestDisplayableUnit.second,
             ),
         )
     }
