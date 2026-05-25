@@ -16,7 +16,7 @@
     <string name="traffic_session_card_label">Session Info</string>
     <string name="traffic_session_id_name">Session %1$d</string>
     <string name="traffic_session_info_label_duration">DURATION</string>
-    <string name="traffic_session_info_label_session_id">SESSION ID</string>
+    <string name="traffic_session_info_label_session_start">START TIME</string>
     <string name="traffic_session_info_label_total_incoming">TOTAL INCOMING</string>
     <string name="traffic_session_info_label_total_outgoing">TOTAL OUTGOING</string>
     <string name="traffic_stat_label_rx">CURRENT INCOMING</string>

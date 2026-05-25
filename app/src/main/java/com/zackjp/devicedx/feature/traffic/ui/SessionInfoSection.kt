@@ -27,10 +27,15 @@ import com.zackjp.devicedx.shared.ui.AppCard
 import com.zackjp.devicedx.ui.theme.MediumGray
 import kotlinx.coroutines.delay
 import java.math.BigDecimal
+import java.time.Instant
+import java.time.LocalDateTime
+import java.time.ZoneId
+import java.time.format.DateTimeFormatter
 import kotlin.time.Clock
 import kotlin.time.Duration
-import kotlin.time.Instant
 
+
+private val sessionStartFormatter = DateTimeFormatter.ofPattern("MMM d, h:mm a")
 
 @Composable
 internal fun SessionInfoCard(
@@ -51,7 +56,7 @@ internal fun SessionInfoCard(
     var sessionDuration by remember { mutableStateOf(Duration.ZERO) }
     LaunchedEffect(isActive, sessionStartTime) {
         if (sessionStartTime != null) {
-            val startInstant = Instant.fromEpochMilliseconds(sessionStartTime)
+            val startInstant = kotlin.time.Instant.fromEpochMilliseconds(sessionStartTime)
             while (isActive) {
                 val now = Clock.System.now()
                 sessionDuration = now - startInstant
@@ -68,20 +73,30 @@ internal fun SessionInfoCard(
                 .fillMaxWidth()
                 .padding(16.dp),
         ) {
+            val title = sessionId?.let { stringResource(R.string.traffic_session_id_name, it) }
+                ?: stringResource(R.string.traffic_session_card_label)
             Text(
                 style = MaterialTheme.typography.titleMedium,
-                text = stringResource(R.string.traffic_session_card_label),
+                text = title,
             )
 
             Spacer(Modifier.height(12.dp))
 
             val sessionStats: List<Pair<String, String>> = listOf(
-                stringResource(R.string.traffic_session_info_label_session_id) to (sessionId?.let {
-                    stringResource(R.string.traffic_session_id_name, it)
-                } ?: "-"),
-                stringResource(R.string.traffic_session_info_label_duration) to formatDuration(sessionDuration),
-                stringResource(R.string.traffic_session_info_label_total_incoming) to formatBytes(rxValue, rxUnit),
-                stringResource(R.string.traffic_session_info_label_total_outgoing) to formatBytes(txValue, txUnit),
+                stringResource(R.string.traffic_session_info_label_session_start) to formatStartTime(
+                    sessionStartTime
+                ),
+                stringResource(R.string.traffic_session_info_label_duration) to formatDuration(
+                    sessionDuration
+                ),
+                stringResource(R.string.traffic_session_info_label_total_incoming) to formatBytes(
+                    rxValue,
+                    rxUnit
+                ),
+                stringResource(R.string.traffic_session_info_label_total_outgoing) to formatBytes(
+                    txValue,
+                    txUnit
+                ),
             )
 
             FlowRow(
@@ -125,6 +140,15 @@ private fun SessionInfoCell(
             text = statValue,
         )
     }
+}
+
+private fun formatStartTime(startTime: Long?): String {
+    val nonNullStartTime = startTime ?: return "-"
+
+    val instant = Instant.ofEpochMilli(nonNullStartTime)
+    val date = LocalDateTime.ofInstant(instant, ZoneId.systemDefault())
+
+    return date.format(sessionStartFormatter)
 }
 
 private fun formatDuration(sessionDuration: Duration): String =
