@@ -249,7 +249,6 @@ private fun MainContent(
 
                 SessionInfoCard(
                     modifier = Modifier.fillMaxWidth(),
-                    isActiveProvider = isSessionActiveProvider,
                     trafficDisplayInfoProvider = trafficDisplayInfoProvider,
                 )
 

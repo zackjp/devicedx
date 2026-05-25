@@ -40,28 +40,31 @@ private val sessionStartFormatter = DateTimeFormatter.ofPattern("MMM d, h:mm a")
 @Composable
 internal fun SessionInfoCard(
     modifier: Modifier = Modifier,
-    isActiveProvider: () -> Boolean,
     trafficDisplayInfoProvider: () -> TrafficDisplayInfo?,
 ) {
-    val isActive = isActiveProvider()
     val displayData = trafficDisplayInfoProvider()
 
     val sessionId = displayData?.session?.id
     val sessionStartTime = displayData?.session?.startTime
+    val sessionEndTime = displayData?.session?.endTime
     val rxValue = displayData?.totalRxValue
     val txValue = displayData?.totalTxValue
     val rxUnit = displayData?.totalRxUnit
     val txUnit = displayData?.totalTxUnit
 
     var sessionDuration by remember { mutableStateOf(Duration.ZERO) }
-    LaunchedEffect(isActive, sessionStartTime) {
-        if (sessionStartTime != null) {
-            val startInstant = kotlin.time.Instant.fromEpochMilliseconds(sessionStartTime)
-            while (isActive) {
+    LaunchedEffect(sessionEndTime, sessionStartTime) {
+        val nonNullStartTime = sessionStartTime ?: return@LaunchedEffect
+        val startInstant = kotlin.time.Instant.fromEpochMilliseconds(nonNullStartTime)
+        if (sessionEndTime == null) {
+            while (true) {
                 val now = Clock.System.now()
                 sessionDuration = now - startInstant
                 delay(1000)
             }
+        } else {
+            val endInstant = kotlin.time.Instant.fromEpochMilliseconds(sessionEndTime)
+            sessionDuration = endInstant - startInstant
         }
     }
 
