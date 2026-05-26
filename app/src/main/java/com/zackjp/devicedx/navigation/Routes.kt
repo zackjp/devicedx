@@ -7,7 +7,7 @@ interface Route {
     @Serializable
     data object Dashboard : Route, NavKey
     @Serializable
-    data object TrafficMonitor : Route, NavKey
+    data class TrafficMonitor(val sessionId: Long? = null) : Route, NavKey
     @Serializable
     data object TrafficHistory : Route, NavKey
     @Serializable

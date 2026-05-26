@@ -10,6 +10,7 @@ import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.remember
 import androidx.compose.ui.Modifier
+import androidx.hilt.lifecycle.viewmodel.compose.hiltViewModel
 import androidx.lifecycle.viewmodel.navigation3.rememberViewModelStoreNavEntryDecorator
 import androidx.navigation3.runtime.entryProvider
 import androidx.navigation3.runtime.rememberNavBackStack
@@ -20,6 +21,7 @@ import com.zackjp.devicedx.feature.dashboard.DashboardScreen
 import com.zackjp.devicedx.feature.latency.LatencyScreenRoot
 import com.zackjp.devicedx.feature.traffic.TrafficHistoryScreenRoot
 import com.zackjp.devicedx.feature.traffic.TrafficMonitorScreenRoot
+import com.zackjp.devicedx.feature.traffic.TrafficViewModel
 import com.zackjp.devicedx.feature.wifi.WifiScreenRoot
 
 val TRANSITION_ANIM_FORWARD: AnimatedContentTransitionScope<Scene<Any>>.() -> ContentTransform =
@@ -38,8 +40,11 @@ fun DeviceDxNav3Graph(
         NavActions(
             toDashboard = { backStack.add(Route.Dashboard) },
             toLatencyMonitor = { backStack.add(Route.LatencyMonitor) },
-            toTrafficMonitor = { backStack.add(Route.TrafficMonitor) },
-            toTrafficHistory = { backStack.add(Route.TrafficHistory) },
+            toTrafficMonitor = { backStack.add(Route.TrafficMonitor()) },
+            toTrafficHistory = {
+                backStack.removeAll { it is Route.TrafficHistory }
+                backStack.add(Route.TrafficHistory)
+            },
             toWifiMonitor = { backStack.add(Route.WifiMonitor) }
         )
     }
@@ -70,18 +75,31 @@ fun DeviceDxNav3Graph(
                 )
             }
 
-            entry<Route.TrafficMonitor> {
+            entry<Route.TrafficMonitor> { key ->
+                val trafficViewModel: TrafficViewModel = hiltViewModel(
+                    creationCallback = { factory: TrafficViewModel.Factory ->
+                        factory.create(key.sessionId)
+                    }
+                )
+
                 TrafficMonitorScreenRoot(
                     modifier = Modifier
                         .fillMaxWidth(),
                     navActions = navActions,
+                    viewModel = trafficViewModel,
                 )
             }
 
-            entry<Route.TrafficHistory> {
+            entry<Route.TrafficHistory>(
+                clazzContentKey = { Route.TrafficHistory::class.qualifiedName!! },
+            ) {
                 TrafficHistoryScreenRoot(
                     modifier = Modifier
                         .fillMaxWidth(),
+                    onNavigateToSession = { sessionId ->
+                        backStack.removeAll { it is Route.TrafficMonitor || it is Route.TrafficHistory }
+                        backStack.add(Route.TrafficMonitor(sessionId))
+                    }
                 )
             }
 

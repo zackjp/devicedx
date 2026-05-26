@@ -48,8 +48,8 @@ class TrafficRepository @Inject constructor(
     private val trafficGraphUtil: TrafficGraphUtil,
 ) {
 
-    private val _recordingState = MutableStateFlow<RecordingState>(RecordingState.Idle)
-    val recordingState: StateFlow<RecordingState> = _recordingState.asStateFlow()
+    private val _currentActiveSession = MutableStateFlow<RecordingState>(RecordingState.Idle)
+    val currentActiveSession: StateFlow<RecordingState> = _currentActiveSession.asStateFlow()
 
     private var recordingJob: Job? = null
 
@@ -79,13 +79,17 @@ class TrafficRepository @Inject constructor(
             sessionWithMetrics.toDomain()
         }.flowOn(dispatcherProvider.io)
 
+    fun getSessionById(sessionId: Long): Flow<TrafficSession> =
+        trafficDao.getSessionWithTrafficMetrics(sessionId)
+            .map { it.toDomain() }
+
     fun startRecording() {
         recordingJob?.cancel()
         recordingJob = recordAndObserveTrafficMetricsSession
-            .onStart { _recordingState.value = RecordingState.Idle }
-            .onEach { session -> _recordingState.value = RecordingState.Active(session) }
+            .onStart { _currentActiveSession.value = RecordingState.Idle }
+            .onEach { session -> _currentActiveSession.value = RecordingState.Active(session) }
             .onCompletion { cause ->
-                _recordingState.value = when {
+                _currentActiveSession.value = when {
                     cause == null || cause is CancellationException -> RecordingState.Idle
                     else -> RecordingState.Error
                 }

@@ -1,5 +1,6 @@
 package com.zackjp.devicedx.feature.traffic
 
+import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.padding
@@ -19,7 +20,8 @@ import com.zackjp.devicedx.shared.ui.ScreenScaffold
 @Composable
 fun TrafficHistoryScreenRoot(
     modifier: Modifier = Modifier,
-    viewModel: TrafficHistoryViewModel = hiltViewModel()
+    onNavigateToSession: (Long) -> Unit,
+    viewModel: TrafficHistoryViewModel = hiltViewModel(),
 ) {
     val state by viewModel.state.collectAsStateWithLifecycle()
 
@@ -28,6 +30,7 @@ fun TrafficHistoryScreenRoot(
     ) {
         ReadyContent(
             modifier = Modifier.padding(horizontal = 12.dp),
+            onNavigateToSession = onNavigateToSession,
             sessionDiplayInfoList = state.sessions,
         )
     }
@@ -36,6 +39,7 @@ fun TrafficHistoryScreenRoot(
 @Composable
 private fun ReadyContent(
     modifier: Modifier = Modifier,
+    onNavigateToSession: (Long) -> Unit,
     sessionDiplayInfoList: List<TrafficDisplayInfo>
 ) {
     LazyColumn(
@@ -44,7 +48,9 @@ private fun ReadyContent(
     ) {
         items(sessionDiplayInfoList, key = { it.session.id }) { sessionDisplayInfo ->
             SessionInfoCard(
-                modifier = Modifier.fillMaxWidth(),
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .clickable { onNavigateToSession(sessionDisplayInfo.session.id) },
                 trafficDisplayInfoProvider = { sessionDisplayInfo },
             )
         }

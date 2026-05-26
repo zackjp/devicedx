@@ -100,7 +100,7 @@ class TrafficRepositoryTest {
     }
 
     @Test
-    fun startRecording_UpdatesRecordingStateFromDbEmissions() = runTest {
+    fun startRecording_WhenDatabaseReadFlowEmitsSessionEntity_EmitsDomainModel() = runTest {
         val sessionStartTime = 12345L
         val expectedTotalRxBytes = 8888L
         val expectedTotalTxBytes = 9999L
@@ -137,7 +137,7 @@ class TrafficRepositoryTest {
         )
 
         val repository = buildRepository()
-        repository.recordingState.test {
+        repository.currentActiveSession.test {
             awaitItem() shouldBe RecordingState.Idle
 
             repository.startRecording()
@@ -182,7 +182,7 @@ class TrafficRepositoryTest {
         repository.stopRecording()
         runCurrent()
 
-        repository.recordingState.value shouldBe RecordingState.Idle
+        repository.currentActiveSession.value shouldBe RecordingState.Idle
     }
 
     @Test
@@ -207,7 +207,7 @@ class TrafficRepositoryTest {
         repository.startRecording()
         runCurrent()
 
-        repository.recordingState.value shouldBe RecordingState.Error
+        repository.currentActiveSession.value shouldBe RecordingState.Error
     }
 
     @Test
@@ -219,7 +219,7 @@ class TrafficRepositoryTest {
         trafficSessionReadFlow.emit(FlowCommand.Throw(CustomException("Fake db read exception")))
         runCurrent()
 
-        repository.recordingState.value shouldBe RecordingState.Error
+        repository.currentActiveSession.value shouldBe RecordingState.Error
     }
 
     @Test
@@ -231,7 +231,7 @@ class TrafficRepositoryTest {
         trafficSessionWriteFlow.emit(FlowCommand.Throw(CustomException("Fake db write exception")))
         runCurrent()
 
-        repository.recordingState.value shouldBe RecordingState.Error
+        repository.currentActiveSession.value shouldBe RecordingState.Error
     }
 
     @Test
@@ -279,6 +279,48 @@ class TrafficRepositoryTest {
             trafficSessionsFlow.emit(FlowCommand.Emit(entityModels))
 
             awaitItem() shouldBe domainModels
+        }
+    }
+
+    @Test
+    fun getSessionById_WhenEmits_MapsToDomainModel() = runTest {
+        val metricsEntity = TrafficSessionWithMetrics(
+            TrafficSessionEntity(
+                SESSION_ID,
+                12345L,
+                totalRxBytes = 8888L,
+                totalTxBytes = 9999L,
+            ),
+            listOf(
+                TrafficMetricEntity(
+                    metricId = 10L,
+                    sessionId = SESSION_ID,
+                    timestamp = 1250L,
+                    rxBytesPerSec = 80_000L,
+                    txBytesPerSec = 35_000L,
+                ),
+            ),
+        )
+        val expectedDomain = TrafficSession(
+            id = SESSION_ID,
+            startTime = 12345L,
+            totalRxBytes = 8888L,
+            totalTxBytes = 9999L,
+            trafficMetrics = listOf(
+                TrafficMetric(
+                    timestamp = 1250L,
+                    rxBytesPerSec = 80_000L,
+                    txBytesPerSec = 35_000L,
+                )
+            ),
+        )
+
+        val repository = buildRepository()
+
+        repository.getSessionById(SESSION_ID).test {
+            trafficSessionReadFlow.emit(FlowCommand.Emit(metricsEntity))
+
+            expectMostRecentItem() shouldBe expectedDomain
         }
     }
 

@@ -21,6 +21,7 @@ import io.mockk.verify
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.ExperimentalCoroutinesApi
 import kotlinx.coroutines.flow.MutableStateFlow
+import kotlinx.coroutines.flow.flowOf
 import kotlinx.coroutines.flow.launchIn
 import kotlinx.coroutines.test.TestScope
 import kotlinx.coroutines.test.advanceUntilIdle
@@ -31,36 +32,30 @@ import kotlinx.coroutines.test.setMain
 import org.junit.jupiter.api.AfterEach
 import org.junit.jupiter.api.BeforeEach
 import org.junit.jupiter.api.Test
-import kotlin.time.Clock
-import kotlin.time.Instant
 
 @OptIn(ExperimentalCoroutinesApi::class) // advanceUntilIdle()
 class TrafficViewModelTest {
 
-    private val clock = mockk<Clock>()
     private val testDispatcherProvider = TestDispatcherProvider()
     private val trafficRepository = mockk<TrafficRepository>()
 
     private val recordingStateFlow = MutableStateFlow<RecordingState>(RecordingState.Idle)
 
-    private lateinit var viewModel: TrafficViewModel
-
     val repoSession1 = TrafficSession.fake(number = 100003, metricsCount = 2, sortDesc = true)
-    val repoSession2 = TrafficSession.fake(number = 100007, metricsCount = 2, sortDesc = true)
+    val repoSessionById = TrafficSession.fake(number = SESSION_ID, metricsCount = 2, sortDesc = true)
+
+    private companion object {
+        const val SESSION_ID = 113355L
+    }
 
     @BeforeEach
     fun setUp() {
         Dispatchers.setMain(testDispatcherProvider.default)
 
-        every { clock.now() } returns Instant.fromEpochMilliseconds(10)
-        every { trafficRepository.recordingState } returns recordingStateFlow
+        every { trafficRepository.currentActiveSession } returns recordingStateFlow
         every { trafficRepository.startRecording() } just runs
         every { trafficRepository.stopRecording() } answers { recordingStateFlow.value = RecordingState.Idle }
-
-        viewModel = TrafficViewModel(
-            clock = clock,
-            trafficRepository = trafficRepository,
-        )
+        every { trafficRepository.getSessionById(SESSION_ID) } returns flowOf(repoSessionById)
     }
 
     @AfterEach
@@ -70,7 +65,7 @@ class TrafficViewModelTest {
 
     @Test
     fun stopMonitor_ClearsTheSession() = runTest {
-        initViewModel()
+        val viewModel = initViewModel()
 
         viewModel.screenState.test {
             recordingStateFlow.value = RecordingState.Active(repoSession1)
@@ -87,7 +82,7 @@ class TrafficViewModelTest {
 
     @Test
     fun stopMonitor_CallsRepositoryStopRecording() = runTest {
-        initViewModel()
+        val viewModel = initViewModel()
 
         viewModel.startMonitor()
         viewModel.stopMonitor()
@@ -97,11 +92,9 @@ class TrafficViewModelTest {
 
     @Test
     fun startMonitor_WhenTrafficDataEmitted_UpdatesTrafficSession() = runTest {
-        initViewModel()
+        val viewModel = initViewModel()
 
         val repoSession = repoSession1
-        val expectedClockTime = repoSession.maxTrafficTimestamp()
-        every { clock.now() } returns Instant.fromEpochMilliseconds(expectedClockTime)
 
         viewModel.screenState.test {
             expectMostRecentItem().trafficDisplayInfo?.session should beNull()
@@ -118,11 +111,9 @@ class TrafficViewModelTest {
 
     @Test
     fun startMonitor_WhenTrafficDataEmitted_ComputesTrafficDisplayInfo() = runTest {
-        initViewModel()
+        val viewModel = initViewModel()
 
         val repoSession = repoSession1
-        val expectedClockTime = repoSession.maxTrafficTimestamp()
-        every { clock.now() } returns Instant.fromEpochMilliseconds(expectedClockTime)
 
         viewModel.screenState.test {
             expectMostRecentItem().trafficDisplayInfo?.session should beNull()
@@ -149,7 +140,7 @@ class TrafficViewModelTest {
 
     @Test
     fun init_WhenRepositoryEmitsActiveSession_StartTimeMatchesSessionStartTime() = runTest {
-        initViewModel()
+        val viewModel = initViewModel()
 
         val session = repoSession1
 
@@ -166,7 +157,7 @@ class TrafficViewModelTest {
         val session = TrafficSession.fake(number = 777, metricsCount = 0)
         recordingStateFlow.value = RecordingState.Active(session)
 
-        initViewModel()
+        val viewModel = initViewModel()
 
         viewModel.screenState.test {
             advanceUntilIdle()
@@ -176,29 +167,44 @@ class TrafficViewModelTest {
     }
 
     @Test
-    fun startMonitor_WhenTrafficDataEmitted_FiltersLastXSeconds() = runTest {
-        initViewModel()
+    fun init_WhenCreatedWithSessionId_LoadsSessionById() = runTest {
+        val viewModel = initViewModel(sessionId = repoSessionById.id)
+
+        viewModel.screenState.test {
+            awaitItem().trafficDisplayInfo?.session shouldBe null
+
+            runCurrent()
+            awaitItem().trafficDisplayInfo?.session shouldBe repoSessionById
+        }
+    }
+
+    @Test
+    fun startMonitor_WhenTrafficMetricsEmitted_FiltersLastXSecondsBeforeFinalMetric() = runTest {
+        val viewModel = initViewModel()
 
         val expectedFilterWindow = 30_000L
         val currentTime = 50_000L
-        every { clock.now() } returns Instant.fromEpochMilliseconds(currentTime)
-        val metric1 = TrafficMetric.fake(101)
+
+        val belowWindowMetric = TrafficMetric.fake(101)
             .copy(timestamp = currentTime - expectedFilterWindow - 1000)
-        val metric2 = TrafficMetric.fake(201)
+        val onWindowMetric = TrafficMetric.fake(201)
             .copy(timestamp = currentTime - expectedFilterWindow)
-        val metric3 = TrafficMetric.fake(301)
+        val aboveWindowMetric = TrafficMetric.fake(301)
             .copy(timestamp = currentTime - expectedFilterWindow + 1000)
+        val latestTimeMetric = TrafficMetric.fake(401)
+            .copy(timestamp = currentTime)
         val session = TrafficSession.fake(number = 10003, metricsCount = 0).copy(
             // Specify metrics ourselves here in descending order to match TrafficRepo's
             // contract and to explicitly verify filtering in this unit test
             trafficMetrics = listOf(
-                metric3,
-                metric2,
-                metric1,
+                latestTimeMetric,
+                aboveWindowMetric,
+                onWindowMetric,
+                belowWindowMetric,
             )
         )
         // Then ensure the filtered data is in ascending order for the View
-        val expectedMetrics = listOf(metric2, metric3)
+        val expectedMetrics = listOf(onWindowMetric, aboveWindowMetric, latestTimeMetric)
 
         viewModel.screenState.test {
             viewModel.startMonitor()
@@ -213,7 +219,7 @@ class TrafficViewModelTest {
 
     @Test
     fun startMonitor_WhenThrowsException_UpdatesErrorState() = runTest {
-        initViewModel()
+        val viewModel = initViewModel()
 
         viewModel.screenState.test {
             viewModel.startMonitor()
@@ -228,7 +234,7 @@ class TrafficViewModelTest {
 
     @Test
     fun startMonitor_WhenFlowExceptionThrown_CanBeRestarted() = runTest {
-        initViewModel()
+        val viewModel = initViewModel()
 
         viewModel.startMonitor()
         runCurrent()
@@ -255,7 +261,7 @@ class TrafficViewModelTest {
 
     @Test
     fun consumeErrorState_ClearsErrorState() = runTest {
-        initViewModel()
+        val viewModel = initViewModel()
 
         viewModel.startMonitor()
         runCurrent()
@@ -271,11 +277,17 @@ class TrafficViewModelTest {
         viewModel.screenState.value.error should beNull()
     }
 
-    private fun TestScope.initViewModel() {
+    private fun TestScope.initViewModel(
+        sessionId: Long? = null,
+    ): TrafficViewModel {
+        val viewModel = TrafficViewModel(
+            trafficRepository = trafficRepository,
+            sessionId = sessionId,
+        )
+
         viewModel.screenState.launchIn(backgroundScope)
+
+        return viewModel
     }
 
 }
-
-private fun TrafficSession.maxTrafficTimestamp(): Long =
-    trafficMetrics.maxOf { it.timestamp }
