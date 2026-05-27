@@ -13,8 +13,8 @@ import dagger.assisted.AssistedInject
 import dagger.hilt.android.lifecycle.HiltViewModel
 import kotlinx.coroutines.ExperimentalCoroutinesApi
 import kotlinx.coroutines.flow.SharingStarted
+import kotlinx.coroutines.flow.distinctUntilChangedBy
 import kotlinx.coroutines.flow.flatMapLatest
-import kotlinx.coroutines.flow.flowOf
 import kotlinx.coroutines.flow.map
 import kotlinx.coroutines.flow.stateIn
 import kotlin.time.Duration.Companion.seconds
@@ -28,25 +28,38 @@ class TrafficViewModel @AssistedInject constructor(
 ) : ViewModel() {
 
     val screenState = trafficRepository.currentRecordingSession
+        // optimization: prevents retriggering flatMapLatest every 1s. this avoids
+        // unnecessary db cancellations + resubscriptions below
+        .distinctUntilChangedBy {
+            (it as? RecordingState.Active)?.session?.id
+        }
         .flatMapLatest { recordingState ->
-            val recordingSession = (recordingState as? RecordingState.Active)?.session
-            val recordingSessionId = recordingSession?.id
-            val error =
-                (recordingState as? RecordingState.Error)?.let { TrafficScreenError.SessionError }
+            val session = (recordingState as? RecordingState.Active)?.session
+            val recordingSessionId = session?.id
 
-            val loadedSession = if (sessionId == null || recordingSessionId == sessionId)
-                flowOf(recordingSession)
+            if (sessionId == null || recordingSessionId == sessionId)
+                trafficRepository.currentRecordingSession.map {
+                    val recordingSession = (it as? RecordingState.Active)?.session
+                    val error = (it as? RecordingState.Error)?.let {
+                        TrafficScreenError.SessionError
+                    }
+
+                    TrafficScreenState(
+                        error = error,
+                        graphData = recordingSession?.computeFilteredGraphData() ?: emptyList(),
+                        recordingSessionId = recordingSessionId,
+                        trafficDisplayInfo = recordingSession?.computeDisplayInfo(),
+                    )
+                }
             else
-                trafficRepository.getSessionById(sessionId)
-
-            loadedSession.map {
-                TrafficScreenState(
-                    error = error,
-                    graphData = it?.computeFilteredGraphData() ?: emptyList(),
-                    recordingSessionId = recordingSessionId,
-                    trafficDisplayInfo = it?.computeDisplayInfo(),
-                )
-            }
+                trafficRepository.getSessionById(sessionId).map { loadedSession ->
+                    TrafficScreenState(
+                        error = null,
+                        graphData = loadedSession.computeFilteredGraphData(),
+                        recordingSessionId = recordingSessionId,
+                        trafficDisplayInfo = loadedSession.computeDisplayInfo(),
+                    )
+                }
         }
         .stateIn(
             viewModelScope,
