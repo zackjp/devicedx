@@ -41,21 +41,17 @@ class TrafficViewModelTest {
 
     private val recordingStateFlow = MutableStateFlow<RecordingState>(RecordingState.Idle)
 
-    val repoSession1 = TrafficSession.fake(number = 100003, metricsCount = 2, sortDesc = true)
-    val repoSessionById = TrafficSession.fake(number = SESSION_ID, metricsCount = 2, sortDesc = true)
-
-    private companion object {
-        const val SESSION_ID = 113355L
-    }
+    val repoRecordingSession = TrafficSession.fake(number = 100003, metricsCount = 2, sortDesc = true)
+    val repoSessionById = TrafficSession.fake(number = 113355L, metricsCount = 2, sortDesc = true)
 
     @BeforeEach
     fun setUp() {
         Dispatchers.setMain(testDispatcherProvider.default)
 
-        every { trafficRepository.currentActiveSession } returns recordingStateFlow
+        every { trafficRepository.currentRecordingSession } returns recordingStateFlow
         every { trafficRepository.startRecording() } just runs
         every { trafficRepository.stopRecording() } answers { recordingStateFlow.value = RecordingState.Idle }
-        every { trafficRepository.getSessionById(SESSION_ID) } returns flowOf(repoSessionById)
+        every { trafficRepository.getSessionById(repoSessionById.id) } returns flowOf(repoSessionById)
     }
 
     @AfterEach
@@ -68,10 +64,10 @@ class TrafficViewModelTest {
         val viewModel = initViewModel()
 
         viewModel.screenState.test {
-            recordingStateFlow.value = RecordingState.Active(repoSession1)
+            recordingStateFlow.value = RecordingState.Active(repoRecordingSession)
             advanceUntilIdle()
 
-            expectMostRecentItem().trafficDisplayInfo?.session shouldBe repoSession1
+            expectMostRecentItem().trafficDisplayInfo?.session shouldBe repoRecordingSession
 
             viewModel.stopMonitor()
             advanceUntilIdle()
@@ -94,7 +90,7 @@ class TrafficViewModelTest {
     fun startMonitor_WhenTrafficDataEmitted_UpdatesTrafficSession() = runTest {
         val viewModel = initViewModel()
 
-        val repoSession = repoSession1
+        val repoSession = repoRecordingSession
 
         viewModel.screenState.test {
             expectMostRecentItem().trafficDisplayInfo?.session should beNull()
@@ -113,7 +109,7 @@ class TrafficViewModelTest {
     fun startMonitor_WhenTrafficDataEmitted_ComputesTrafficDisplayInfo() = runTest {
         val viewModel = initViewModel()
 
-        val repoSession = repoSession1
+        val repoSession = repoRecordingSession
 
         viewModel.screenState.test {
             expectMostRecentItem().trafficDisplayInfo?.session should beNull()
@@ -142,7 +138,7 @@ class TrafficViewModelTest {
     fun init_WhenRepositoryEmitsActiveSession_StartTimeMatchesSessionStartTime() = runTest {
         val viewModel = initViewModel()
 
-        val session = repoSession1
+        val session = repoRecordingSession
 
         viewModel.screenState.test {
             recordingStateFlow.value = RecordingState.Active(session)
@@ -175,6 +171,39 @@ class TrafficViewModelTest {
 
             runCurrent()
             awaitItem().trafficDisplayInfo?.session shouldBe repoSessionById
+        }
+    }
+
+    @Test
+    fun init_WhenRecordingSessionIsIdle_SetsNullRecordingId() = runTest {
+        recordingStateFlow.emit(RecordingState.Idle)
+        val viewModel = initViewModel(sessionId = repoSessionById.id)
+
+        viewModel.screenState.test {
+            runCurrent()
+            expectMostRecentItem().recordingSessionId should beNull()
+        }
+    }
+
+    @Test
+    fun init_WhenRecordingSessionIsDifferentThanInjectedSessionId_SetsRecordingId() = runTest {
+        recordingStateFlow.emit(RecordingState.Active(repoRecordingSession))
+        val viewModel = initViewModel(sessionId = repoSessionById.id)
+
+        viewModel.screenState.test {
+            runCurrent()
+            expectMostRecentItem().recordingSessionId shouldBe repoRecordingSession.id
+        }
+    }
+
+    @Test
+    fun init_WhenRecordingSessionIsSameAsInjectedSessionId_SetsRecordingId() = runTest {
+        recordingStateFlow.emit(RecordingState.Active(repoSessionById))
+        val viewModel = initViewModel(sessionId = repoSessionById.id)
+
+        viewModel.screenState.test {
+            runCurrent()
+            expectMostRecentItem().recordingSessionId shouldBe repoSessionById.id
         }
     }
 

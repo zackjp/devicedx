@@ -49,7 +49,7 @@ class TrafficRepository @Inject constructor(
 ) {
 
     private val _currentActiveSession = MutableStateFlow<RecordingState>(RecordingState.Idle)
-    val currentActiveSession: StateFlow<RecordingState> = _currentActiveSession.asStateFlow()
+    val currentRecordingSession: StateFlow<RecordingState> = _currentActiveSession.asStateFlow()
 
     private var recordingJob: Job? = null
 

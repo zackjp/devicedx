@@ -198,7 +198,8 @@ private fun MainContent(
         }
     }
 
-    val isSessionActiveProvider = { stateProvider().trafficDisplayInfo != null }
+    val recordingSessionIdProvider = { stateProvider().recordingSessionId }
+    val loadedSessionIdProvider = { stateProvider().trafficDisplayInfo?.session?.id }
     val trafficDisplayInfoProvider = { stateProvider().trafficDisplayInfo }
 
     Column(
@@ -226,7 +227,7 @@ private fun MainContent(
                     metricsProvider = {
                         trafficDisplayInfoProvider()?.session?.trafficMetrics ?: emptyList()
                     },
-                    isSessionActiveProvider = isSessionActiveProvider,
+                    isSessionRecordingProvider = { recordingSessionIdProvider() == trafficDisplayInfoProvider()?.session?.id },
                     rxColor = RxLineColor,
                     txColor = TxLineColor,
                 )
@@ -256,7 +257,8 @@ private fun MainContent(
 
                 MonitorButton(
                     modifier = Modifier.fillMaxWidth(),
-                    isMonitorActiveProvider = isSessionActiveProvider,
+                    recordingSessionIdProvider = recordingSessionIdProvider,
+                    loadedSessionIdProvider = loadedSessionIdProvider,
                     onStartMonitor = onStartMonitor,
                     onStopMonitor = onStopMonitor,
                 )
@@ -270,19 +272,44 @@ private fun MainContent(
 @Composable
 private fun MonitorButton(
     modifier: Modifier = Modifier,
-    isMonitorActiveProvider: () -> Boolean,
+    recordingSessionIdProvider: () -> Long?,
+    loadedSessionIdProvider: () -> Long?,
     onStartMonitor: () -> Unit = {},
     onStopMonitor: () -> Unit = {},
 ) {
-    val (textResId, onClick) = if (isMonitorActiveProvider()) {
-        R.string.stop_traffic_monitor to onStopMonitor
+    val recordingSessionId = recordingSessionIdProvider()
+    val loadedSessionId = loadedSessionIdProvider()
+
+    val buttonState = if (recordingSessionId == null) {
+        if (loadedSessionId == null) {
+            MonitorButtonState.Start
+        } else {
+            MonitorButtonState.Hidden
+        }
     } else {
-        R.string.start_traffic_monitor to onStartMonitor
+        if (loadedSessionId == null || loadedSessionId == recordingSessionId) {
+            MonitorButtonState.Stop
+        } else {
+            MonitorButtonState.Hidden
+        }
     }
 
-    PrimaryButton(
-        modifier = modifier,
-        onClick = onClick,
-        text = stringResource(textResId),
-    )
+    if (buttonState != MonitorButtonState.Hidden) {
+        val (textResId, onClick) = when (buttonState) {
+            MonitorButtonState.Start -> R.string.start_traffic_monitor to onStartMonitor
+            MonitorButtonState.Stop -> R.string.stop_traffic_monitor to onStopMonitor
+        }
+
+        PrimaryButton(
+            modifier = modifier,
+            onClick = onClick,
+            text = stringResource(textResId),
+        )
+    }
+}
+
+private enum class MonitorButtonState {
+    Start,
+    Stop,
+    Hidden,
 }

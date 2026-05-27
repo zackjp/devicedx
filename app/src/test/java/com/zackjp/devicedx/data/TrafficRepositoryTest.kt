@@ -137,7 +137,7 @@ class TrafficRepositoryTest {
         )
 
         val repository = buildRepository()
-        repository.currentActiveSession.test {
+        repository.currentRecordingSession.test {
             awaitItem() shouldBe RecordingState.Idle
 
             repository.startRecording()
@@ -182,7 +182,7 @@ class TrafficRepositoryTest {
         repository.stopRecording()
         runCurrent()
 
-        repository.currentActiveSession.value shouldBe RecordingState.Idle
+        repository.currentRecordingSession.value shouldBe RecordingState.Idle
     }
 
     @Test
@@ -207,7 +207,7 @@ class TrafficRepositoryTest {
         repository.startRecording()
         runCurrent()
 
-        repository.currentActiveSession.value shouldBe RecordingState.Error
+        repository.currentRecordingSession.value shouldBe RecordingState.Error
     }
 
     @Test
@@ -219,7 +219,7 @@ class TrafficRepositoryTest {
         trafficSessionReadFlow.emit(FlowCommand.Throw(CustomException("Fake db read exception")))
         runCurrent()
 
-        repository.currentActiveSession.value shouldBe RecordingState.Error
+        repository.currentRecordingSession.value shouldBe RecordingState.Error
     }
 
     @Test
@@ -231,7 +231,7 @@ class TrafficRepositoryTest {
         trafficSessionWriteFlow.emit(FlowCommand.Throw(CustomException("Fake db write exception")))
         runCurrent()
 
-        repository.currentActiveSession.value shouldBe RecordingState.Error
+        repository.currentRecordingSession.value shouldBe RecordingState.Error
     }
 
     @Test

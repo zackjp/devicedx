@@ -27,27 +27,25 @@ class TrafficViewModel @AssistedInject constructor(
     @Assisted private val sessionId: Long?,
 ) : ViewModel() {
 
-    val screenState = flowOf(sessionId)
-        .flatMapLatest {
-            if (it == null) {
-                return@flatMapLatest trafficRepository.currentActiveSession
-                    .map { recording ->
-                        val session = (recording as? RecordingState.Active)?.session
-                        val error =
-                            if (recording as? RecordingState.Error != null) TrafficScreenError.SessionError else null
-                        TrafficScreenState(
-                            trafficDisplayInfo = session?.computeDisplayInfo(),
-                            graphData = session?.computeFilteredGraphData() ?: emptyList(),
-                            error = error,
-                        )
-                    }
-            } else {
-                return@flatMapLatest trafficRepository.getSessionById(it).map { session ->
-                    TrafficScreenState(
-                        trafficDisplayInfo = session.computeDisplayInfo(),
-                        graphData = session.computeFilteredGraphData(),
-                    )
-                }
+    val screenState = trafficRepository.currentRecordingSession
+        .flatMapLatest { recordingState ->
+            val recordingSession = (recordingState as? RecordingState.Active)?.session
+            val recordingSessionId = recordingSession?.id
+            val error =
+                (recordingState as? RecordingState.Error)?.let { TrafficScreenError.SessionError }
+
+            val loadedSession = if (sessionId == null || recordingSessionId == sessionId)
+                flowOf(recordingSession)
+            else
+                trafficRepository.getSessionById(sessionId)
+
+            loadedSession.map {
+                TrafficScreenState(
+                    error = error,
+                    graphData = it?.computeFilteredGraphData() ?: emptyList(),
+                    recordingSessionId = recordingSessionId,
+                    trafficDisplayInfo = it?.computeDisplayInfo(),
+                )
             }
         }
         .stateIn(
