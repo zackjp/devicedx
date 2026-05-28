@@ -1,5 +1,7 @@
 package com.zackjp.devicedx.feature.traffic
 
+import androidx.compose.animation.AnimatedVisibilityScope
+import androidx.compose.animation.SharedTransitionScope
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.fillMaxWidth
@@ -21,6 +23,8 @@ import com.zackjp.devicedx.shared.ui.ScreenScaffold
 fun TrafficHistoryScreenRoot(
     modifier: Modifier = Modifier,
     onNavigateToSession: (Long) -> Unit,
+    animatedVisibilityScope: AnimatedVisibilityScope,
+    sharedTransitionScope: SharedTransitionScope,
     viewModel: TrafficHistoryViewModel = hiltViewModel(),
 ) {
     val state by viewModel.state.collectAsStateWithLifecycle()
@@ -30,8 +34,10 @@ fun TrafficHistoryScreenRoot(
     ) {
         ReadyContent(
             modifier = Modifier.padding(horizontal = 12.dp),
+            animatedVisibilityScope = animatedVisibilityScope,
             onNavigateToSession = onNavigateToSession,
-            sessionDiplayInfoList = state.sessions,
+            trafficDiplayInfoList = state.sessions,
+            sharedTransitionScope = sharedTransitionScope,
         )
     }
 }
@@ -39,20 +45,30 @@ fun TrafficHistoryScreenRoot(
 @Composable
 private fun ReadyContent(
     modifier: Modifier = Modifier,
+    animatedVisibilityScope: AnimatedVisibilityScope,
     onNavigateToSession: (Long) -> Unit,
-    sessionDiplayInfoList: List<TrafficDisplayInfo>
+    trafficDiplayInfoList: List<TrafficDisplayInfo>,
+    sharedTransitionScope: SharedTransitionScope
 ) {
     LazyColumn(
         modifier = modifier,
         verticalArrangement = Arrangement.spacedBy(12.dp),
     ) {
-        items(sessionDiplayInfoList, key = { it.session.id }) { sessionDisplayInfo ->
-            SessionInfoCard(
-                modifier = Modifier
-                    .fillMaxWidth()
-                    .clickable { onNavigateToSession(sessionDisplayInfo.session.id) },
-                trafficDisplayInfoProvider = { sessionDisplayInfo },
-            )
+        items(trafficDiplayInfoList, key = { it.session.id }) { trafficDisplayInfo ->
+            with(sharedTransitionScope) {
+                SessionInfoCard(
+                    modifier = Modifier
+                        .sharedElement(
+                            sharedContentState = sharedTransitionScope.rememberSharedContentState(
+                                "session-${trafficDisplayInfo.session.id}",
+                            ),
+                            animatedVisibilityScope = animatedVisibilityScope,
+                        )
+                        .fillMaxWidth()
+                        .clickable { onNavigateToSession(trafficDisplayInfo.session.id) },
+                    trafficDisplayInfoProvider = { trafficDisplayInfo },
+                )
+            }
         }
     }
 }

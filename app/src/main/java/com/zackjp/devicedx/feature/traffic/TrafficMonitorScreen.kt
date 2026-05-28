@@ -1,6 +1,8 @@
 package com.zackjp.devicedx.feature.traffic
 
 import androidx.activity.compose.BackHandler
+import androidx.compose.animation.AnimatedVisibilityScope
+import androidx.compose.animation.SharedTransitionScope
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Spacer
@@ -62,7 +64,9 @@ private val TxLineColor = CyberAmber
 @Composable
 fun TrafficMonitorScreenRoot(
     modifier: Modifier = Modifier,
+    animatedVisibilityScope: AnimatedVisibilityScope,
     navActions: NavActions,
+    sharedTransitionScope: SharedTransitionScope,
     viewModel: TrafficViewModel = hiltViewModel()
 ) {
     val state by viewModel.screenState.collectAsStateWithLifecycle()
@@ -100,19 +104,25 @@ fun TrafficMonitorScreenRoot(
             onStopMonitor = viewModel::stopMonitor,
             snackbarHostState = snackbarHostState,
             stateProvider = { state },
+            requestedSessionId = viewModel.sessionId,
+            sharedTransitionScope = sharedTransitionScope,
+            animatedVisibilityScope = animatedVisibilityScope,
         )
     }
 }
 
 @Composable
 private fun TrafficMonitorScreen(
+    modifier: Modifier = Modifier,
     consumeErrorAction: () -> Unit,
     isInPipMode: Boolean,
-    modifier: Modifier = Modifier,
     onStartMonitor: () -> Unit = {},
     onStopMonitor: () -> Unit = {},
     snackbarHostState: SnackbarHostState,
     stateProvider: () -> TrafficScreenState,
+    requestedSessionId: Long?,
+    animatedVisibilityScope: AnimatedVisibilityScope,
+    sharedTransitionScope: SharedTransitionScope,
 ) {
     if (isInPipMode) {
         MainContentPipMode(
@@ -138,6 +148,9 @@ private fun TrafficMonitorScreen(
                 stateProvider = stateProvider,
                 onStartMonitor = onStartMonitor,
                 onStopMonitor = onStopMonitor,
+                requestedSessionId = requestedSessionId,
+                sharedTransitionScope = sharedTransitionScope,
+                animatedVisibilityScope = animatedVisibilityScope,
             )
         }
     }
@@ -188,7 +201,10 @@ private fun MainContent(
     modifier: Modifier = Modifier,
     stateProvider: () -> TrafficScreenState,
     onStartMonitor: () -> Unit,
-    onStopMonitor: () -> Unit
+    onStopMonitor: () -> Unit,
+    requestedSessionId: Long?,
+    animatedVisibilityScope: AnimatedVisibilityScope,
+    sharedTransitionScope: SharedTransitionScope,
 ) {
     val scaffoldState = rememberBottomSheetScaffoldState()
     val coroutineScope = rememberCoroutineScope()
@@ -248,10 +264,26 @@ private fun MainContent(
 
                 Spacer(Modifier.height(12.dp))
 
-                SessionInfoCard(
-                    modifier = Modifier.fillMaxWidth(),
-                    trafficDisplayInfoProvider = trafficDisplayInfoProvider,
-                )
+                with(sharedTransitionScope) {
+                    // Prefer the actual loaded session id. When that's unavailable on first load,
+                    // use the requested session id so that the shared element transition works
+                    // on navigation. Otherwise, we're observing the current recording session.
+                    val sharedContentId = loadedSessionIdProvider()
+                        ?: requestedSessionId
+                        ?: recordingSessionIdProvider()
+
+                    SessionInfoCard(
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .sharedElement(
+                                sharedContentState = sharedTransitionScope.rememberSharedContentState(
+                                    key = "session-$sharedContentId",
+                                ),
+                                animatedVisibilityScope = animatedVisibilityScope,
+                            ),
+                        trafficDisplayInfoProvider = trafficDisplayInfoProvider,
+                    )
+                }
 
                 Spacer(Modifier.weight(1f))
 

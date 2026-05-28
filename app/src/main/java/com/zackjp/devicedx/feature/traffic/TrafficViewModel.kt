@@ -24,7 +24,7 @@ import kotlin.time.Instant
 @HiltViewModel(assistedFactory = TrafficViewModel.Factory::class)
 class TrafficViewModel @AssistedInject constructor(
     private val trafficRepository: TrafficRepository,
-    @Assisted private val sessionId: Long?,
+    @Assisted val sessionId: Long?,
 ) : ViewModel() {
 
     val screenState = trafficRepository.currentRecordingSession

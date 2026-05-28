@@ -4,6 +4,7 @@ import androidx.compose.animation.AnimatedContentTransitionScope
 import androidx.compose.animation.ContentTransform
 import androidx.compose.animation.EnterTransition
 import androidx.compose.animation.ExitTransition
+import androidx.compose.animation.SharedTransitionLayout
 import androidx.compose.animation.slideOutHorizontally
 import androidx.compose.animation.togetherWith
 import androidx.compose.foundation.layout.fillMaxWidth
@@ -16,6 +17,7 @@ import androidx.navigation3.runtime.entryProvider
 import androidx.navigation3.runtime.rememberNavBackStack
 import androidx.navigation3.runtime.rememberSaveableStateHolderNavEntryDecorator
 import androidx.navigation3.scene.Scene
+import androidx.navigation3.ui.LocalNavAnimatedContentScope
 import androidx.navigation3.ui.NavDisplay
 import com.zackjp.devicedx.feature.dashboard.DashboardScreen
 import com.zackjp.devicedx.feature.latency.LatencyScreenRoot
@@ -49,66 +51,74 @@ fun DeviceDxNav3Graph(
         )
     }
 
-    NavDisplay(
+    SharedTransitionLayout(
         modifier = modifier,
-        backStack = backStack,
-        transitionSpec = TRANSITION_ANIM_FORWARD,
-        popTransitionSpec = TRANSITION_ANIM_POP,
-        predictivePopTransitionSpec = TRANSITION_ANIM_PREDICTIVE_POP,
-        entryDecorators = listOf(
-            rememberSaveableStateHolderNavEntryDecorator(),
-            rememberViewModelStoreNavEntryDecorator(),
-        ),
-        entryProvider = entryProvider {
-            entry<Route.Dashboard> {
-                DashboardScreen(
-                    modifier = Modifier
-                        .fillMaxWidth(),
-                    navActions = navActions,
-                )
-            }
+    ) {
+        NavDisplay(
+            modifier = Modifier.fillMaxWidth(),
+            backStack = backStack,
+            transitionSpec = TRANSITION_ANIM_FORWARD,
+            popTransitionSpec = TRANSITION_ANIM_POP,
+            predictivePopTransitionSpec = TRANSITION_ANIM_PREDICTIVE_POP,
+            entryDecorators = listOf(
+                rememberSaveableStateHolderNavEntryDecorator(),
+                rememberViewModelStoreNavEntryDecorator(),
+            ),
+            entryProvider = entryProvider {
+                entry<Route.Dashboard> {
+                    DashboardScreen(
+                        modifier = Modifier
+                            .fillMaxWidth(),
+                        navActions = navActions,
+                    )
+                }
 
-            entry<Route.LatencyMonitor> {
-                LatencyScreenRoot(
-                    modifier = Modifier
-                        .fillMaxWidth(),
-                )
-            }
+                entry<Route.LatencyMonitor> {
+                    LatencyScreenRoot(
+                        modifier = Modifier
+                            .fillMaxWidth(),
+                    )
+                }
 
-            entry<Route.TrafficMonitor> { key ->
-                val trafficViewModel: TrafficViewModel = hiltViewModel(
-                    creationCallback = { factory: TrafficViewModel.Factory ->
-                        factory.create(key.sessionId)
-                    }
-                )
+                entry<Route.TrafficMonitor> { key ->
+                    val trafficViewModel: TrafficViewModel = hiltViewModel(
+                        creationCallback = { factory: TrafficViewModel.Factory ->
+                            factory.create(key.sessionId)
+                        }
+                    )
 
-                TrafficMonitorScreenRoot(
-                    modifier = Modifier
-                        .fillMaxWidth(),
-                    navActions = navActions,
-                    viewModel = trafficViewModel,
-                )
-            }
+                    TrafficMonitorScreenRoot(
+                        modifier = Modifier
+                            .fillMaxWidth(),
+                        navActions = navActions,
+                        sharedTransitionScope = this@SharedTransitionLayout,
+                        animatedVisibilityScope = LocalNavAnimatedContentScope.current,
+                        viewModel = trafficViewModel,
+                    )
+                }
 
-            entry<Route.TrafficHistory>(
-                clazzContentKey = { Route.TrafficHistory::class.qualifiedName!! },
-            ) {
-                TrafficHistoryScreenRoot(
-                    modifier = Modifier
-                        .fillMaxWidth(),
-                    onNavigateToSession = { sessionId ->
-                        backStack.removeAll { it is Route.TrafficMonitor || it is Route.TrafficHistory }
-                        backStack.add(Route.TrafficMonitor(sessionId))
-                    }
-                )
-            }
+                entry<Route.TrafficHistory>(
+                    clazzContentKey = { Route.TrafficHistory::class.qualifiedName!! },
+                ) {
+                    TrafficHistoryScreenRoot(
+                        modifier = Modifier
+                            .fillMaxWidth(),
+                        sharedTransitionScope = this@SharedTransitionLayout,
+                        animatedVisibilityScope = LocalNavAnimatedContentScope.current,
+                        onNavigateToSession = { sessionId ->
+                            backStack.removeAll { it is Route.TrafficMonitor || it is Route.TrafficHistory }
+                            backStack.add(Route.TrafficMonitor(sessionId))
+                        }
+                    )
+                }
 
-            entry<Route.WifiMonitor> {
-                WifiScreenRoot(
-                    modifier = Modifier
-                        .fillMaxWidth(),
-                )
-            }
-        },
-    )
+                entry<Route.WifiMonitor> {
+                    WifiScreenRoot(
+                        modifier = Modifier
+                            .fillMaxWidth(),
+                    )
+                }
+            },
+        )
+    }
 }
