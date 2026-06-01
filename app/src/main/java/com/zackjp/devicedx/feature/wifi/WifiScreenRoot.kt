@@ -60,13 +60,14 @@ import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import androidx.core.app.ActivityCompat
 import androidx.hilt.lifecycle.viewmodel.compose.hiltViewModel
-import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import com.zackjp.devicedx.R
 import com.zackjp.devicedx.shared.ui.AppCard
 import com.zackjp.devicedx.shared.ui.ScreenScaffold
 import com.zackjp.devicedx.system.WifiInfo
 import com.zackjp.devicedx.ui.theme.MediumGray
 import kotlinx.coroutines.launch
+import org.orbitmvi.orbit.compose.collectAsState
+import org.orbitmvi.orbit.compose.collectSideEffect
 
 
 private val LightBlueLink = Color(0xFF4BB2F9)
@@ -101,7 +102,7 @@ fun WifiScreenRoot(
     modifier: Modifier = Modifier,
     viewModel: WifiViewModel = hiltViewModel()
 ) {
-    val state by viewModel.screenState.collectAsStateWithLifecycle()
+    val state by viewModel.collectAsState()
     val localActivity = LocalActivity.current
     val launcher =
         rememberLauncherForActivityResult(ActivityResultContracts.RequestPermission()) { isGranted ->
@@ -115,11 +116,9 @@ fun WifiScreenRoot(
             viewModel.onFineLocationPermissionResult(isGranted, shouldShowRationale)
         }
 
-    LaunchedEffect(viewModel) {
-        viewModel.events.collect {
-            if (it is WifiScreenEvent.LaunchFineLocation) {
-                launcher.launch(ACCESS_FINE_LOCATION)
-            }
+    viewModel.collectSideEffect {
+        if (it is WifiScreenEffect.LaunchFineLocation) {
+            launcher.launch(ACCESS_FINE_LOCATION)
         }
     }
 

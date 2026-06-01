@@ -2,103 +2,88 @@ package com.zackjp.devicedx.feature.wifi
 
 import android.net.wifi.ScanResult
 import androidx.lifecycle.ViewModel
-import androidx.lifecycle.viewModelScope
 import com.zackjp.devicedx.concurrency.DispatcherProvider
 import com.zackjp.devicedx.data.WifiDataSource
 import com.zackjp.devicedx.system.WifiInfo
 import com.zackjp.devicedx.system.permissions.PermissionChecker
 import dagger.hilt.android.lifecycle.HiltViewModel
 import kotlinx.coroutines.ExperimentalCoroutinesApi
-import kotlinx.coroutines.Job
-import kotlinx.coroutines.channels.Channel
-import kotlinx.coroutines.flow.Flow
+import kotlinx.coroutines.coroutineScope
 import kotlinx.coroutines.flow.MutableStateFlow
-import kotlinx.coroutines.flow.SharingStarted
-import kotlinx.coroutines.flow.combine
-import kotlinx.coroutines.flow.distinctUntilChanged
 import kotlinx.coroutines.flow.emptyFlow
 import kotlinx.coroutines.flow.flatMapLatest
 import kotlinx.coroutines.flow.flowOn
 import kotlinx.coroutines.flow.launchIn
-import kotlinx.coroutines.flow.map
 import kotlinx.coroutines.flow.onEach
-import kotlinx.coroutines.flow.receiveAsFlow
-import kotlinx.coroutines.flow.stateIn
-import kotlinx.coroutines.flow.update
 import kotlinx.coroutines.launch
+import org.orbitmvi.orbit.ContainerHost
+import org.orbitmvi.orbit.annotation.OrbitExperimental
+import org.orbitmvi.orbit.viewmodel.container
 import javax.inject.Inject
+
+
+private val validStartMonitorStatuses = setOf(
+    PermissionStatus.Unknown,
+    PermissionStatus.DeniedTemporarily
+)
 
 
 @HiltViewModel
 class WifiViewModel @Inject constructor(
-    dispatcherProvider: DispatcherProvider,
+    private val dispatcherProvider: DispatcherProvider,
     private val permissionChecker: PermissionChecker,
     private val wifiDataSource: WifiDataSource,
-) : ViewModel() {
+) : ContainerHost<WifiScreenState, WifiScreenEffect>, ViewModel() {
 
-    private val _events = Channel<WifiScreenEvent>()
-    val events = _events.receiveAsFlow()
-
-    private val _screenState = MutableStateFlow(
-        WifiScreenState(
-            isMonitorActive = false,
+    override val container = container<WifiScreenState, WifiScreenEffect>(
+        initialState = WifiScreenState(
             permissionStatus = PermissionStatus.Unknown,
             wifiNames = emptyList(),
             wifiInfo = WifiInfo(),
-        )
-    )
-    val screenState = _screenState
-        .stateIn(viewModelScope, SharingStarted.WhileSubscribed(5000), _screenState.value)
+        ),
+    ) {
+        coroutineScope {
+            launch {
+                observeWifiInfoFlow()
+            }
+            launch {
+                observeActivatableWifiScan()
+            }
+        }
+    }
 
-    private val uiActiveFlow = _screenState.subscriptionCount.map { it > 0 }.distinctUntilChanged()
     private val isMonitorActive = MutableStateFlow(false)
 
-    private val activatableWifiScanMonitor: Job = uiActivatedFlow(
-        dataSourceProvider = wifiDataSource::getWifiScanFlow,
-    )
-        .onEach(::handleWifiScanResults)
-        .flowOn(dispatcherProvider.default)
-        .launchIn(viewModelScope)
-
-    @OptIn(ExperimentalCoroutinesApi::class)
-    private val activatableWifiInfoMonitor: Job = uiActiveFlow.flatMapLatest { isUiActive ->
-        if (isUiActive) wifiDataSource.getWifiInfo() else emptyFlow()
-    }
-        .onEach(::handleWifiInfo)
-        .launchIn(viewModelScope)
-
-    fun startMonitor() {
-        viewModelScope.launch {
-            if (permissionChecker.hasFineLocation()) {
-                _screenState.update {
-                    it.copy(
-                        isMonitorActive = true,
-                        permissionStatus = PermissionStatus.Granted,
+    fun startMonitor() = intent {
+        if (permissionChecker.hasFineLocation()) {
+            isMonitorActive.value = true
+            reduce {
+                state.copy(
+                    permissionStatus = PermissionStatus.Granted,
+                )
+            }
+        } else {
+            if (state.permissionStatus in validStartMonitorStatuses) {
+                reduce {
+                    state.copy(
+                        permissionStatus = PermissionStatus.Pending,
                     )
                 }
-                isMonitorActive.value = true
-            } else if (_screenState.value.permissionStatus in listOf(
-                    PermissionStatus.Unknown,
-                    PermissionStatus.DeniedTemporarily
-                )
-            ) {
-                _screenState.update { it.copy(permissionStatus = PermissionStatus.Pending) }
-                _events.send(WifiScreenEvent.LaunchFineLocation)
+                postSideEffect(WifiScreenEffect.LaunchFineLocation)
             }
         }
     }
 
     fun stopMonitor() {
-        _screenState.update { it.copy(isMonitorActive = false) }
         isMonitorActive.value = false
     }
 
-    fun onFineLocationPermissionResult(isGranted: Boolean, shouldShowRationale: Boolean) {
+    fun onFineLocationPermissionResult(isGranted: Boolean, shouldShowRationale: Boolean) = intent {
         if (isGranted) {
             startMonitor()
         } else {
-            _screenState.update {
-                it.copy(
+            reduce {
+                state.copy(
                     permissionStatus = if (shouldShowRationale)
                         PermissionStatus.DeniedTemporarily
                     else
@@ -108,27 +93,42 @@ class WifiViewModel @Inject constructor(
         }
     }
 
-    private fun handleWifiScanResults(scanResults: List<ScanResult>) {
-        _screenState.update { currentState ->
-            val wifiNames = scanResults.mapNotNull { it.SSID.ifEmpty { null } }
-            currentState.copy(wifiNames = wifiNames)
+    @OptIn(OrbitExperimental::class)
+    private suspend fun observeWifiInfoFlow() = subIntent {
+        repeatOnSubscription {
+            wifiDataSource.getWifiInfo()
+                .onEach(::handleWifiInfo)
+                .flowOn(dispatcherProvider.default)
+                .launchIn(this)
         }
     }
 
-    private fun handleWifiInfo(wifiInfo: WifiInfo) {
-        _screenState.update { it.copy(wifiInfo = wifiInfo) }
+    @OptIn(ExperimentalCoroutinesApi::class, OrbitExperimental::class)
+    private suspend fun observeActivatableWifiScan() = subIntent {
+        repeatOnSubscription {
+            isMonitorActive.flatMapLatest { isActive ->
+                if (isActive) wifiDataSource.getWifiScanFlow() else emptyFlow()
+            }
+                .onEach(::handleWifiScanResults)
+                .flowOn(dispatcherProvider.default)
+                .launchIn(this)
+        }
     }
 
-    @OptIn(ExperimentalCoroutinesApi::class)
-    private fun <T> uiActivatedFlow(
-        dataSourceProvider: () -> Flow<T>,
-    ): Flow<T> = combine(
-        uiActiveFlow,
-        isMonitorActive,
-    ) { uiActive, isMonitorActive ->
-        uiActive && isMonitorActive
-    }.flatMapLatest { isMonitorActive ->
-        if (isMonitorActive) dataSourceProvider() else emptyFlow()
+    private fun handleWifiInfo(wifiInfo: WifiInfo) = intent {
+        reduce {
+            state.copy(
+                wifiInfo = wifiInfo,
+            )
+        }
+    }
+
+    private fun handleWifiScanResults(scanResults: List<ScanResult>) = intent {
+        reduce {
+            state.copy(
+                wifiNames = scanResults.mapNotNull { it.SSID.ifEmpty { null } }
+            )
+        }
     }
 
 }

@@ -5,7 +5,6 @@ import com.zackjp.devicedx.system.WifiInfo
 
 @Immutable
 data class WifiScreenState(
-    val isMonitorActive: Boolean,
     val permissionStatus: PermissionStatus,
     val wifiNames: List<String>,
     val wifiInfo: WifiInfo,
@@ -19,6 +18,6 @@ enum class PermissionStatus {
     Unknown,
 }
 
-sealed interface WifiScreenEvent {
-    data object LaunchFineLocation : WifiScreenEvent
+sealed interface WifiScreenEffect {
+    data object LaunchFineLocation : WifiScreenEffect
 }
